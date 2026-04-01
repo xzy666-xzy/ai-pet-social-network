@@ -34,12 +34,40 @@ export const translations = {
       },
       footer: "© 2025 WePet. Designed for pet lovers.",
     },
+
     // Match Page
     match: {
       title: "For You",
       aiOptimized: "AI Optimized",
-      matchPercent: "% Match",
-      aiAnalysis: "AI Analysis",
+      matchPercent: "Match",
+      aiAnalysis: "Profile",
+      remainingLikes: "Likes left today",
+      noUsers: "No available matches right now",
+      unknownBreed: "Unknown breed",
+      roleIntro: "Character Intro",
+      times: "",
+      loading: "Loading...",
+      noBio: "This user hasn't added a bio yet.",
+      ageUnit: " yrs",
+      memberUnlimited: "Unlimited likes",
+      notices: {
+        alreadyLiked: "You already liked this user. They are already in your chat list.",
+        mutualMatch: "You both liked each other. Unlimited chat is now unlocked.",
+        introOnly: "Added to your chat list. You can send 1 message first and wait for them to like you back.",
+        memberActivated: "Membership activated. Your likes are now unlocked.",
+      },
+      membership: {
+        title: "Unlock Membership",
+        monthlyPlan: "WePet Monthly Membership",
+        duration: "/ 30 days",
+        benefit1: "Unlimited likes",
+        benefit2: "Like more users",
+        benefit3: "Keep matching after your daily quota runs out",
+        later: "Maybe later",
+        checkout: "Activate now",
+        processing: "Activating...",
+        quotaExceeded: "You've used all your likes for today. Unlock membership to continue.",
+      },
       pets: [
         {
           name: "Tofu",
@@ -80,33 +108,27 @@ export const translations = {
         },
       ],
     },
+
     // Chat Page
     chat: {
       activeNow: "Active now",
       today: "Today",
       typeMessage: "Type a message...",
-      aiSuggestions: "AI Suggestions",
-      suggestions: [
-        "What time works for you?",
-        "We'd love that! Is the morning okay?",
-        "Maybe next time, we are busy this week.",
-      ],
-      messages: [
-        "Hey! I saw Tofu loves the central park.",
-        "Yes! We go there every weekend.",
-        "Would you like to meet up for a walk this Saturday?",
-      ],
-      aiResponses: {
-        timeResponse: "How about 2 PM at the park entrance?",
-        locationResponse: "Central Park would be perfect! It has a great dog area.",
-        positiveResponse: "Great! Looking forward to it!",
-        defaultResponse: "That sounds wonderful! Let me know the details.",
-      },
-      suggestionSets: {
-        meetup: ["What time works best?", "Should we bring toys?", "Is morning or afternoon better?"],
-        park: ["Which park do you prefer?", "Should we try the dog run area?", "How long should we stay?"],
-      },
+      title: "Chat",
+      historyTitle: "History",
+      recentMessages: "Recent Messages",
+      noHistory: "No conversations yet",
+      goToMatch: "Go to Match",
+      selectConversationFirst: "Choose a conversation or start from Match",
+      statusMatched: "Matched",
+      statusLikedByMe: "You liked them",
+      statusLikedMe: "They liked you",
+      statusNoRelation: "No relation yet",
+      noMessagesYet: "No messages yet",
+      loadingHistory: "Loading conversations...",
+      introMessageSent: "You have sent 1 message. Wait for them to like you back to continue chatting.",
     },
+
     // Explore Page
     explore: {
       title: "Explore Nearby",
@@ -145,6 +167,7 @@ export const translations = {
       ],
       going: "going",
     },
+
     // Navigation
     nav: {
       match: "Match",
@@ -153,6 +176,7 @@ export const translations = {
       journal: "Journal",
       profile: "Profile",
     },
+
     // Profile Page
     profile: {
       petName: "Max",
@@ -172,7 +196,15 @@ export const translations = {
       help: "Help & Support",
       about: "About WePet",
       logout: "Log Out",
+      membership: "Membership",
+      memberActive: "Active",
+      memberInactive: "Inactive",
+      memberPlan: "Plan",
+      memberPlanMonthly: "Monthly",
+      memberPlanYearly: "Yearly",
+      memberExpires: "Expires",
     },
+
     // Growth Journal
     journal: {
       title: "Growth Journal",
@@ -247,6 +279,7 @@ export const translations = {
         },
       ],
     },
+
     // Auth Pages
     auth: {
       loginTitle: "Welcome Back",
@@ -288,6 +321,7 @@ export const translations = {
       passwordMismatch: "Passwords do not match",
     },
   },
+
   ko: {
     // Landing Page
     landing: {
@@ -321,12 +355,40 @@ export const translations = {
       },
       footer: "© 2025 WePet. 반려동물 애호가를 위한 디자인.",
     },
+
     // Match Page
     match: {
       title: "추천",
       aiOptimized: "AI 최적화",
-      matchPercent: "% 매칭",
-      aiAnalysis: "AI 분석",
+      matchPercent: "매칭도",
+      aiAnalysis: "프로필 소개",
+      remainingLikes: "오늘 남은 하트",
+      noUsers: "지금 추천할 사용자가 없습니다",
+      unknownBreed: "알 수 없는 품종",
+      roleIntro: "캐릭터 소개",
+      times: "회",
+      loading: "불러오는 중...",
+      noBio: "아직 자기소개를 작성하지 않았어요.",
+      ageUnit: "살",
+      memberUnlimited: "멤버십 무제한 하트",
+      notices: {
+        alreadyLiked: "이미 하트를 보낸 사용자예요. 채팅 목록에서 확인할 수 있어요.",
+        mutualMatch: "서로 좋아요가 성사되었어요. 무제한 채팅이 열렸어요.",
+        introOnly: "채팅 목록에 추가되었어요. 먼저 1개의 메시지를 보내고 상대의 하트를 기다릴 수 있어요.",
+        memberActivated: "멤버십이 활성화되었어요. 오늘 하트 제한이 해제되었어요.",
+      },
+      membership: {
+        title: "멤버십 열기",
+        monthlyPlan: "WePet 월간 멤버십",
+        duration: "/ 30일",
+        benefit1: "하트 무제한",
+        benefit2: "더 많은 사용자에게 좋아요",
+        benefit3: "오늘 하트를 다 써도 계속 매칭 가능",
+        later: "나중에",
+        checkout: "지금 시작하기",
+        processing: "활성화 중...",
+        quotaExceeded: "오늘 하트를 모두 사용했어요. 멤버십을 열면 계속 좋아요를 보낼 수 있어요.",
+      },
       pets: [
         {
           name: "토푸",
@@ -367,29 +429,27 @@ export const translations = {
         },
       ],
     },
+
     // Chat Page
     chat: {
       activeNow: "활동 중",
       today: "오늘",
       typeMessage: "메시지를 입력하세요...",
-      aiSuggestions: "AI 제안",
-      suggestions: ["몇 시가 괜찮으세요?", "좋아요! 아침에 괜찮으세요?", "다음에 만나요. 이번 주는 바빠요."],
-      messages: [
-        "안녕하세요! 토푸가 중앙공원을 좋아한다고 들었어요.",
-        "네! 매주 주말마다 가요.",
-        "이번 토요일에 산책하러 만날래요?",
-      ],
-      aiResponses: {
-        timeResponse: "오후 2시에 공원 입구에서 만나는 건 어때요?",
-        locationResponse: "중앙공원이 완벽할 것 같아요! 강아지 구역이 멋져요.",
-        positiveResponse: "좋아요! 기대되네요!",
-        defaultResponse: "정말 좋은 생각이에요! 자세한 내용 알려주세요.",
-      },
-      suggestionSets: {
-        meetup: ["몇 시가 가장 좋으세요?", "장난감을 가져갈까요?", "아침이나 오후 중 어느 게 더 나으세요?"],
-        park: ["어느 공원을 선호하세요?", "강아지 운동장 구역을 시도해 볼까요?", "얼마나 머물까요?"],
-      },
+      title: "채팅",
+      historyTitle: "대화 목록",
+      recentMessages: "최근 메시지",
+      noHistory: "아직 대화가 없습니다",
+      goToMatch: "매칭으로 이동",
+      selectConversationFirst: "대화를 선택하거나 매칭에서 새로 시작하세요",
+      statusMatched: "서로 좋아요",
+      statusLikedByMe: "내가 하트를 눌렀어요",
+      statusLikedMe: "상대가 하트를 눌렀어요",
+      statusNoRelation: "아직 관계 없음",
+      noMessagesYet: "아직 메시지가 없습니다",
+      loadingHistory: "대화 목록을 불러오는 중...",
+      introMessageSent: "아직 상호 매칭이 아니에요. 1개의 메시지를 보냈으며, 상대가 하트를 보내면 계속 채팅할 수 있어요.",
     },
+
     // Explore Page
     explore: {
       title: "근처 탐색",
@@ -428,6 +488,7 @@ export const translations = {
       ],
       going: "참석",
     },
+
     // Navigation
     nav: {
       match: "매칭",
@@ -436,6 +497,7 @@ export const translations = {
       journal: "기록",
       profile: "프로필",
     },
+
     // Profile Page
     profile: {
       petName: "맥스",
@@ -455,7 +517,15 @@ export const translations = {
       help: "도움말 및 지원",
       about: "WePet 소개",
       logout: "로그아웃",
+      membership: "멤버십",
+      memberActive: "이용 중",
+      memberInactive: "미가입",
+      memberPlan: "플랜",
+      memberPlanMonthly: "월간",
+      memberPlanYearly: "연간",
+      memberExpires: "만료일",
     },
+
     // Auth Pages
     auth: {
       loginTitle: "다시 오신 것을 환영합니다",
@@ -496,6 +566,7 @@ export const translations = {
       passwordTooShort: "비밀번호는 최소 6자 이상이어야 합니다",
       passwordMismatch: "비밀번호가 일치하지 않습니다",
     },
+
     // Growth Journal
     journal: {
       title: "성장 기록북",
@@ -571,6 +642,7 @@ export const translations = {
       ],
     },
   },
+
   zh: {
     // Landing Page
     landing: {
@@ -604,12 +676,40 @@ export const translations = {
       },
       footer: "© 2025 WePet. 为宠物爱好者设计。",
     },
+
     // Match Page
     match: {
       title: "推荐",
       aiOptimized: "AI优化",
-      matchPercent: "% 匹配度",
-      aiAnalysis: "AI分析",
+      matchPercent: "匹配度",
+      aiAnalysis: "资料介绍",
+      remainingLikes: "今日剩余红心",
+      noUsers: "暂时没有可匹配的用户",
+      unknownBreed: "未知品种",
+      roleIntro: "角色介绍",
+      times: "次",
+      loading: "加载中...",
+      noBio: "这个用户还没有填写宠物简介。",
+      ageUnit: "岁",
+      memberUnlimited: "会员无限红心",
+      notices: {
+        alreadyLiked: "你之前已经给对方点过红心，对方已在你的聊天列表中。",
+        mutualMatch: "你们已互相喜欢，已解锁无限聊天。",
+        introOnly: "已加入聊天列表。当前仅可先发送 1 条消息，等待对方回心后可继续畅聊。",
+        memberActivated: "会员开通成功，今日红心已解锁。",
+      },
+      membership: {
+        title: "开通会员",
+        monthlyPlan: "WePet 会员月卡",
+        duration: "/ 30天",
+        benefit1: "红心次数不限",
+        benefit2: "喜欢更多用户",
+        benefit3: "用完额度后可立即继续匹配",
+        later: "稍后再说",
+        checkout: "立即开通会员",
+        processing: "开通中...",
+        quotaExceeded: "今日红心次数已用完，开通会员后可继续喜欢。",
+      },
       pets: [
         {
           name: "豆腐",
@@ -649,25 +749,27 @@ export const translations = {
         },
       ],
     },
+
     // Chat Page
     chat: {
       activeNow: "在线中",
       today: "今天",
       typeMessage: "输入消息...",
-      aiSuggestions: "AI建议",
-      suggestions: ["什么时间方便您？", "我们很乐意！早上可以吗？", "也许下次吧，我们这周很忙。"],
-      messages: ["嗨！我看到豆腐喜欢中央公园。", "是的！我们每个周末都去那里。", "这周六想一起散步吗？"],
-      aiResponses: {
-        timeResponse: "下午2点在公园入口见怎么样？",
-        locationResponse: "中央公园很完美！那里有很棒的狗狗区域。",
-        positiveResponse: "太好了！期待见面！",
-        defaultResponse: "听起来很棒！让我知道详细信息。",
-      },
-      suggestionSets: {
-        meetup: ["什么时间最合适？", "我们要带玩具吗？", "早上还是下午更好？"],
-        park: ["你更喜欢哪个公园？", "我们要试试狗狗跑道区吗？", "我们应该待多久？"],
-      },
+      title: "聊天",
+      historyTitle: "历史对话",
+      recentMessages: "最近消息",
+      noHistory: "还没有历史对话",
+      goToMatch: "去匹配页",
+      selectConversationFirst: "请先选择历史对话或去匹配页开始聊天",
+      statusMatched: "已互相喜欢",
+      statusLikedByMe: "你已点红心",
+      statusLikedMe: "对方已点红心",
+      statusNoRelation: "未建立喜欢关系",
+      noMessagesYet: "还没有消息",
+      loadingHistory: "正在加载聊天记录...",
+      introMessageSent: "当前还未双向匹配，你已发送了 1 条消息。请等待对方也给你点红心后继续聊天。",
     },
+
     // Explore Page
     explore: {
       title: "探索附近",
@@ -697,6 +799,9 @@ export const translations = {
           location: "Paws & Play中心",
           attendees: 6,
           type: "训练",
+          image: "/puppy-training.png & Play中心",
+          attendees: 6,
+          type: "训练",
           image: "/puppy-training.png",
         },
       ],
@@ -706,6 +811,7 @@ export const translations = {
       ],
       going: "参加",
     },
+
     // Navigation
     nav: {
       match: "匹配",
@@ -714,6 +820,7 @@ export const translations = {
       journal: "日记",
       profile: "个人资料",
     },
+
     // Profile Page
     profile: {
       petName: "麦克斯",
@@ -733,7 +840,15 @@ export const translations = {
       help: "帮助与支持",
       about: "关于WePet",
       logout: "退出登录",
+      membership: "会员状态",
+      memberActive: "已开通",
+      memberInactive: "未开通",
+      memberPlan: "套餐",
+      memberPlanMonthly: "月卡",
+      memberPlanYearly: "年卡",
+      memberExpires: "到期时间",
     },
+
     // Auth Pages
     auth: {
       loginTitle: "欢迎回来",
@@ -774,6 +889,7 @@ export const translations = {
       passwordTooShort: "密码至少需要6个字符",
       passwordMismatch: "两次输入的密码不一致",
     },
+
     // Growth Journal
     journal: {
       title: "成长记录本",
