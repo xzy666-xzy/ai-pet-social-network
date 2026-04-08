@@ -74,7 +74,7 @@ Manage pet and owner information.
 - SQLite
 
 ### Maps
-- Naver Map API
+- Google Map API
 
 ---
 
