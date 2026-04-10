@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getAllUsers, getOrCreateConversation, getSessionUser,getUserConversations,} from "@/lib/db"
+import {
+  getOrCreateConversation,
+  getSessionUser,
+  getUserById,
+  getUserConversations,
+} from "@/lib/supabase-db"
+
 export async function GET(req: NextRequest) {
   try {
     const sessionId = req.cookies.get("session_id")?.value
@@ -8,13 +14,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const currentUser = getSessionUser(sessionId)
+    const currentUser = await getSessionUser(sessionId)
 
     if (!currentUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const conversations = getUserConversations(currentUser.id)
+    const conversations = await getUserConversations(currentUser.id)
 
     return NextResponse.json({
       success: true,
@@ -22,7 +28,7 @@ export async function GET(req: NextRequest) {
     })
   } catch (error: unknown) {
     const message =
-      error instanceof Error ? error.message : "Failed to load conversations"
+        error instanceof Error ? error.message : "Failed to load conversations"
 
     return NextResponse.json({ error: message }, { status: 500 })
   }
@@ -36,7 +42,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const currentUser = getSessionUser(sessionId)
+    const currentUser = await getSessionUser(sessionId)
 
     if (!currentUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -46,20 +52,32 @@ export async function POST(req: NextRequest) {
     const { targetUserId } = body
 
     if (!targetUserId) {
-      return NextResponse.json({ error: "targetUserId is required" }, { status: 400 })
+      return NextResponse.json(
+          { error: "targetUserId is required" },
+          { status: 400 }
+      )
     }
 
     if (targetUserId === currentUser.id) {
-      return NextResponse.json({ error: "You cannot chat with yourself" }, { status: 400 })
+      return NextResponse.json(
+          { error: "You cannot chat with yourself" },
+          { status: 400 }
+      )
     }
 
-    const targetUser = getAllUsers().find((user) => user.id === targetUserId)
+    const targetUser = await getUserById(targetUserId)
 
     if (!targetUser) {
-      return NextResponse.json({ error: "Target user not found" }, { status: 404 })
+      return NextResponse.json(
+          { error: "Target user not found" },
+          { status: 404 }
+      )
     }
 
-    const conversation = getOrCreateConversation(currentUser.id, targetUserId)
+    const conversation = await getOrCreateConversation(
+        currentUser.id,
+        targetUserId
+    )
 
     return NextResponse.json({
       success: true,
@@ -70,7 +88,9 @@ export async function POST(req: NextRequest) {
     })
   } catch (error: unknown) {
     const message =
-      error instanceof Error ? error.message : "Failed to create or get conversation"
+        error instanceof Error
+            ? error.message
+            : "Failed to create or get conversation"
 
     return NextResponse.json({ error: message }, { status: 500 })
   }

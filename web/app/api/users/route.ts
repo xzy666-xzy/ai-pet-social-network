@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getAvailableMatchUsers, getSessionUser } from "@/lib/db"
+import { getAvailableMatchUsers, getSessionUser } from "@/lib/supabase-db"
 
 export async function GET(req: NextRequest) {
   try {
@@ -9,20 +9,22 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const currentUser = getSessionUser(sessionId)
+    const currentUser = await getSessionUser(sessionId)
 
     if (!currentUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const users = getAvailableMatchUsers(currentUser.id)
+    const users = await getAvailableMatchUsers(currentUser.id)
 
     return NextResponse.json({
       success: true,
       users,
     })
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to load users"
+    const message =
+        error instanceof Error ? error.message : "Failed to load users"
+
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

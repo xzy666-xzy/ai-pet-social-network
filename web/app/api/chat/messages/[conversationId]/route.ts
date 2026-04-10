@@ -3,12 +3,12 @@ import {
   getConversationMessages,
   getSessionUser,
   getUserConversations,
-} from "@/lib/db"
+} from "@/lib/supabase-db"
 
 type RouteContext = {
-  params: Promise<{
+  params: {
     conversationId: string
-  }>
+  }
 }
 
 export async function GET(req: NextRequest, { params }: RouteContext) {
@@ -19,26 +19,34 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const currentUser = getSessionUser(sessionId)
+    const currentUser = await getSessionUser(sessionId)
 
     if (!currentUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { conversationId } = await params
+    const conversationId = params.conversationId
 
     if (!conversationId) {
-      return NextResponse.json({ error: "conversationId is required" }, { status: 400 })
+      return NextResponse.json(
+          { error: "conversationId is required" },
+          { status: 400 }
+      )
     }
 
-    const userConversations = getUserConversations(currentUser.id)
-    const conversation = userConversations.find((item: any) => item.id === conversationId)
+    const userConversations = await getUserConversations(currentUser.id)
+    const conversation = userConversations.find(
+        (item: any) => item.id === conversationId
+    )
 
     if (!conversation) {
-      return NextResponse.json({ error: "Conversation not found" }, { status: 404 })
+      return NextResponse.json(
+          { error: "Conversation not found" },
+          { status: 404 }
+      )
     }
 
-    const messages = getConversationMessages(conversationId)
+    const messages = await getConversationMessages(conversationId)
 
     return NextResponse.json({
       success: true,
@@ -46,7 +54,7 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
     })
   } catch (error: unknown) {
     const message =
-      error instanceof Error ? error.message : "Failed to load messages"
+        error instanceof Error ? error.message : "Failed to load messages"
 
     return NextResponse.json({ error: message }, { status: 500 })
   }

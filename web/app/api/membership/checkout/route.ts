@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
-import { activateMembership, getLikeQuota, getSessionUser } from "@/lib/db"
+import {
+  activateMembership,
+  getLikeQuota,
+  getSessionUser,
+} from "@/lib/supabase-db"
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,13 +13,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const currentUser = getSessionUser(sessionId)
+    const currentUser = await getSessionUser(sessionId)
 
     if (!currentUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    let plan = "monthly"
+    let plan: "monthly" | "yearly" = "monthly"
 
     try {
       const body = await req.json()
@@ -25,8 +29,8 @@ export async function POST(req: NextRequest) {
     } catch {}
 
     const days = plan === "yearly" ? 365 : 30
-    const membership = activateMembership(currentUser.id, days, plan)
-    const quota = getLikeQuota(currentUser.id)
+    const membership = await activateMembership(currentUser.id, days, plan)
+    const quota = await getLikeQuota(currentUser.id)
 
     return NextResponse.json({
       success: true,
@@ -36,7 +40,7 @@ export async function POST(req: NextRequest) {
     })
   } catch (error: unknown) {
     const message =
-      error instanceof Error ? error.message : "Failed to activate membership"
+        error instanceof Error ? error.message : "Failed to activate membership"
 
     return NextResponse.json({ error: message }, { status: 500 })
   }

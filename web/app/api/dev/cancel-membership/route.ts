@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
-import { cancelActiveMembership, getSessionUser } from "@/lib/db"
+import { cancelActiveMembership, getSessionUser } from "@/lib/supabase-db"
 
 export async function POST(req: NextRequest) {
   try {
+    // 只允许开发环境使用
     if (process.env.NODE_ENV !== "development") {
       return NextResponse.json({ error: "Not found" }, { status: 404 })
     }
@@ -10,16 +11,22 @@ export async function POST(req: NextRequest) {
     const sessionId = req.cookies.get("session_id")?.value
 
     if (!sessionId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json(
+          { error: "Unauthorized" },
+          { status: 401 }
+      )
     }
 
-    const currentUser = getSessionUser(sessionId)
+    const currentUser = await getSessionUser(sessionId)
 
     if (!currentUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json(
+          { error: "Unauthorized" },
+          { status: 401 }
+      )
     }
 
-    cancelActiveMembership(currentUser.id)
+    await cancelActiveMembership(currentUser.id)
 
     return NextResponse.json({
       success: true,
@@ -27,8 +34,11 @@ export async function POST(req: NextRequest) {
     })
   } catch (error: unknown) {
     const message =
-      error instanceof Error ? error.message : "Failed to cancel membership"
+        error instanceof Error ? error.message : "Failed to cancel membership"
 
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json(
+        { error: message },
+        { status: 500 }
+    )
   }
 }
