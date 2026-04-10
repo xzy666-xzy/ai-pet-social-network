@@ -11,16 +11,15 @@ import { useAuth } from "@/lib/auth-context"
 
 type MatchUser = {
   id: string
-  email: string
-  username: string
-  pet_name: string
-  pet_breed: string
-  pet_age: string
-  pet_bio: string
-  avatar_url: string
-  is_ai?: number
-  daily_like_limit?: number
-  created_at: string
+  email: string | null
+  username: string | null
+  pet_name: string | null
+  pet_type: string | null
+  pet_age: number | null
+  description: string | null
+  avatar_url: string | null
+  is_ai?: boolean | null
+  created_at?: string | null
   matchScore?: number
   matchReasons?: string[]
 }
@@ -45,6 +44,7 @@ export default function MatchPage() {
   const loadLikeQuota = async () => {
     const res = await fetch("/api/match/likes/today", {
       cache: "no-store",
+      credentials: "include",
     })
 
     const data = await res.json()
@@ -54,7 +54,14 @@ export default function MatchPage() {
     }
 
     setIsMember(Boolean(data.isMember))
-    setRemainingLikes(typeof data.remainingLikes === "number" ? data.remainingLikes : 8)
+
+    if (typeof data.remainingLikes === "number") {
+      setRemainingLikes(data.remainingLikes)
+    } else if (typeof data.remaining === "number") {
+      setRemainingLikes(data.remaining)
+    } else {
+      setRemainingLikes(8)
+    }
   }
 
   useEffect(() => {
@@ -69,7 +76,6 @@ export default function MatchPage() {
         setPageError("")
         setInlineNotice("")
 
-        // ✅ 这里改成 AI 推荐接口
         const res = await fetch("/api/match/recommend", {
           cache: "no-store",
           credentials: "include",
@@ -83,9 +89,10 @@ export default function MatchPage() {
 
         if (cancelled) return
 
-        const loadedUsers = data.users || []
+        const loadedUsers: MatchUser[] = Array.isArray(data.users) ? data.users : []
         setUsers(loadedUsers)
         setCurrentIndex(0)
+
         await loadLikeQuota()
       } catch (error: unknown) {
         if (cancelled) return
@@ -112,13 +119,15 @@ export default function MatchPage() {
 
   const currentPet = useMemo(() => {
     if (users.length === 0) return null
-    return users[currentIndex % users.length]
+    if (currentIndex >= users.length) return null
+    return users[currentIndex]
   }, [users, currentIndex])
 
   const handleSwipe = (dir: number) => {
-    if (users.length === 0) return
+    if (!currentPet) return
 
     setDirection(dir)
+
     setTimeout(() => {
       setCurrentIndex((prev) => prev + 1)
       setDirection(0)
@@ -126,7 +135,9 @@ export default function MatchPage() {
   }
 
   const handleDislike = () => {
+    if (!currentPet) return
     setInlineNotice("")
+    setPageError("")
     handleSwipe(-1)
   }
 
@@ -152,18 +163,22 @@ export default function MatchPage() {
       }
 
       setIsMember(true)
-      setRemainingLikes(typeof data?.quota?.remainingLikes === "number" ? data.quota.remainingLikes : 9999)
+      setRemainingLikes(
+          typeof data?.quota?.remainingLikes === "number" ? data.quota.remainingLikes : 9999
+      )
       setInlineNotice(t.match.notices.memberActivated)
       setShowMembershipModal(false)
     } catch (error: unknown) {
-      setMembershipError(error instanceof Error ? error.message : t.match.membership.quotaExceeded)
+      setMembershipError(
+          error instanceof Error ? error.message : t.match.membership.quotaExceeded
+      )
     } finally {
       setCheckingOut(false)
     }
   }
 
   const handleLike = async () => {
-    if (!currentPet || liking) return
+    if (!currentPet?.id || liking) return
 
     if (!isMember && remainingLikes <= 0) {
       setMembershipError("")
@@ -188,6 +203,13 @@ export default function MatchPage() {
 
       const data = await res.json()
 
+      // 已经点过赞：不当成报错，直接进入下一张
+      if (data?.error === "Already liked") {
+        setInlineNotice(t.match.notices.alreadyLiked)
+        handleSwipe(1)
+        return
+      }
+
       if (!res.ok) {
         if (data.code === "MEMBERSHIP_REQUIRED") {
           setMembershipError("")
@@ -200,6 +222,8 @@ export default function MatchPage() {
 
       if (typeof data.remainingLikes === "number") {
         setRemainingLikes(data.remainingLikes)
+      } else if (typeof data.remaining === "number") {
+        setRemainingLikes(data.remaining)
       } else {
         await loadLikeQuota()
       }
@@ -216,28 +240,51 @@ export default function MatchPage() {
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to like user"
       setPageError(message)
-      setInlineNotice(message)
     } finally {
       setLiking(false)
     }
   }
 
-  const distance = ["1.2km", "0.5km", "0.8km", "1.5km", "2.1km", "0.9km", "1.8km", "2.4km"][
-  currentIndex % 8
-      ]
+  const distanceList = ["1.2km", "0.5km", "0.8km", "1.5km", "2.1km", "0.9km", "1.8km", "2.4km"]
+  const distance = distanceList[currentIndex % distanceList.length]
 
-  // ✅ 优先用后端返回的 matchScore，没有就给默认值
   const matchScore = currentPet?.matchScore ?? [98, 85, 92, 88, 95, 84, 90, 87][currentIndex % 8]
+
+  const displayName =
+      currentPet?.pet_name?.trim() ||
+      currentPet?.username?.trim() ||
+      "Unknown Pet"
+
+  const displayAge =
+      currentPet?.pet_age !== null && currentPet?.pet_age !== undefined
+          ? `${currentPet.pet_age}${t.match.ageUnit}`
+          : ""
+
+  const displayType = currentPet?.pet_type?.trim() || t.match.unknownBreed
+
+  const displayDescription =
+      currentPet?.description?.trim() || t.match.noBio
+
+  const displayUsername =
+      currentPet?.username?.trim() || "user"
+
+  const imageSrc =
+      currentPet?.avatar_url && currentPet.avatar_url.trim() !== ""
+          ? currentPet.avatar_url
+          : "/placeholder-pet.png"
 
   return (
       <>
         <div className="p-4 max-w-md mx-auto h-full flex flex-col">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold text-stone-800">{t.match.title}</h1>
+
             <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-orange-100 to-amber-100 rounded-full">
               <Sparkles className="h-4 w-4 text-orange-500" />
               <span className="text-sm font-medium text-orange-700">
-              {isMember ? t.match.memberUnlimited : `${t.match.remainingLikes} ${remainingLikes} ${t.match.times}`}
+              {isMember
+                  ? t.match.memberUnlimited
+                  : `${t.match.remainingLikes} ${remainingLikes} ${t.match.times}`}
             </span>
             </div>
           </div>
@@ -277,9 +324,12 @@ export default function MatchPage() {
                       <Card className="h-full overflow-hidden border-0 shadow-xl bg-white">
                         <div className="relative h-[55%]">
                           <img
-                              src={currentPet.avatar_url || "/placeholder.svg"}
-                              alt={currentPet.pet_name || currentPet.username}
+                              src={imageSrc}
+                              alt={displayName}
                               className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src = "/placeholder-pet.png"
+                              }}
                           />
 
                           <div className="absolute top-4 right-4">
@@ -292,16 +342,15 @@ export default function MatchPage() {
                         <div className="p-5 space-y-4">
                           <div>
                             <h2 className="text-2xl font-bold text-stone-800">
-                              {currentPet.pet_name || currentPet.username}
-                              {currentPet.pet_age ? `, ${currentPet.pet_age}${t.match.ageUnit}` : ""}
+                              {displayName}
+                              {displayAge ? `, ${displayAge}` : ""}
                             </h2>
 
                             <p className="text-stone-500 mt-1">
-                              {currentPet.pet_breed || t.match.unknownBreed} • {distance}
+                              {displayType} • {distance}
                             </p>
                           </div>
 
-                          {/* ✅ 推荐理由 */}
                           {currentPet.matchReasons && currentPet.matchReasons.length > 0 ? (
                               <div className="flex flex-wrap gap-2">
                                 {currentPet.matchReasons.map((reason) => (
@@ -319,27 +368,27 @@ export default function MatchPage() {
                             {currentPet.is_ai ? t.match.roleIntro : t.match.aiAnalysis}
                           </span>
                             </div>
+
                             <p className="text-sm text-stone-700 leading-relaxed">
-                              {currentPet.pet_bio?.trim() || t.match.noBio}
+                              {displayDescription}
                             </p>
                           </div>
 
                           <div className="flex flex-wrap gap-2">
-                            {currentPet.pet_breed ? (
+                            {displayType ? (
                                 <Badge variant="secondary" className="rounded-full">
-                                  {currentPet.pet_breed}
+                                  {displayType}
                                 </Badge>
                             ) : null}
 
-                            {currentPet.pet_age ? (
+                            {displayAge ? (
                                 <Badge variant="secondary" className="rounded-full">
-                                  {currentPet.pet_age}
-                                  {t.match.ageUnit}
+                                  {displayAge}
                                 </Badge>
                             ) : null}
 
                             <Badge variant="secondary" className="rounded-full">
-                              @{currentPet.username}
+                              @{displayUsername}
                             </Badge>
                           </div>
                         </div>
@@ -374,7 +423,9 @@ export default function MatchPage() {
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
               <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
                 <div className="mb-4 flex items-center justify-between">
-                  <h2 className="text-xl font-bold text-stone-900">{t.match.membership.title}</h2>
+                  <h2 className="text-xl font-bold text-stone-900">
+                    {t.match.membership.title}
+                  </h2>
                   <button
                       onClick={() => {
                         setShowMembershipModal(false)
@@ -390,7 +441,9 @@ export default function MatchPage() {
                   <div className="text-sm text-stone-600">{t.match.membership.monthlyPlan}</div>
                   <div className="mt-2 text-3xl font-bold text-stone-900">
                     ¥19.9
-                    <span className="ml-1 text-sm font-normal text-stone-500">{t.match.membership.duration}</span>
+                    <span className="ml-1 text-sm font-normal text-stone-500">
+                  {t.match.membership.duration}
+                </span>
                   </div>
                   <div className="mt-3 space-y-2 text-sm text-stone-700">
                     <div>• {t.match.membership.benefit1}</div>
@@ -421,7 +474,9 @@ export default function MatchPage() {
                       disabled={checkingOut}
                       className="rounded-full bg-orange-500 text-white hover:bg-orange-600"
                   >
-                    {checkingOut ? t.match.membership.processing : t.match.membership.checkout}
+                    {checkingOut
+                        ? t.match.membership.processing
+                        : t.match.membership.checkout}
                   </Button>
                 </div>
               </div>

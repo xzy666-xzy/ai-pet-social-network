@@ -6,13 +6,15 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 export interface UserData {
   id: string
   email: string
-  username: string
-  pet_name: string
-  pet_breed: string
-  pet_age: string
-  pet_bio: string
-  avatar_url: string
-  created_at: string
+  username: string | null
+  pet_name: string | null
+  pet_type: string | null
+  pet_age: number | null
+  description: string | null
+  avatar_url: string | null
+  created_at: string | null
+  updated_at: string | null
+  is_ai: boolean | null
 }
 
 interface AuthContextType {

@@ -20,12 +20,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       isMember: quota.isMember,
+      remainingLikes: quota.remaining,
       dailyLimit: quota.dailyLimit,
-      usedLikes: quota.usedLikes,
-      remainingLikes: quota.remainingLikes,
-      memberExpiresAt: quota.memberExpiresAt,
+      unlocked: quota.unlocked,
     })
-  } catch (error: unknown) {
+  } catch (error) {
     const message =
         error instanceof Error ? error.message : "Failed to load like quota"
 

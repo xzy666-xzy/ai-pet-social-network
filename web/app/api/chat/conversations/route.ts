@@ -22,11 +22,27 @@ export async function GET(req: NextRequest) {
 
     const conversations = await getUserConversations(currentUser.id)
 
+    const enriched = await Promise.all(
+        conversations.map(async (conversation) => {
+          const otherUserId =
+              conversation.user1_id === currentUser.id
+                  ? conversation.user2_id
+                  : conversation.user1_id
+
+          const otherUser = await getUserById(otherUserId)
+
+          return {
+            ...conversation,
+            otherUser,
+          }
+        })
+    )
+
     return NextResponse.json({
       success: true,
-      conversations,
+      conversations: enriched,
     })
-  } catch (error: unknown) {
+  } catch (error) {
     const message =
         error instanceof Error ? error.message : "Failed to load conversations"
 
@@ -58,13 +74,6 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    if (targetUserId === currentUser.id) {
-      return NextResponse.json(
-          { error: "You cannot chat with yourself" },
-          { status: 400 }
-      )
-    }
-
     const targetUser = await getUserById(targetUserId)
 
     if (!targetUser) {
@@ -81,16 +90,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      conversationId: conversation.id,
       conversation,
-      currentUser,
-      targetUser,
+      otherUser: targetUser,
     })
-  } catch (error: unknown) {
+  } catch (error) {
     const message =
-        error instanceof Error
-            ? error.message
-            : "Failed to create or get conversation"
+        error instanceof Error ? error.message : "Failed to create conversation"
 
     return NextResponse.json({ error: message }, { status: 500 })
   }

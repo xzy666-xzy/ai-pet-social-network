@@ -8,6 +8,7 @@ export async function POST(req: NextRequest) {
 
     const email = String(body.email || "").trim().toLowerCase()
     const password = String(body.password || "").trim()
+    const username = String(body.username || "").trim()
     const pet_name = String(body.pet_name || "").trim()
     const pet_type = String(body.pet_type || "").trim()
     const pet_age =
@@ -16,10 +17,10 @@ export async function POST(req: NextRequest) {
             : null
     const description = String(body.description || "").trim()
 
-    if (!email || !password || !pet_name || !pet_type) {
+    if (!email || !password || !username || !pet_name || !pet_type) {
       return NextResponse.json(
           {
-            error: "이메일, 비밀번호, 반려동물 이름, 품종은 필수입니다.",
+            error: "이메일, 비밀번호, 사용자 이름, 반려동물 이름, 품종은 필수입니다.",
           },
           { status: 400 }
       )
@@ -32,22 +33,49 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { data: existingUser, error: checkError } = await supabase
+    if (pet_age !== null && Number.isNaN(pet_age)) {
+      return NextResponse.json(
+          { error: "나이는 숫자여야 합니다." },
+          { status: 400 }
+      )
+    }
+
+    const { data: existingEmailUser, error: emailCheckError } = await supabase
         .from("users")
         .select("id")
         .eq("email", email)
         .maybeSingle()
 
-    if (checkError) {
+    if (emailCheckError) {
       return NextResponse.json(
-          { error: checkError.message },
+          { error: emailCheckError.message },
           { status: 500 }
       )
     }
 
-    if (existingUser) {
+    if (existingEmailUser) {
       return NextResponse.json(
           { error: "이미 가입된 이메일입니다." },
+          { status: 409 }
+      )
+    }
+
+    const { data: existingUsernameUser, error: usernameCheckError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("username", username)
+        .maybeSingle()
+
+    if (usernameCheckError) {
+      return NextResponse.json(
+          { error: usernameCheckError.message },
+          { status: 500 }
+      )
+    }
+
+    if (existingUsernameUser) {
+      return NextResponse.json(
+          { error: "이미 사용 중인 사용자 이름입니다." },
           { status: 409 }
       )
     }
@@ -57,6 +85,7 @@ export async function POST(req: NextRequest) {
     const { error: insertError } = await supabase.from("users").insert({
       email,
       password_hash,
+      username,
       pet_name,
       pet_type,
       pet_age,

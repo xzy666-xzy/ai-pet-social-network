@@ -9,19 +9,27 @@ export async function POST(req: NextRequest) {
       await deleteSession(sessionId)
     }
 
-    const res = NextResponse.json({ success: true })
+    const res = NextResponse.json(
+        {
+          success: true,
+          message: "로그아웃 성공",
+        },
+        { status: 200 }
+    )
 
     res.cookies.set("session_id", "", {
       httpOnly: true,
       sameSite: "lax",
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       path: "/",
       expires: new Date(0),
     })
 
     return res
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Logout failed"
+    const message =
+        error instanceof Error ? error.message : "Logout failed"
+
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

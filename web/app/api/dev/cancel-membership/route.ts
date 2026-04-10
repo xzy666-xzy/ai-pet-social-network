@@ -3,7 +3,6 @@ import { cancelActiveMembership, getSessionUser } from "@/lib/supabase-db"
 
 export async function POST(req: NextRequest) {
   try {
-    // 只允许开发环境使用
     if (process.env.NODE_ENV !== "development") {
       return NextResponse.json({ error: "Not found" }, { status: 404 })
     }

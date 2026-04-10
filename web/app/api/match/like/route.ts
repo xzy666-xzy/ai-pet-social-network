@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import {
   createLike,
   getLikeQuota,
+  getOrCreateConversation,
   getSessionUser,
   getUserById,
   hasLiked,
@@ -31,14 +32,14 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    if (String(targetUserId) === String(currentUser.id)) {
+    if (targetUserId === currentUser.id) {
       return NextResponse.json(
           { error: "You cannot like yourself" },
           { status: 400 }
       )
     }
 
-    const targetUser = await getUserById(String(targetUserId))
+    const targetUser = await getUserById(targetUserId)
 
     if (!targetUser) {
       return NextResponse.json(
@@ -47,37 +48,55 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const alreadyLiked = await hasLiked(currentUser.id, String(targetUserId))
     const quota = await getLikeQuota(currentUser.id)
 
-    if (!alreadyLiked && !quota.isMember && quota.remainingLikes <= 0) {
+    if (!quota.unlocked && quota.remaining <= 0) {
       return NextResponse.json(
-          {
-            error: "今日红心次数已用完，开通会员后可继续喜欢。",
-            code: "MEMBERSHIP_REQUIRED",
-          },
+          { error: "Daily like limit reached", code: "MEMBERSHIP_REQUIRED" },
           { status: 403 }
       )
     }
 
-    const result = await createLike(currentUser.id, String(targetUserId))
+    const alreadyLiked = await hasLiked(currentUser.id, targetUserId)
+
+    const conversation = await getOrCreateConversation(
+        currentUser.id,
+        targetUserId
+    )
+
+    if (alreadyLiked) {
+      const latestQuota = await getLikeQuota(currentUser.id)
+
+      return NextResponse.json({
+        success: true,
+        alreadyLiked: true,
+        isMutualMatch: false,
+        conversation,
+        remainingLikes: latestQuota.remaining,
+      })
+    }
+
+    const result = await createLike(currentUser.id, targetUserId)
+
+    if (!result.success) {
+      return NextResponse.json(
+          { error: result.error || "Failed to like user" },
+          { status: 400 }
+      )
+    }
+
+    const latestQuota = await getLikeQuota(currentUser.id)
 
     return NextResponse.json({
       success: true,
-      liked: true,
-      alreadyLiked: result.already_liked,
-      isMutualMatch: result.is_mutual_match,
-      remainingLikes: result.remaining_likes,
-      conversationId: result.conversation.id,
-      messageLimit: result.is_mutual_match ? null : 1,
-      message: result.already_liked
-          ? "你之前已经给对方点过红心，对方已在你的聊天列表中。"
-          : result.is_mutual_match
-              ? "你们已互相喜欢，已解锁无限聊天。"
-              : "已加入聊天列表。当前仅可先发送 1 条消息，等待对方回心后可继续畅聊。",
+      alreadyLiked: false,
+      isMutualMatch: false,
+      like: result.like,
+      conversation,
+      remainingLikes: latestQuota.remaining,
     })
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to like user"
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Like failed"
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
