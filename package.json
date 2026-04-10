@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@supabase/supabase-js": "^2.102.1",
+    "bcryptjs": "^3.0.3"
+  }
+}

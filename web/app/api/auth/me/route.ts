@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getSessionUser } from "@/lib/db"
+import { getSessionUser } from "@/lib/supabase-db"
 
 export async function GET(req: NextRequest) {
   try {
     const sessionId = req.cookies.get("session_id")?.value
-    if (!sessionId) {
-      return NextResponse.json({ user: null }, { status: 401 })
-    }
+    const user = await getSessionUser(sessionId)
 
-    const user = getSessionUser(sessionId)
     if (!user) {
       return NextResponse.json({ user: null }, { status: 401 })
     }
 
     return NextResponse.json({ user })
-  } catch (error: unknown) {
-    return NextResponse.json({ user: null }, { status: 500 })
+  } catch (error) {
+    const message =
+        error instanceof Error ? error.message : "Failed to fetch user"
+
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
