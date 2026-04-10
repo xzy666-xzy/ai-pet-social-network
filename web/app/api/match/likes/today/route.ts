@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getLikeQuota, getSessionUser } from "@/lib/db"
+import { getLikeQuota, getSessionUser } from "@/lib/supabase-db"
 
 export async function GET(req: NextRequest) {
   try {
@@ -9,13 +9,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const currentUser = getSessionUser(sessionId)
+    const currentUser = await getSessionUser(sessionId)
 
     if (!currentUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const quota = getLikeQuota(currentUser.id)
+    const quota = await getLikeQuota(currentUser.id)
 
     return NextResponse.json({
       success: true,

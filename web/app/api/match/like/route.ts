@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createLike, getLikeQuota, getSessionUser, getUserById, hasLiked } from "@/lib/db"
+import {
+  createLike,
+  getLikeQuota,
+  getSessionUser,
+  getUserById,
+  hasLiked,
+} from "@/lib/supabase-db"
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,7 +15,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const currentUser = getSessionUser(sessionId)
+    const currentUser = await getSessionUser(sessionId)
 
     if (!currentUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -19,33 +25,42 @@ export async function POST(req: NextRequest) {
     const { targetUserId } = body
 
     if (!targetUserId) {
-      return NextResponse.json({ error: "targetUserId is required" }, { status: 400 })
-    }
-
-    if (targetUserId === currentUser.id) {
-      return NextResponse.json({ error: "You cannot like yourself" }, { status: 400 })
-    }
-
-    const targetUser = getUserById(targetUserId)
-
-    if (!targetUser) {
-      return NextResponse.json({ error: "Target user not found" }, { status: 404 })
-    }
-
-    const alreadyLiked = hasLiked(currentUser.id, targetUserId)
-    const quota = getLikeQuota(currentUser.id)
-
-    if (!alreadyLiked && !quota.isMember && quota.remainingLikes <= 0) {
       return NextResponse.json(
-        {
-          error: "今日红心次数已用完，开通会员后可继续喜欢。",
-          code: "MEMBERSHIP_REQUIRED",
-        },
-        { status: 403 }
+          { error: "targetUserId is required" },
+          { status: 400 }
       )
     }
 
-    const result = createLike(currentUser.id, targetUserId)
+    if (String(targetUserId) === String(currentUser.id)) {
+      return NextResponse.json(
+          { error: "You cannot like yourself" },
+          { status: 400 }
+      )
+    }
+
+    const targetUser = await getUserById(String(targetUserId))
+
+    if (!targetUser) {
+      return NextResponse.json(
+          { error: "Target user not found" },
+          { status: 404 }
+      )
+    }
+
+    const alreadyLiked = await hasLiked(currentUser.id, String(targetUserId))
+    const quota = await getLikeQuota(currentUser.id)
+
+    if (!alreadyLiked && !quota.isMember && quota.remainingLikes <= 0) {
+      return NextResponse.json(
+          {
+            error: "今日红心次数已用完，开通会员后可继续喜欢。",
+            code: "MEMBERSHIP_REQUIRED",
+          },
+          { status: 403 }
+      )
+    }
+
+    const result = await createLike(currentUser.id, String(targetUserId))
 
     return NextResponse.json({
       success: true,
@@ -56,10 +71,10 @@ export async function POST(req: NextRequest) {
       conversationId: result.conversation.id,
       messageLimit: result.is_mutual_match ? null : 1,
       message: result.already_liked
-        ? "你之前已经给对方点过红心，对方已在你的聊天列表中。"
-        : result.is_mutual_match
-          ? "你们已互相喜欢，已解锁无限聊天。"
-          : "已加入聊天列表。当前仅可先发送 1 条消息，等待对方回心后可继续畅聊。",
+          ? "你之前已经给对方点过红心，对方已在你的聊天列表中。"
+          : result.is_mutual_match
+              ? "你们已互相喜欢，已解锁无限聊天。"
+              : "已加入聊天列表。当前仅可先发送 1 条消息，等待对方回心后可继续畅聊。",
     })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to like user"

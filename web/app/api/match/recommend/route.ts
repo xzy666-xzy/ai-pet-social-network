@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getSessionUser, getAllUsers } from "@/lib/db"
+import { getSessionUser, getAllUsers } from "@/lib/supabase-db"
 
 type RecommendItem = {
     id: string
@@ -15,19 +15,19 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
-        const currentUser: any = getSessionUser(sessionId)
+        const currentUser: any = await getSessionUser(sessionId)
 
         if (!currentUser) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
-        const allUsers: any[] = getAllUsers()
+        const allUsers: any[] = await getAllUsers(currentUser.id)
         const candidates = allUsers.filter((u) => u.id !== currentUser.id)
 
         const payload = {
             currentUser: {
                 id: String(currentUser.id),
-                petType: currentUser.pet_breed ?? null,
+                petType: currentUser.pet_type ?? null,
                 petAge: currentUser.pet_age ? Number(currentUser.pet_age) : null,
                 activityLevel: currentUser.activity_level
                     ? Number(currentUser.activity_level)
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
             },
             candidates: candidates.map((u: any) => ({
                 id: String(u.id),
-                petType: u.pet_breed ?? null,
+                petType: u.pet_type ?? null,
                 petAge: u.pet_age ? Number(u.pet_age) : null,
                 activityLevel: u.activity_level ? Number(u.activity_level) : 3,
                 personalityTags: Array.isArray(u.personality_tags)
