@@ -31,16 +31,34 @@ export async function GET(req: NextRequest) {
 
           const otherUser = await getUserById(otherUserId)
 
+          if (!otherUser) {
+            return null
+          }
+
           return {
-            ...conversation,
-            otherUser,
+            id: conversation.id,
+            other_user_id: otherUser.id,
+            other_username: otherUser.username ?? "",
+            other_pet_name: otherUser.pet_name ?? "",
+            other_avatar_url: otherUser.avatar_url ?? "",
+            other_user_is_ai: 0,
+            last_message: null,
+            last_message_time: null,
+            liked_by_me: 0,
+            liked_me: 0,
+            is_match: 0,
+            single_message_used_by_me: 0,
           }
         })
     )
 
+    const validConversations = enriched.filter(
+        (item): item is NonNullable<typeof item> => item !== null
+    )
+
     return NextResponse.json({
       success: true,
-      conversations: enriched,
+      conversations: validConversations,
     })
   } catch (error) {
     const message =
@@ -65,11 +83,18 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { targetUserId } = body
+    const targetUserId = String(body?.targetUserId || "").trim()
 
-    if (!targetUserId) {
+    if (!targetUserId || targetUserId === "undefined" || targetUserId === "null") {
       return NextResponse.json(
           { error: "targetUserId is required" },
+          { status: 400 }
+      )
+    }
+
+    if (targetUserId === currentUser.id) {
+      return NextResponse.json(
+          { error: "You cannot create a conversation with yourself" },
           { status: 400 }
       )
     }
@@ -90,8 +115,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      conversationId: conversation.id,
       conversation,
-      otherUser: targetUser,
+      targetUser,
     })
   } catch (error) {
     const message =

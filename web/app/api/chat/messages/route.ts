@@ -48,10 +48,11 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    if (
-        conversation.user1_id !== currentUser.id &&
-        conversation.user2_id !== currentUser.id
-    ) {
+    const isParticipant =
+        conversation.user1_id === currentUser.id ||
+        conversation.user2_id === currentUser.id
+
+    if (!isParticipant) {
       return NextResponse.json(
           { error: "Conversation not found" },
           { status: 404 }

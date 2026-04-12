@@ -14,7 +14,7 @@ type ChatMessage = {
   conversation_id: string
   sender_id: string
   content: string
-  is_read: number
+  is_read?: number
   created_at: string
 }
 
@@ -57,6 +57,7 @@ export default function ChatPage() {
   const [pageError, setPageError] = useState("")
   const [loadingConversations, setLoadingConversations] = useState(false)
   const [inlineNotice, setInlineNotice] = useState("")
+  const [introLocked, setIntroLocked] = useState(false)
 
   const headerName = useMemo(() => {
     if (!targetUserId) return t.chat.title
@@ -75,7 +76,10 @@ export default function ChatPage() {
       throw new Error(data.error || "Failed to load messages")
     }
 
-    setMessages(data.messages || [])
+    const safeMessages = Array.isArray(data.messages) ? data.messages : []
+    setMessages(safeMessages)
+
+    return safeMessages as ChatMessage[]
   }
 
   const loadConversations = async () => {
@@ -89,7 +93,18 @@ export default function ChatPage() {
       throw new Error(data.error || "Failed to load conversations")
     }
 
-    setConversations(data.conversations || [])
+    const safeConversations = Array.isArray(data.conversations)
+        ? data.conversations.filter(
+            (item: ConversationSummary) =>
+                item &&
+                typeof item.other_user_id === "string" &&
+                item.other_user_id.trim() !== "" &&
+                item.other_user_id !== "undefined" &&
+                item.other_user_id !== "null"
+        )
+        : []
+
+    setConversations(safeConversations)
   }
 
   useEffect(() => {
@@ -105,6 +120,7 @@ export default function ChatPage() {
         setConversationId(null)
         setTargetUser(null)
         setMessages([])
+        setIntroLocked(false)
 
         if (!targetUserId) {
           setLoadingConversations(true)
@@ -112,12 +128,22 @@ export default function ChatPage() {
           return
         }
 
+        const safeTargetUserId = String(targetUserId).trim()
+
+        if (
+            !safeTargetUserId ||
+            safeTargetUserId === "undefined" ||
+            safeTargetUserId === "null"
+        ) {
+          throw new Error("Invalid target user")
+        }
+
         const res = await fetch("/api/chat/conversations", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ targetUserId }),
+          body: JSON.stringify({ targetUserId: safeTargetUserId }),
         })
 
         const data = await res.json()
@@ -128,12 +154,33 @@ export default function ChatPage() {
 
         if (cancelled) return
 
+        if (!data.conversationId) {
+          throw new Error("Conversation ID not found")
+        }
+
+        if (!data.targetUser) {
+          throw new Error("Target user data not found")
+        }
+
         setConversationId(data.conversationId)
         setTargetUser(data.targetUser)
-        await loadMessages(data.conversationId)
+
+        const loadedMessages = await loadMessages(data.conversationId)
+
+        // 如果当前会话里已经有我发出的消息，并且还没 match，就锁住输入框
+        const hasMyMessage = loadedMessages.some(
+            (msg) => msg.sender_id === user?.id
+        )
+
+        if (hasMyMessage) {
+          setIntroLocked(true)
+          setInlineNotice("当前还未双向匹配，你只能先发送 1 条消息。请等待对方也给你点红心后继续聊天。")
+        }
       } catch (error: unknown) {
         if (cancelled) return
-        setPageError(error instanceof Error ? error.message : "Failed to initialize chat")
+        setPageError(
+            error instanceof Error ? error.message : "Failed to initialize chat"
+        )
       } finally {
         if (!cancelled) {
           setLoadingConversations(false)
@@ -151,12 +198,24 @@ export default function ChatPage() {
   useEffect(() => {
     if (!conversationId) return
 
-    const timer = setInterval(() => {
-      loadMessages(conversationId).catch(() => {})
+    const timer = setInterval(async () => {
+      try {
+        const latestMessages = await loadMessages(conversationId)
+
+        const hasMyMessage = latestMessages.some(
+            (msg) => msg.sender_id === user?.id
+        )
+
+        if (hasMyMessage && !introLocked) {
+          setIntroLocked(true)
+        }
+      } catch {
+        // ignore polling errors
+      }
     }, 2000)
 
     return () => clearInterval(timer)
-  }, [conversationId])
+  }, [conversationId, user?.id, introLocked])
 
   useEffect(() => {
     if (targetUserId) return
@@ -170,7 +229,7 @@ export default function ChatPage() {
   }, [targetUserId, loading, user])
 
   const handleSend = async () => {
-    if (!conversationId || !inputText.trim() || sending) return
+    if (!conversationId || !inputText.trim() || sending || introLocked) return
 
     try {
       setSending(true)
@@ -196,11 +255,17 @@ export default function ChatPage() {
         const errorMessage = data.error || "Failed to send message"
 
         if (
-          data.code === "INTRO_MESSAGE_LIMIT_REACHED" ||
-          data.code === "LIKE_REQUIRED" ||
-          data.code === "MESSAGE_NOT_ALLOWED"
+            data.code === "INTRO_MESSAGE_LIMIT_REACHED" ||
+            data.code === "LIKE_REQUIRED" ||
+            data.code === "MESSAGE_NOT_ALLOWED"
         ) {
           setInlineNotice(errorMessage)
+
+          if (data.code === "INTRO_MESSAGE_LIMIT_REACHED") {
+            setIntroLocked(true)
+          }
+
+          await loadMessages(conversationId)
           return
         }
 
@@ -208,14 +273,20 @@ export default function ChatPage() {
         return
       }
 
-      setMessages((prev) => [...prev, data.message])
       setInputText("")
       setPageError("")
 
+      // 发成功后立刻重新拉取，确保第一条消息显示出来
+      await loadMessages(conversationId)
+
       if (!data.access?.isMatch) {
-        setInlineNotice(t.chat.introMessageSent)
+        setInlineNotice(
+            "当前还未双向匹配，你只能先发送 1 条消息。请等待对方也给你点红心后继续聊天。"
+        )
+        setIntroLocked(true)
       } else {
         setInlineNotice("")
+        setIntroLocked(false)
       }
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -245,177 +316,202 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-stone-50">
-      <div className="flex items-center border-b bg-white px-4 py-3">
-        <div className="flex items-center gap-3">
-          {targetUserId ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full"
-              onClick={() => router.push("/chat")}
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-          ) : null}
-
-          <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-stone-200">
-            {targetUserId && targetUser?.avatar_url ? (
-              <img
-                src={targetUser.avatar_url || "/placeholder.svg"}
-                alt={headerName}
-                className="h-full w-full object-cover"
-              />
+      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-stone-50">
+        <div className="flex items-center border-b bg-white px-4 py-3">
+          <div className="flex items-center gap-3">
+            {targetUserId ? (
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full"
+                    onClick={() => router.push("/chat")}
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
             ) : null}
-          </div>
 
-          <div>
-            <div className="font-semibold text-stone-900">{headerName}</div>
-            <div className="text-xs text-stone-500">
-              {targetUserId ? t.chat.activeNow : t.chat.historyTitle}
+            <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-stone-200">
+              {targetUserId && targetUser?.avatar_url ? (
+                  <img
+                      src={targetUser.avatar_url || "/placeholder.svg"}
+                      alt={headerName}
+                      className="h-full w-full object-cover"
+                  />
+              ) : null}
+            </div>
+
+            <div>
+              <div className="font-semibold text-stone-900">{headerName}</div>
+              <div className="text-xs text-stone-500">
+                {targetUserId ? t.chat.activeNow : t.chat.historyTitle}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <ScrollArea className="min-h-0 flex-1 px-4 py-4">
-        <div className="mx-auto max-w-2xl">
-          <div className="mb-4 text-center text-xs text-stone-400">
-            {targetUserId ? t.chat.today : t.chat.recentMessages}
-          </div>
-
-          {pageError ? (
-            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-              {pageError}
+        <ScrollArea className="min-h-0 flex-1 px-4 py-4">
+          <div className="mx-auto max-w-2xl">
+            <div className="mb-4 text-center text-xs text-stone-400">
+              {targetUserId ? t.chat.today : t.chat.recentMessages}
             </div>
-          ) : null}
 
-          <div className="space-y-3">
-            {!targetUserId ? (
-              loadingConversations ? (
-                <div className="flex items-center justify-center py-16 text-stone-500">
-                  {t.chat.loadingHistory}
+            {pageError ? (
+                <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                  {pageError}
                 </div>
-              ) : conversations.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center text-stone-500">
-                  <div className="mb-2 text-lg font-semibold text-stone-700">{t.chat.noHistory}</div>
-                  <div className="mb-4 text-sm">{t.chat.selectConversationFirst}</div>
-                  <Button
-                    onClick={() => router.push("/match")}
-                    className="rounded-full bg-orange-500 text-white hover:bg-orange-600"
-                  >
-                    {t.chat.goToMatch}
-                  </Button>
-                </div>
-              ) : (
-                conversations.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => router.push(`/chat?userId=${item.other_user_id}`)}
-                    className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-left shadow-sm transition hover:shadow-md"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-stone-200">
-                        {item.other_avatar_url ? (
-                          <img
-                            src={item.other_avatar_url || "/placeholder.svg"}
-                            alt={item.other_pet_name || item.other_username}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : null}
-                      </div>
+            ) : null}
 
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="truncate font-semibold text-stone-900">
-                            {item.other_pet_name || item.other_username}
-                          </div>
-                          <div className="shrink-0 text-xs text-stone-400">
-                            {item.last_message_time ? formatTime(item.last_message_time) : ""}
-                          </div>
+            <div className="space-y-3">
+              {!targetUserId ? (
+                  loadingConversations ? (
+                      <div className="flex items-center justify-center py-16 text-stone-500">
+                        {t.chat.loadingHistory}
+                      </div>
+                  ) : conversations.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-16 text-center text-stone-500">
+                        <div className="mb-2 text-lg font-semibold text-stone-700">
+                          {t.chat.noHistory}
                         </div>
-
-                        <div className="mt-1 text-xs text-stone-400">
-                          {getConversationStatusText(item)}
+                        <div className="mb-4 text-sm">
+                          {t.chat.selectConversationFirst}
                         </div>
+                        <Button
+                            onClick={() => router.push("/match")}
+                            className="rounded-full bg-orange-500 text-white hover:bg-orange-600"
+                        >
+                          {t.chat.goToMatch}
+                        </Button>
+                      </div>
+                  ) : (
+                      conversations.map((item) => (
+                          <button
+                              key={item.id}
+                              onClick={() => {
+                                if (!item.other_user_id) return
+                                router.push(`/chat?userId=${item.other_user_id}`)
+                              }}
+                              className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-left shadow-sm transition hover:shadow-md"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-stone-200">
+                                {item.other_avatar_url ? (
+                                    <img
+                                        src={item.other_avatar_url || "/placeholder.svg"}
+                                        alt={item.other_pet_name || item.other_username}
+                                        className="h-full w-full object-cover"
+                                    />
+                                ) : null}
+                              </div>
 
-                        <div className="mt-1 truncate text-sm text-stone-500">
-                          {item.last_message || t.chat.noMessagesYet}
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                ))
-              )
-            ) : (
-              messages.map((msg) => {
-                const isMe = msg.sender_id === user?.id
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="truncate font-semibold text-stone-900">
+                                    {item.other_pet_name || item.other_username}
+                                  </div>
+                                  <div className="shrink-0 text-xs text-stone-400">
+                                    {item.last_message_time
+                                        ? formatTime(item.last_message_time)
+                                        : ""}
+                                  </div>
+                                </div>
 
-                return (
-                  <div
-                    key={msg.id}
-                    className={`flex ${isMe ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`max-w-[75%] rounded-2xl px-4 py-2.5 shadow-sm ${
-                        isMe
-                          ? "rounded-br-md bg-orange-500 text-white"
-                          : "rounded-bl-md border border-stone-200 bg-white text-stone-800"
-                      }`}
-                    >
-                      <div className="break-words whitespace-pre-wrap text-sm">
-                        {msg.content}
-                      </div>
-                      <div
-                        className={`mt-1 text-[11px] ${
-                          isMe ? "text-orange-100" : "text-stone-400"
-                        }`}
-                      >
-                        {formatTime(msg.created_at)}
-                      </div>
-                    </div>
+                                <div className="mt-1 text-xs text-stone-400">
+                                  {getConversationStatusText(item)}
+                                </div>
+
+                                <div className="mt-1 truncate text-sm text-stone-500">
+                                  {item.last_message || t.chat.noMessagesYet}
+                                </div>
+                              </div>
+                            </div>
+                          </button>
+                      ))
+                  )
+              ) : messages.length === 0 ? (
+                  <div className="flex items-center justify-center py-16 text-sm text-stone-400">
+                    暂无消息
                   </div>
-                )
-              })
-            )}
-          </div>
-        </div>
-      </ScrollArea>
+              ) : (
+                  messages.map((msg) => {
+                    const isMe = msg.sender_id === user?.id
 
-      <div className="shrink-0 border-t bg-white px-4 py-3">
-        <div className="mx-auto max-w-2xl">
-          {inlineNotice ? (
-            <div className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
-              {inlineNotice}
+                    return (
+                        <div
+                            key={msg.id}
+                            className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+                        >
+                          <div
+                              className={`max-w-[75%] rounded-2xl px-4 py-2.5 shadow-sm ${
+                                  isMe
+                                      ? "rounded-br-md bg-orange-500 text-white"
+                                      : "rounded-bl-md border border-stone-200 bg-white text-stone-800"
+                              }`}
+                          >
+                            <div className="break-words whitespace-pre-wrap text-sm">
+                              {msg.content}
+                            </div>
+                            <div
+                                className={`mt-1 text-[11px] ${
+                                    isMe ? "text-orange-100" : "text-stone-400"
+                                }`}
+                            >
+                              {formatTime(msg.created_at)}
+                            </div>
+                          </div>
+                        </div>
+                    )
+                  })
+              )}
             </div>
-          ) : null}
+          </div>
+        </ScrollArea>
 
-          <div className="flex items-center gap-2 rounded-2xl border bg-stone-50 px-3 py-2">
-            <Input
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault()
-                  handleSend()
-                }
-              }}
-              placeholder={targetUserId ? t.chat.typeMessage : t.chat.selectConversationFirst}
-              disabled={!targetUserId}
-              className="h-auto border-0 bg-transparent p-0 shadow-none placeholder:text-stone-400 focus-visible:ring-0"
-            />
+        <div className="shrink-0 border-t bg-white px-4 py-3">
+          <div className="mx-auto max-w-2xl">
+            {inlineNotice ? (
+                <div className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                  {inlineNotice}
+                </div>
+            ) : null}
 
-            <Button
-              onClick={handleSend}
-              size="icon"
-              disabled={!targetUserId || !inputText.trim() || !conversationId || sending}
-              className="h-8 w-8 shrink-0 rounded-full bg-orange-500 text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2 rounded-2xl border bg-stone-50 px-3 py-2">
+              <Input
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      handleSend()
+                    }
+                  }}
+                  placeholder={
+                    !targetUserId
+                        ? t.chat.selectConversationFirst
+                        : introLocked
+                            ? "等待对方也点红心后继续聊天"
+                            : t.chat.typeMessage
+                  }
+                  disabled={!targetUserId || introLocked}
+                  className="h-auto border-0 bg-transparent p-0 shadow-none placeholder:text-stone-400 focus-visible:ring-0"
+              />
+
+              <Button
+                  onClick={handleSend}
+                  size="icon"
+                  disabled={
+                      !targetUserId ||
+                      !inputText.trim() ||
+                      !conversationId ||
+                      sending ||
+                      introLocked
+                  }
+                  className="h-8 w-8 shrink-0 rounded-full bg-orange-500 text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
   )
 }

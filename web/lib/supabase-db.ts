@@ -74,10 +74,7 @@ export async function deleteSession(sessionId?: string) {
         }
     }
 
-    const { error } = await supabase
-        .from("sessions")
-        .delete()
-        .eq("id", sessionId)
+    const { error } = await supabase.from("sessions").delete().eq("id", sessionId)
 
     if (error) {
         return {
@@ -205,10 +202,8 @@ export async function getOrCreateConversation(
         throw new Error("You cannot create a conversation with yourself")
     }
 
-    const user1Id =
-        currentUserId < targetUserId ? currentUserId : targetUserId
-    const user2Id =
-        currentUserId < targetUserId ? targetUserId : currentUserId
+    const user1Id = currentUserId < targetUserId ? currentUserId : targetUserId
+    const user2Id = currentUserId < targetUserId ? targetUserId : currentUserId
 
     const { data: existingConversation, error: findError } = await supabase
         .from("conversations")
@@ -472,5 +467,132 @@ export async function getLikeQuota(userId: string) {
         dailyLimit,
         remaining,
         unlocked: false,
+    }
+}
+
+/* =============================
+   Messages / Conversation Access
+============================= */
+
+export async function getConversationById(conversationId: string) {
+    if (!conversationId) return null
+
+    const { data, error } = await supabase
+        .from("conversations")
+        .select("*")
+        .eq("id", conversationId)
+        .maybeSingle()
+
+    if (error || !data) {
+        return null
+    }
+
+    return data
+}
+
+export async function getConversationMessages(conversationId: string) {
+    if (!conversationId) return []
+
+    const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: true })
+
+    if (error) {
+        throw new Error(error.message)
+    }
+
+    return data || []
+}
+
+export async function createMessage(
+    conversationId: string,
+    senderId: string,
+    content: string
+) {
+    const { data, error } = await supabase
+        .from("messages")
+        .insert({
+            conversation_id: conversationId,
+            sender_id: senderId,
+            content,
+            created_at: new Date().toISOString(),
+        })
+        .select("*")
+        .single()
+
+    if (error) {
+        throw new Error(error.message)
+    }
+
+    return data
+}
+
+export async function markSingleMessageUsed(
+    conversationId: string,
+    userId: string
+) {
+    return {
+        success: true,
+        conversationId,
+        userId,
+    }
+}
+
+export async function getConversationAccess(
+    conversationId: string,
+    currentUserId: string
+) {
+    const conversation = await getConversationById(conversationId)
+
+    if (!conversation) {
+        return null
+    }
+
+    const otherUserId =
+        conversation.user1_id === currentUserId
+            ? conversation.user2_id
+            : conversation.user2_id === currentUserId
+                ? conversation.user1_id
+                : null
+
+    if (!otherUserId) {
+        return null
+    }
+
+    const likedByMe = await hasLiked(currentUserId, otherUserId)
+    const likedMe = await hasLiked(otherUserId, currentUserId)
+    const isMatch = likedByMe && likedMe
+
+    const { count, error: countError } = await supabase
+        .from("messages")
+        .select("*", { count: "exact", head: true })
+        .eq("conversation_id", conversationId)
+        .eq("sender_id", currentUserId)
+
+    if (countError) {
+        throw new Error(countError.message)
+    }
+
+    const sentCount = count || 0
+    const singleMessageUsedByMe = sentCount >= 1
+
+    const canSendUnlimited = isMatch
+    const canSendOneIntroMessage =
+        likedByMe && !isMatch && !singleMessageUsedByMe
+    const canSendMessage = canSendUnlimited || canSendOneIntroMessage
+
+    return {
+        conversation_id: conversationId,
+        current_user_id: currentUserId,
+        other_user_id: otherUserId,
+        liked_by_me: likedByMe,
+        liked_me: likedMe,
+        is_match: isMatch,
+        single_message_used_by_me: singleMessageUsedByMe,
+        can_send_unlimited: canSendUnlimited,
+        can_send_one_intro_message: canSendOneIntroMessage,
+        can_send_message: canSendMessage,
     }
 }

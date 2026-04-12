@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
 import {
+  getConversationById,
   getConversationMessages,
   getSessionUser,
-  getUserConversations,
 } from "@/lib/supabase-db"
 
 type RouteContext = {
-  params: {
+  params: Promise<{
     conversationId: string
-  }
+  }>
 }
 
-export async function GET(req: NextRequest, { params }: RouteContext) {
+export async function GET(req: NextRequest, context: RouteContext) {
   try {
     const sessionId = req.cookies.get("session_id")?.value
 
@@ -25,7 +25,8 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const conversationId = params.conversationId
+    const { conversationId: rawConversationId } = await context.params
+    const conversationId = String(rawConversationId || "").trim()
 
     if (!conversationId) {
       return NextResponse.json(
@@ -34,12 +35,20 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
       )
     }
 
-    const userConversations = await getUserConversations(currentUser.id)
-    const conversation = userConversations.find(
-        (item: any) => item.id === conversationId
-    )
+    const conversation = await getConversationById(conversationId)
 
     if (!conversation) {
+      return NextResponse.json(
+          { error: "Conversation not found" },
+          { status: 404 }
+      )
+    }
+
+    const isParticipant =
+        conversation.user1_id === currentUser.id ||
+        conversation.user2_id === currentUser.id
+
+    if (!isParticipant) {
       return NextResponse.json(
           { error: "Conversation not found" },
           { status: 404 }
