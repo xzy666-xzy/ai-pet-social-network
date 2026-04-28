@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { useLanguage } from "@/lib/i18n/language-context"
 import { useAuth } from "@/lib/auth-context"
-import { apiRequest, ApiError } from "@/lib/api-client"
+import { apiRequest, ApiError, getAccessToken } from "@/lib/api-client"
 
 type MatchUser = {
   id: string
@@ -55,7 +55,7 @@ type LikeResponse = {
 
 export default function MatchPage() {
   const { t } = useLanguage()
-  const { user, loading } = useAuth()
+  const { loading } = useAuth()
 
   const [users, setUsers] = useState<MatchUser[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -69,6 +69,7 @@ export default function MatchPage() {
   const [showMembershipModal, setShowMembershipModal] = useState(false)
   const [checkingOut, setCheckingOut] = useState(false)
   const [membershipError, setMembershipError] = useState("")
+  const hasToken = Boolean(getAccessToken())
 
   const loadLikeQuota = async () => {
     const data = await apiRequest<LikeQuotaResponse>("/match/likes/today", {
@@ -84,7 +85,10 @@ export default function MatchPage() {
 
   useEffect(() => {
     if (loading) return
-    if (!user) return
+    if (!hasToken) {
+      setLoadingUsers(false)
+      return
+    }
 
     let cancelled = false
 
@@ -121,13 +125,13 @@ export default function MatchPage() {
     return () => {
       cancelled = true
     }
-  }, [loading, user])
+  }, [loading, hasToken])
 
   useEffect(() => {
-    if (loading || !user) return
+    if (loading || !hasToken) return
 
     loadLikeQuota().catch(() => {})
-  }, [loading, user])
+  }, [loading, hasToken])
 
   const currentPet = useMemo(() => {
     if (users.length === 0) return null
