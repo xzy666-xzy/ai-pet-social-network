@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { PawPrint } from "lucide-react"
-import { apiRequest, type AuthSuccessResponse } from "@/lib/api-client"
+import { apiRequest, getAccessToken, type AuthSuccessResponse } from "@/lib/api-client"
 
 export default function SplashPage() {
   const router = useRouter()
@@ -15,6 +15,13 @@ export default function SplashPage() {
         await new Promise((resolve) => setTimeout(resolve, 1600))
         setFadeOut(true)
         await new Promise((resolve) => setTimeout(resolve, 400))
+
+        const token = getAccessToken()
+
+        if (!token) {
+          router.replace("/login")
+          return
+        }
 
         await apiRequest<AuthSuccessResponse>("/auth/me", {
           method: "GET",

@@ -2,10 +2,12 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect, useCallback } from "react"
+import { usePathname } from "next/navigation"
 import {
   ApiError,
   apiRequest,
   clearAccessToken,
+  getAccessToken,
   setAccessToken,
   type AuthSuccessResponse,
 } from "@/lib/api-client"
@@ -48,8 +50,23 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserData | null>(null)
   const [loading, setLoading] = useState(true)
+  const pathname = usePathname()
 
   const refreshUser = useCallback(async () => {
+    const token = getAccessToken()
+    const isPublicPath = pathname === "/login" || pathname === "/register"
+
+    if (!token) {
+      setUser(null)
+      setLoading(false)
+
+      if (!isPublicPath && typeof window !== "undefined") {
+        window.location.replace("/login")
+      }
+
+      return
+    }
+
     try {
       const data = await apiRequest<AuthSuccessResponse>("/auth/me", {
         method: "GET",
@@ -60,13 +77,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearAccessToken()
       setUser(null)
 
-      if (error instanceof ApiError && error.status === 401 && typeof window !== "undefined") {
+      if (
+        error instanceof ApiError &&
+        error.status === 401 &&
+        !isPublicPath &&
+        typeof window !== "undefined"
+      ) {
         window.location.replace("/login")
       }
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [pathname])
 
   useEffect(() => {
     refreshUser()
@@ -131,6 +153,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     clearAccessToken()
     setUser(null)
+
+    if (typeof window !== "undefined") {
+      window.location.replace("/login")
+    }
   }
 
   return (
