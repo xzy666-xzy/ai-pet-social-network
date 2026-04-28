@@ -3,6 +3,7 @@ const cors = require("cors")
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcryptjs")
 const { createClient } = require("@supabase/supabase-js")
+const OpenAI = require("openai")
 const authMiddleware = require("./middleware/auth")
 
 const app = express()
@@ -14,6 +15,8 @@ const JWT_SECRET = process.env.JWT_SECRET
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "*"
 const DEFAULT_DAILY_LIKE_LIMIT = 3
 const MEMBER_DAILY_LIKE_LIMIT = 999
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY
+const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-5.2"
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !JWT_SECRET) {
   throw new Error(
@@ -78,6 +81,45 @@ function toDataResponse(res, data) {
     success: true,
     data,
   })
+}
+
+function getOpenAIClient() {
+  if (!OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is missing")
+  }
+
+  return new OpenAI({ apiKey: OPENAI_API_KEY })
+}
+
+const GENERAL_SYSTEM_PROMPT = `
+You are WePet AI Assistant, a friendly pet social app assistant.
+Reply in the same language as the user.
+Keep responses concise and mobile-friendly.
+`
+
+const DOCTOR_CHAT_SYSTEM_PROMPT = `
+You are WePet AI Pet Doctor assistant.
+Reply in the same language as the user.
+Provide only preliminary pet health guidance.
+If the user describes severe symptoms like seizures, trouble breathing, heavy bleeding, or inability to stand, clearly advise immediate in-person veterinary care.
+Keep answers concise and easy to read in chat.
+`
+
+function buildConversationInput(systemPrompt, history, message) {
+  const historyText =
+    Array.isArray(history) && history.length > 0
+      ? history
+          .slice(-12)
+          .map((msg) => `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}`)
+          .join("\n")
+      : ""
+
+  return `${systemPrompt}
+
+Conversation:
+${historyText}
+
+User: ${message}`
 }
 
 async function getCurrentUserById(userId) {
@@ -1085,6 +1127,118 @@ app.post("/chat/messages", authMiddleware, async (req, res) => {
     return res.status(500).json({
       success: false,
       error: "Failed to send message",
+    })
+  }
+})
+
+app.post("/ai/chat", authMiddleware, async (req, res) => {
+  try {
+    const currentUser = await getCurrentUserById(req.user?.userId)
+
+    if (!currentUser) {
+      return sendUnauthorized(res)
+    }
+
+    const {
+      message,
+      history = [],
+      mode = "chat",
+    } = req.body || {}
+
+    if (!message || typeof message !== "string") {
+      return res.status(400).json({
+        success: false,
+        error: "Message is required",
+      })
+    }
+
+    const client = getOpenAIClient()
+    const systemPrompt =
+      mode === "doctor_chat" ? DOCTOR_CHAT_SYSTEM_PROMPT : GENERAL_SYSTEM_PROMPT
+
+    const response = await client.responses.create({
+      model: OPENAI_MODEL,
+      input: buildConversationInput(systemPrompt, history, message),
+    })
+
+    return toDataResponse(res, {
+      response: response.output_text?.trim() || "Sorry, I couldn't generate a response.",
+      mode,
+    })
+  } catch (error) {
+    console.error("AI chat error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to generate response",
+    })
+  }
+})
+
+app.post("/ai/diagnose", authMiddleware, async (req, res) => {
+  try {
+    const currentUser = await getCurrentUserById(req.user?.userId)
+
+    if (!currentUser) {
+      return sendUnauthorized(res)
+    }
+
+    const imageBase64 = String(req.body?.imageBase64 || "").trim()
+    const mimeType = String(req.body?.mimeType || "image/jpeg").trim()
+    const symptom = String(req.body?.symptom || "").trim()
+
+    if (!imageBase64) {
+      return res.status(400).json({
+        success: false,
+        error: "Image is required",
+      })
+    }
+
+    const client = getOpenAIClient()
+    const prompt = `
+You are WePet AI Pet Doctor.
+Analyze the image and the user's symptom description to provide a preliminary pet health observation.
+
+Output format:
+[Visual Observations]
+[Possible Issues]
+[Suggested Care]
+[Should Visit a Vet Offline]
+
+User symptom description:
+${symptom || "None"}
+`
+
+    const response = await client.responses.create({
+      model: OPENAI_MODEL,
+      input: [
+        {
+          type: "message",
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: prompt,
+            },
+            {
+              type: "input_image",
+              image_url: `data:${mimeType};base64,${imageBase64}`,
+              detail: "auto",
+            },
+          ],
+        },
+      ],
+    })
+
+    return toDataResponse(res, {
+      result: response.output_text?.trim() || "Unable to generate diagnosis.",
+    })
+  } catch (error) {
+    console.error("AI diagnose error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "AI diagnosis failed",
     })
   }
 })

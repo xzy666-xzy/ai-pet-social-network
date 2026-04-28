@@ -12,6 +12,7 @@ import {
   Upload,
 } from "lucide-react"
 import { useLanguage } from "@/lib/i18n/language-context"
+import { apiRequest } from "@/lib/api-client"
 
 type ChatMessage = {
   role: "user" | "assistant"
@@ -213,6 +214,27 @@ function getCurrentTime() {
   return `${hh}:${mm}`
 }
 
+function fileToBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : ""
+      const base64 = result.includes(",") ? result.split(",")[1] : result
+
+      if (!base64) {
+        reject(new Error("Failed to read image"))
+        return
+      }
+
+      resolve(base64)
+    }
+
+    reader.onerror = () => reject(new Error("Failed to read image"))
+    reader.readAsDataURL(file)
+  })
+}
+
 export default function DoctorPage() {
   const { locale } = useLanguage()
   const c = copy[locale]
@@ -400,11 +422,15 @@ export default function DoctorPage() {
     setLoading(true)
 
     try {
-      const res = await fetch("/api/ai/chat", {
+      const data = await apiRequest<{
+        success: true
+        data: {
+          response: string
+          mode: string
+        }
+      }>("/ai/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        auth: true,
         body: JSON.stringify({
           mode: "doctor_chat",
           message: text,
@@ -412,17 +438,11 @@ export default function DoctorPage() {
         }),
       })
 
-      const data = await res.json()
-
-      if (!res.ok) {
-        throw new Error(data?.error || "Request failed")
-      }
-
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: data.response || c.fallback,
+          content: data.data.response || c.fallback,
           time: getCurrentTime(),
         },
       ])
@@ -450,22 +470,23 @@ export default function DoctorPage() {
       setImageLoading(true)
       setImageResult("")
 
-      const formData = new FormData()
-      formData.append("image", imageFile)
-      formData.append("symptom", imageSymptom)
-
-      const res = await fetch("/api/ai/doctor", {
+      const imageBase64 = await fileToBase64(imageFile)
+      const data = await apiRequest<{
+        success: true
+        data: {
+          result: string
+        }
+      }>("/ai/diagnose", {
         method: "POST",
-        body: formData,
+        auth: true,
+        body: JSON.stringify({
+          imageBase64,
+          mimeType: imageFile.type || "image/jpeg",
+          symptom: imageSymptom,
+        }),
       })
 
-      const data = await res.json()
-
-      if (!res.ok) {
-        throw new Error(data?.error || "Request failed")
-      }
-
-      setImageResult(data.result || c.imageFallback)
+      setImageResult(data.data.result || c.imageFallback)
     } catch (error) {
       console.error(error)
       setImageResult(c.imageFallback)
