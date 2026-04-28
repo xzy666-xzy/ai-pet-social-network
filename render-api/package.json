@@ -1,0 +1,14 @@
+{
+  "name": "wepet-render-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.102.1",
+    "bcryptjs": "^3.0.3"
+  }
+}
