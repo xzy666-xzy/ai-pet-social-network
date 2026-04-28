@@ -16,10 +16,12 @@ import {
   PawPrint,
   User,
 } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 import { LanguageSwitcher } from "@/components/language-switcher"
 
 export default function RegisterPage() {
   const router = useRouter()
+  const { register } = useAuth()
 
   const [step, setStep] = useState(1)
 
@@ -67,31 +69,22 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          password,
-          username,
-          pet_name: petName,
-          pet_type: petType,
-          pet_age: petAge,
-          description,
-        }),
+      const result = await register({
+        email,
+        password,
+        username,
+        petName,
+        petBreed: petType,
+        petAge,
+        petBio: description,
       })
 
-      const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.error || "회원가입에 실패했습니다.")
-        setLoading(false)
+      if (!result.success) {
+        setError(result.error || "회원가입에 실패했습니다.")
         return
       }
 
-      router.push("/login")
+      router.replace("/match")
     } catch {
       setError("회원가입 중 오류가 발생했습니다.")
     } finally {

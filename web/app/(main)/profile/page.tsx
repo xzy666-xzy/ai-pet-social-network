@@ -4,14 +4,84 @@ import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
+import { apiRequest } from "@/lib/api-client"
+
+type ProfileStatsResponse = {
+  success: true
+  data: {
+    stats: {
+      likesSent: number
+      likesReceived: number
+      conversations: number
+    }
+    membership: {
+      isActive: boolean
+      planName: string | null
+      expiresAt: string | null
+      startedAt: string | null
+    }
+  }
+}
 
 export default function ProfilePage() {
   const { user, loading } = useAuth()
   const [mounted, setMounted] = useState(false)
+  const [stats, setStats] = useState({
+    likesSent: 0,
+    likesReceived: 0,
+    conversations: 0,
+  })
+  const [membership, setMembership] = useState({
+    isActive: false,
+    planName: null as string | null,
+    expiresAt: null as string | null,
+    startedAt: null as string | null,
+  })
+  const [statsError, setStatsError] = useState("")
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (!mounted || loading || !user) {
+      return
+    }
+
+    let cancelled = false
+
+    async function loadProfileStats() {
+      try {
+        setStatsError("")
+
+        const response = await apiRequest<ProfileStatsResponse>("/profile/stats", {
+          cache: "no-store",
+          auth: true,
+        })
+
+        if (cancelled) {
+          return
+        }
+
+        setStats(response.data.stats)
+        setMembership(response.data.membership)
+      } catch (error: unknown) {
+        if (cancelled) {
+          return
+        }
+
+        setStatsError(
+          error instanceof Error ? error.message : "Failed to load profile stats"
+        )
+      }
+    }
+
+    loadProfileStats()
+
+    return () => {
+      cancelled = true
+    }
+  }, [mounted, loading, user])
 
   if (!mounted || loading) {
     return (
@@ -125,6 +195,69 @@ export default function ProfilePage() {
                   {user.created_at
                       ? new Date(user.created_at).toLocaleString()
                       : "Unknown"}
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-4 rounded-2xl">
+            <h2 className="text-lg font-bold text-stone-900 mb-3">Activity Stats</h2>
+
+            {statsError ? (
+              <p className="text-sm text-red-600">{statsError}</p>
+            ) : (
+              <div className="space-y-3 text-sm">
+                <div>
+                  <p className="text-stone-500">Likes Sent</p>
+                  <p className="font-medium text-stone-900">{stats.likesSent}</p>
+                </div>
+
+                <div>
+                  <p className="text-stone-500">Likes Received</p>
+                  <p className="font-medium text-stone-900">{stats.likesReceived}</p>
+                </div>
+
+                <div>
+                  <p className="text-stone-500">Conversations</p>
+                  <p className="font-medium text-stone-900">{stats.conversations}</p>
+                </div>
+              </div>
+            )}
+          </Card>
+
+          <Card className="p-4 rounded-2xl">
+            <h2 className="text-lg font-bold text-stone-900 mb-3">Membership</h2>
+
+            <div className="space-y-3 text-sm">
+              <div>
+                <p className="text-stone-500">Status</p>
+                <p className="font-medium text-stone-900">
+                  {membership.isActive ? "Active" : "Inactive"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-stone-500">Plan</p>
+                <p className="font-medium text-stone-900">
+                  {membership.planName || "No active plan"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-stone-500">Started At</p>
+                <p className="font-medium text-stone-900">
+                  {membership.startedAt
+                    ? new Date(membership.startedAt).toLocaleString()
+                    : "Not started"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-stone-500">Expires At</p>
+                <p className="font-medium text-stone-900">
+                  {membership.expiresAt
+                    ? new Date(membership.expiresAt).toLocaleString()
+                    : "No expiry"}
                 </p>
               </div>
             </div>

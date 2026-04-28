@@ -29,7 +29,7 @@ export default function LoginPage() {
 
     const result = await login(email, password)
     if (result.success) {
-      router.push("/match")
+      router.replace("/match")
     } else {
       setError(result.error || t.auth?.loginFailed || "Login failed")
     }

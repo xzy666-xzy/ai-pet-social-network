@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { useLanguage } from "@/lib/i18n/language-context"
 import { useAuth } from "@/lib/auth-context"
+import { apiRequest, ApiError } from "@/lib/api-client"
 
 type MatchUser = {
   id: string
@@ -22,6 +23,34 @@ type MatchUser = {
   created_at?: string | null
   matchScore?: number
   matchReasons?: string[]
+}
+
+type MatchRecommendResponse = {
+  success: true
+  data: {
+    users: MatchUser[]
+  }
+}
+
+type LikeQuotaResponse = {
+  success: true
+  data: {
+    isMember: boolean
+    dailyLimit: number
+    remainingLikes: number
+    unlocked: boolean
+  }
+}
+
+type LikeResponse = {
+  success: true
+  data: {
+    alreadyLiked: boolean
+    isMutualMatch: boolean
+    conversation?: unknown
+    like?: unknown
+    remainingLikes: number
+  }
 }
 
 export default function MatchPage() {
@@ -42,26 +71,15 @@ export default function MatchPage() {
   const [membershipError, setMembershipError] = useState("")
 
   const loadLikeQuota = async () => {
-    const res = await fetch("/api/match/likes/today", {
+    const data = await apiRequest<LikeQuotaResponse>("/match/likes/today", {
       cache: "no-store",
-      credentials: "include",
+      auth: true,
     })
 
-    const data = await res.json()
-
-    if (!res.ok) {
-      throw new Error(data.error || "Failed to load like quota")
-    }
-
-    setIsMember(Boolean(data.isMember))
-
-    if (typeof data.remainingLikes === "number") {
-      setRemainingLikes(data.remainingLikes)
-    } else if (typeof data.remaining === "number") {
-      setRemainingLikes(data.remaining)
-    } else {
-      setRemainingLikes(8)
-    }
+    setIsMember(Boolean(data.data.isMember))
+    setRemainingLikes(
+      typeof data.data.remainingLikes === "number" ? data.data.remainingLikes : 8
+    )
   }
 
   useEffect(() => {
@@ -76,20 +94,14 @@ export default function MatchPage() {
         setPageError("")
         setInlineNotice("")
 
-        const res = await fetch("/api/match/recommend", {
+        const data = await apiRequest<MatchRecommendResponse>("/match/recommend", {
           cache: "no-store",
-          credentials: "include",
+          auth: true,
         })
-
-        const data = await res.json()
-
-        if (!res.ok) {
-          throw new Error(data.error || "Failed to load recommended users")
-        }
 
         if (cancelled) return
 
-        const loadedUsers: MatchUser[] = Array.isArray(data.users) ? data.users : []
+        const loadedUsers: MatchUser[] = Array.isArray(data.data.users) ? data.data.users : []
         setUsers(loadedUsers)
         setCurrentIndex(0)
 
@@ -191,46 +203,23 @@ export default function MatchPage() {
       setPageError("")
       setInlineNotice("")
 
-      const res = await fetch("/api/match/like", {
+      const data = await apiRequest<LikeResponse>("/match/like", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        auth: true,
         body: JSON.stringify({
           targetUserId: currentPet.id,
         }),
       })
 
-      const data = await res.json()
-
-      // 已经点过赞：不当成报错，直接进入下一张
-      if (data?.error === "Already liked") {
-        setInlineNotice(t.match.notices.alreadyLiked)
-        handleSwipe(1)
-        return
-      }
-
-      if (!res.ok) {
-        if (data.code === "MEMBERSHIP_REQUIRED") {
-          setMembershipError("")
-          setShowMembershipModal(true)
-          return
-        }
-
-        throw new Error(data.error || "Failed to like user")
-      }
-
-      if (typeof data.remainingLikes === "number") {
-        setRemainingLikes(data.remainingLikes)
-      } else if (typeof data.remaining === "number") {
-        setRemainingLikes(data.remaining)
+      if (typeof data.data.remainingLikes === "number") {
+        setRemainingLikes(data.data.remainingLikes)
       } else {
         await loadLikeQuota()
       }
 
-      if (data.alreadyLiked) {
+      if (data.data.alreadyLiked) {
         setInlineNotice(t.match.notices.alreadyLiked)
-      } else if (data.isMutualMatch) {
+      } else if (data.data.isMutualMatch) {
         setInlineNotice(t.match.notices.mutualMatch)
       } else {
         setInlineNotice(t.match.notices.introOnly)
@@ -238,6 +227,12 @@ export default function MatchPage() {
 
       handleSwipe(1)
     } catch (error: unknown) {
+      if (error instanceof ApiError && error.code === "MEMBERSHIP_REQUIRED") {
+        setMembershipError("")
+        setShowMembershipModal(true)
+        return
+      }
+
       const message = error instanceof Error ? error.message : "Failed to like user"
       setPageError(message)
     } finally {

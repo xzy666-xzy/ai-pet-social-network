@@ -71,6 +71,181 @@ function sendUnauthorized(res) {
   })
 }
 
+function toDataResponse(res, data) {
+  return res.json({
+    success: true,
+    data,
+  })
+}
+
+async function getCurrentUserById(userId) {
+  if (!userId) {
+    return null
+  }
+
+  const { data: user, error } = await supabase
+    .from("users")
+    .select("*")
+    .eq("id", userId)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  return user
+}
+
+async function getActiveMembership(userId) {
+  const now = new Date().toISOString()
+
+  const { data, error } = await supabase
+    .from("memberships")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .or(`end_at.is.null,end_at.gt.${now}`)
+    .order("created_at", { ascending: false })
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  return data
+}
+
+async function getLikeQuota(userId) {
+  const membership = await getActiveMembership(userId)
+
+  if (membership) {
+    return {
+      isMember: true,
+      dailyLimit: -1,
+      remainingLikes: -1,
+      unlocked: true,
+    }
+  }
+
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+
+  const { count, error } = await supabase
+    .from("likes")
+    .select("*", { count: "exact", head: true })
+    .eq("from_user_id", userId)
+    .gte("created_at", todayStart.toISOString())
+
+  if (error) {
+    throw error
+  }
+
+  const dailyLimit = 20
+  const used = count ?? 0
+
+  return {
+    isMember: false,
+    dailyLimit,
+    remainingLikes: Math.max(0, dailyLimit - used),
+    unlocked: false,
+  }
+}
+
+async function hasLiked(fromUserId, toUserId) {
+  const { data, error } = await supabase
+    .from("likes")
+    .select("id")
+    .eq("from_user_id", fromUserId)
+    .eq("to_user_id", toUserId)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  return Boolean(data)
+}
+
+async function getOrCreateConversation(currentUserId, targetUserId) {
+  const user1Id = currentUserId < targetUserId ? currentUserId : targetUserId
+  const user2Id = currentUserId < targetUserId ? targetUserId : currentUserId
+
+  const { data: existingConversation, error: existingError } = await supabase
+    .from("conversations")
+    .select("*")
+    .eq("user1_id", user1Id)
+    .eq("user2_id", user2Id)
+    .maybeSingle()
+
+  if (existingError) {
+    throw existingError
+  }
+
+  if (existingConversation) {
+    return existingConversation
+  }
+
+  const { data: conversation, error: insertError } = await supabase
+    .from("conversations")
+    .insert({
+      user1_id: user1Id,
+      user2_id: user2Id,
+      created_at: new Date().toISOString(),
+    })
+    .select("*")
+    .single()
+
+  if (insertError) {
+    throw insertError
+  }
+
+  return conversation
+}
+
+function buildMatchReasons(currentUser, candidate) {
+  const reasons = []
+
+  if (currentUser.pet_type && candidate.pet_type && currentUser.pet_type === candidate.pet_type) {
+    reasons.push("Same pet type")
+  }
+
+  if (
+    typeof currentUser.pet_age === "number" &&
+    typeof candidate.pet_age === "number" &&
+    Math.abs(currentUser.pet_age - candidate.pet_age) <= 2
+  ) {
+    reasons.push("Similar pet age")
+  }
+
+  if (reasons.length === 0) {
+    reasons.push("New nearby profile")
+  }
+
+  return reasons
+}
+
+function buildMatchScore(currentUser, candidate) {
+  let score = 70
+
+  if (currentUser.pet_type && candidate.pet_type && currentUser.pet_type === candidate.pet_type) {
+    score += 15
+  }
+
+  if (
+    typeof currentUser.pet_age === "number" &&
+    typeof candidate.pet_age === "number"
+  ) {
+    const ageDiff = Math.abs(currentUser.pet_age - candidate.pet_age)
+    score += Math.max(0, 10 - ageDiff * 2)
+  }
+
+  if (candidate.is_ai) {
+    score += 5
+  }
+
+  return Math.max(60, Math.min(98, Math.round(score)))
+}
+
 app.get("/", (req, res) => {
   res.json({
     success: true,
@@ -255,6 +430,216 @@ app.post("/auth/register", async (req, res) => {
     return res.status(500).json({
       success: false,
       error: "Registration failed",
+    })
+  }
+})
+
+app.get("/match/recommend", authMiddleware, async (req, res) => {
+  try {
+    const currentUser = await getCurrentUserById(req.user?.userId)
+
+    if (!currentUser) {
+      return sendUnauthorized(res)
+    }
+
+    const { data: users, error } = await supabase
+      .from("users")
+      .select("*")
+      .neq("id", currentUser.id)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      throw error
+    }
+
+    const recommendations = (users || [])
+      .map((candidate) => ({
+        ...toSafeUser(candidate),
+        matchScore: buildMatchScore(currentUser, candidate),
+        matchReasons: buildMatchReasons(currentUser, candidate),
+      }))
+      .sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))
+
+    return toDataResponse(res, {
+      users: recommendations,
+    })
+  } catch (error) {
+    console.error("Match recommend error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load recommended users",
+    })
+  }
+})
+
+app.post("/match/like", authMiddleware, async (req, res) => {
+  try {
+    const currentUser = await getCurrentUserById(req.user?.userId)
+
+    if (!currentUser) {
+      return sendUnauthorized(res)
+    }
+
+    const targetUserId = String(req.body?.targetUserId || "").trim()
+
+    if (!targetUserId) {
+      return res.status(400).json({
+        success: false,
+        error: "targetUserId is required",
+      })
+    }
+
+    if (String(currentUser.id) === targetUserId) {
+      return res.status(400).json({
+        success: false,
+        error: "You cannot like yourself",
+      })
+    }
+
+    const targetUser = await getCurrentUserById(targetUserId)
+
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        error: "Target user not found",
+      })
+    }
+
+    const quota = await getLikeQuota(String(currentUser.id))
+
+    if (!quota.unlocked && quota.remainingLikes <= 0) {
+      return res.status(403).json({
+        success: false,
+        error: "Daily like limit reached",
+        code: "MEMBERSHIP_REQUIRED",
+      })
+    }
+
+    const alreadyLiked = await hasLiked(String(currentUser.id), targetUserId)
+    const conversation = await getOrCreateConversation(String(currentUser.id), targetUserId)
+
+    if (alreadyLiked) {
+      const latestQuota = await getLikeQuota(String(currentUser.id))
+
+      return toDataResponse(res, {
+        alreadyLiked: true,
+        isMutualMatch: false,
+        conversation,
+        remainingLikes: latestQuota.remainingLikes,
+      })
+    }
+
+    const { data: like, error } = await supabase
+      .from("likes")
+      .insert({
+        from_user_id: currentUser.id,
+        to_user_id: targetUserId,
+        created_at: new Date().toISOString(),
+      })
+      .select("*")
+      .single()
+
+    if (error) {
+      throw error
+    }
+
+    const isMutualMatch = await hasLiked(targetUserId, String(currentUser.id))
+    const latestQuota = await getLikeQuota(String(currentUser.id))
+
+    return toDataResponse(res, {
+      alreadyLiked: false,
+      isMutualMatch,
+      like,
+      conversation,
+      remainingLikes: latestQuota.remainingLikes,
+    })
+  } catch (error) {
+    console.error("Match like error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to like user",
+    })
+  }
+})
+
+app.get("/match/likes/today", authMiddleware, async (req, res) => {
+  try {
+    const currentUser = await getCurrentUserById(req.user?.userId)
+
+    if (!currentUser) {
+      return sendUnauthorized(res)
+    }
+
+    const quota = await getLikeQuota(String(currentUser.id))
+
+    return toDataResponse(res, quota)
+  } catch (error) {
+    console.error("Like quota error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load like quota",
+    })
+  }
+})
+
+app.get("/profile/stats", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = req.user?.userId
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    const [likesSentResult, likesReceivedResult, conversationsResult, membership] =
+      await Promise.all([
+        supabase
+          .from("likes")
+          .select("*", { count: "exact", head: true })
+          .eq("from_user_id", currentUserId),
+        supabase
+          .from("likes")
+          .select("*", { count: "exact", head: true })
+          .eq("to_user_id", currentUserId),
+        supabase
+          .from("conversations")
+          .select("*", { count: "exact", head: true })
+          .or(`user1_id.eq.${currentUserId},user2_id.eq.${currentUserId}`),
+        getActiveMembership(currentUserId),
+      ])
+
+    if (likesSentResult.error) throw likesSentResult.error
+    if (likesReceivedResult.error) throw likesReceivedResult.error
+    if (conversationsResult.error) throw conversationsResult.error
+
+    return toDataResponse(res, {
+      stats: {
+        likesSent: likesSentResult.count ?? 0,
+        likesReceived: likesReceivedResult.count ?? 0,
+        conversations: conversationsResult.count ?? 0,
+      },
+      membership: membership
+        ? {
+            isActive: true,
+            planName: membership.plan_type ?? null,
+            expiresAt: membership.end_at ?? null,
+            startedAt: membership.start_at ?? null,
+          }
+        : {
+            isActive: false,
+            planName: null,
+            expiresAt: null,
+            startedAt: null,
+          },
+    })
+  } catch (error) {
+    console.error("Profile stats error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load profile stats",
     })
   }
 })

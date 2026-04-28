@@ -2,10 +2,17 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect, useCallback } from "react"
+import {
+  ApiError,
+  apiRequest,
+  clearAccessToken,
+  setAccessToken,
+  type AuthSuccessResponse,
+} from "@/lib/api-client"
 
 export interface UserData {
   id: string
-  email: string
+  email: string | null
   username: string | null
   pet_name: string | null
   pet_type: string | null
@@ -44,15 +51,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     try {
-      const res = await fetch("/api/auth/me")
-      if (res.ok) {
-        const data = await res.json()
-        setUser(data.user)
-      } else {
-        setUser(null)
-      }
-    } catch {
+      const data = await apiRequest<AuthSuccessResponse>("/auth/me", {
+        method: "GET",
+        auth: true,
+      })
+      setUser(data.user)
+    } catch (error) {
+      clearAccessToken()
       setUser(null)
+
+      if (error instanceof ApiError && error.status === 401 && typeof window !== "undefined") {
+        window.location.replace("/login")
+      }
     } finally {
       setLoading(false)
     }
@@ -64,46 +74,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const res = await fetch("/api/auth/login", {
+      const data = await apiRequest<AuthSuccessResponse>("/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       })
-      const data = await res.json()
-      if (res.ok && data.success) {
-        setUser(data.user)
-        return { success: true }
+
+      const accessToken = data.access_token || data.token
+
+      if (!accessToken) {
+        throw new Error("Token not found in login response")
       }
-      return { success: false, error: data.error || "Login failed" }
-    } catch {
-      return { success: false, error: "Network error" }
+
+      setAccessToken(accessToken)
+      setUser(data.user)
+      return { success: true }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Login failed",
+      }
     }
   }
 
   const register = async (registerData: RegisterData) => {
     try {
-      const res = await fetch("/api/auth/register", {
+      const data = await apiRequest<AuthSuccessResponse>("/auth/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(registerData),
+        body: JSON.stringify({
+          email: registerData.email,
+          username: registerData.username,
+          password: registerData.password,
+          pet_name: registerData.petName || "",
+          pet_type: registerData.petBreed || "",
+          pet_age: registerData.petAge || "",
+          description: registerData.petBio || "",
+        }),
       })
-      const data = await res.json()
-      if (res.ok && data.success) {
-        setUser(data.user)
-        return { success: true }
+
+      const accessToken = data.access_token || data.token
+
+      if (!accessToken) {
+        throw new Error("Token not found in register response")
       }
-      return { success: false, error: data.error || "Registration failed" }
-    } catch {
-      return { success: false, error: "Network error" }
+
+      setAccessToken(accessToken)
+      setUser(data.user)
+      return { success: true }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Registration failed",
+      }
     }
   }
 
   const logout = async () => {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" })
-    } finally {
-      setUser(null)
-    }
+    clearAccessToken()
+    setUser(null)
   }
 
   return (

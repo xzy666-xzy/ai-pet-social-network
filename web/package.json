@@ -7,7 +7,7 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "eslint .",
-    "start": "next start"
+    "start": "node server.js"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "latest",
