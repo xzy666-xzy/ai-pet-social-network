@@ -3,18 +3,19 @@ const cors = require("cors")
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcryptjs")
 const { createClient } = require("@supabase/supabase-js")
+const authMiddleware = require("./middleware/auth")
 
 const app = express()
 
 const PORT = process.env.PORT || 3000
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET
+const JWT_SECRET = process.env.JWT_SECRET
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "*"
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !ACCESS_TOKEN_SECRET) {
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !JWT_SECRET) {
   throw new Error(
-      "Missing required environment variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ACCESS_TOKEN_SECRET"
+      "Missing required environment variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, JWT_SECRET"
   )
 }
 
@@ -37,31 +38,14 @@ app.use(express.json())
 function createAccessToken(user) {
   return jwt.sign(
       {
-        sub: user.id,
+        userId: user.id,
         email: user.email,
       },
-      ACCESS_TOKEN_SECRET,
+      JWT_SECRET,
       {
         expiresIn: "7d",
       }
   )
-}
-
-function getBearerToken(req) {
-  const authHeader = req.headers.authorization || ""
-
-  if (!authHeader.startsWith("Bearer ")) {
-    return null
-  }
-
-  return authHeader.slice("Bearer ".length).trim()
-}
-
-function sendUnauthorized(res) {
-  return res.status(401).json({
-    success: false,
-    error: "Unauthorized",
-  })
 }
 
 function toSafeUser(user) {
@@ -78,6 +62,13 @@ function toSafeUser(user) {
     updated_at: user.updated_at ?? null,
     is_ai: user.is_ai ?? false,
   }
+}
+
+function sendUnauthorized(res) {
+  return res.status(401).json({
+    success: false,
+    error: "Unauthorized",
+  })
 }
 
 app.get("/", (req, res) => {
@@ -128,8 +119,8 @@ app.post("/auth/login", async (req, res) => {
 
     return res.json({
       success: true,
+      token: accessToken,
       user: toSafeUser(user),
-      access_token: accessToken,
     })
   } catch (error) {
     console.error("Login error:", error)
@@ -141,26 +132,15 @@ app.post("/auth/login", async (req, res) => {
   }
 })
 
-app.get("/auth/me", async (req, res) => {
+app.get("/auth/me", authMiddleware, async (req, res) => {
   try {
-    const token = getBearerToken(req)
-
-    if (!token) {
-      return sendUnauthorized(res)
-    }
-
-    let payload
-
-    try {
-      payload = jwt.verify(token, ACCESS_TOKEN_SECRET)
-    } catch {
-      return sendUnauthorized(res)
-    }
-
-    const userId = payload?.sub
+    const userId = req.user?.userId
 
     if (!userId) {
-      return sendUnauthorized(res)
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized",
+      })
     }
 
     const { data: user, error } = await supabase
@@ -172,7 +152,10 @@ app.get("/auth/me", async (req, res) => {
     if (error) throw error
 
     if (!user) {
-      return sendUnauthorized(res)
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized",
+      })
     }
 
     return res.json({
@@ -182,7 +165,10 @@ app.get("/auth/me", async (req, res) => {
   } catch (error) {
     console.error("Auth me error:", error)
 
-    return sendUnauthorized(res)
+    return res.status(401).json({
+      success: false,
+      error: "Unauthorized",
+    })
   }
 })
 
@@ -260,8 +246,8 @@ app.post("/auth/register", async (req, res) => {
 
     return res.json({
       success: true,
+      token: accessToken,
       user: toSafeUser(createdUser),
-      access_token: accessToken,
     })
   } catch (error) {
     console.error("Register error:", error)
