@@ -12,6 +12,8 @@ const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 const JWT_SECRET = process.env.JWT_SECRET
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "*"
+const DEFAULT_DAILY_LIKE_LIMIT = 3
+const MEMBER_DAILY_LIKE_LIMIT = 999
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !JWT_SECRET) {
   throw new Error(
@@ -121,8 +123,10 @@ async function getLikeQuota(userId) {
   if (membership) {
     return {
       isMember: true,
-      dailyLimit: -1,
-      remainingLikes: -1,
+      dailyLimit: MEMBER_DAILY_LIKE_LIMIT,
+      remainingLikes: MEMBER_DAILY_LIKE_LIMIT,
+      limit: MEMBER_DAILY_LIKE_LIMIT,
+      remaining: MEMBER_DAILY_LIKE_LIMIT,
       unlocked: true,
     }
   }
@@ -140,13 +144,16 @@ async function getLikeQuota(userId) {
     throw error
   }
 
-  const dailyLimit = 20
+  const dailyLimit = DEFAULT_DAILY_LIKE_LIMIT
   const used = count ?? 0
+  const remaining = Math.max(0, dailyLimit - used)
 
   return {
     isMember: false,
     dailyLimit,
-    remainingLikes: Math.max(0, dailyLimit - used),
+    remainingLikes: remaining,
+    limit: dailyLimit,
+    remaining,
     unlocked: false,
   }
 }
@@ -557,7 +564,7 @@ app.post("/match/like", authMiddleware, async (req, res) => {
     if (!quota.unlocked && quota.remainingLikes <= 0) {
       return res.status(403).json({
         success: false,
-        error: "Daily like limit reached",
+        error: "LIMIT_REACHED",
         code: "MEMBERSHIP_REQUIRED",
       })
     }
