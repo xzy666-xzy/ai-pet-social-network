@@ -573,6 +573,8 @@ app.post("/match/like", authMiddleware, async (req, res) => {
         isMutualMatch: false,
         conversation,
         remainingLikes: latestQuota.remainingLikes,
+        dailyLikeLimit: latestQuota.dailyLimit,
+        quota: latestQuota,
       })
     }
 
@@ -599,6 +601,8 @@ app.post("/match/like", authMiddleware, async (req, res) => {
       like,
       conversation,
       remainingLikes: latestQuota.remainingLikes,
+      dailyLikeLimit: latestQuota.dailyLimit,
+      quota: latestQuota,
     })
   } catch (error) {
     console.error("Match like error:", error)

@@ -50,6 +50,13 @@ type LikeResponse = {
     conversation?: unknown
     like?: unknown
     remainingLikes: number
+    dailyLikeLimit?: number
+    quota?: {
+      isMember: boolean
+      dailyLimit: number
+      remainingLikes: number
+      unlocked: boolean
+    }
   }
 }
 
@@ -227,10 +234,15 @@ export default function MatchPage() {
         }),
       })
 
-      if (typeof data.data.remainingLikes === "number") {
+      if (data.data.quota) {
+        setIsMember(Boolean(data.data.quota.isMember))
+        setRemainingLikes(
+          typeof data.data.quota.remainingLikes === "number"
+            ? data.data.quota.remainingLikes
+            : remainingLikes
+        )
+      } else if (typeof data.data.remainingLikes === "number") {
         setRemainingLikes(data.data.remainingLikes)
-      } else {
-        await loadLikeQuota()
       }
 
       if (data.data.alreadyLiked) {
@@ -241,6 +253,7 @@ export default function MatchPage() {
         setInlineNotice(t.match.notices.introOnly)
       }
 
+      await loadLikeQuota()
       handleSwipe(1)
     } catch (error: unknown) {
       if (error instanceof ApiError && error.code === "MEMBERSHIP_REQUIRED") {
