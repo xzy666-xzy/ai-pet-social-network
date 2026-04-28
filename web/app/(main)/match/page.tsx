@@ -53,6 +53,26 @@ type LikeResponse = {
   }
 }
 
+type MembershipCheckoutResponse = {
+  success: true
+  data: {
+    membership: {
+      id: string
+      user_id: string
+      plan_type: string | null
+      status: string | null
+      start_at: string | null
+      end_at: string | null
+    }
+    quota: {
+      isMember: boolean
+      dailyLimit: number
+      remainingLikes: number
+      unlocked: boolean
+    }
+  }
+}
+
 export default function MatchPage() {
   const { t } = useLanguage()
   const { loading } = useAuth()
@@ -162,25 +182,17 @@ export default function MatchPage() {
       setCheckingOut(true)
       setMembershipError("")
 
-      const res = await fetch("/api/membership/checkout", {
+      const data = await apiRequest<MembershipCheckoutResponse>("/membership/checkout", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        auth: true,
         body: JSON.stringify({
           plan: "monthly",
         }),
       })
 
-      const data = await res.json()
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to activate membership")
-      }
-
       setIsMember(true)
       setRemainingLikes(
-          typeof data?.quota?.remainingLikes === "number" ? data.quota.remainingLikes : 9999
+          typeof data.data.quota?.remainingLikes === "number" ? data.data.quota.remainingLikes : 9999
       )
       setInlineNotice(t.match.notices.memberActivated)
       setShowMembershipModal(false)

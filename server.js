@@ -151,6 +151,52 @@ async function getLikeQuota(userId) {
   }
 }
 
+async function activateMembership(userId, days, plan = "monthly") {
+  const now = new Date()
+  const endDate = new Date(now)
+  endDate.setDate(endDate.getDate() + days)
+
+  const existingMembership = await getActiveMembership(userId)
+
+  if (existingMembership) {
+    const { data, error } = await supabase
+      .from("memberships")
+      .update({
+        plan_type: plan,
+        status: "active",
+        start_at: now.toISOString(),
+        end_at: endDate.toISOString(),
+      })
+      .eq("id", existingMembership.id)
+      .select("*")
+      .single()
+
+    if (error) {
+      throw error
+    }
+
+    return data
+  }
+
+  const { data, error } = await supabase
+    .from("memberships")
+    .insert({
+      user_id: userId,
+      plan_type: plan,
+      status: "active",
+      start_at: now.toISOString(),
+      end_at: endDate.toISOString(),
+    })
+    .select("*")
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  return data
+}
+
 async function hasLiked(fromUserId, toUserId) {
   const { data, error } = await supabase
     .from("likes")
@@ -640,6 +686,34 @@ app.get("/profile/stats", authMiddleware, async (req, res) => {
     return res.status(500).json({
       success: false,
       error: "Failed to load profile stats",
+    })
+  }
+})
+
+app.post("/membership/checkout", authMiddleware, async (req, res) => {
+  try {
+    const currentUser = await getCurrentUserById(req.user?.userId)
+
+    if (!currentUser) {
+      return sendUnauthorized(res)
+    }
+
+    const plan = req.body?.plan === "yearly" ? "yearly" : "monthly"
+    const days = plan === "yearly" ? 365 : 30
+
+    const membership = await activateMembership(String(currentUser.id), days, plan)
+    const quota = await getLikeQuota(String(currentUser.id))
+
+    return toDataResponse(res, {
+      membership,
+      quota,
+    })
+  } catch (error) {
+    console.error("Membership checkout error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to activate membership",
     })
   }
 })
