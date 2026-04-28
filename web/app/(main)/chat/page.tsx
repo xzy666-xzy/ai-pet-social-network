@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useLanguage } from "@/lib/i18n/language-context"
 import { useAuth } from "@/lib/auth-context"
+import { apiRequest, ApiError, getAccessToken } from "@/lib/api-client"
 
 type ChatMessage = {
   id: string
@@ -40,6 +41,45 @@ type ConversationSummary = {
   single_message_used_by_me?: number
 }
 
+type ConversationsResponse = {
+  success: true
+  data: {
+    conversations: ConversationSummary[]
+  }
+}
+
+type MessagesResponse = {
+  success: true
+  data: {
+    messages: ChatMessage[]
+  }
+}
+
+type CreateConversationResponse = {
+  success: true
+  data: {
+    conversationId: string
+    conversation: {
+      id: string
+    }
+    targetUser: TargetUser
+  }
+}
+
+type SendMessageResponse = {
+  success: true
+  data: {
+    message: ChatMessage
+    access: {
+      likedByMe: boolean
+      likedMe: boolean
+      isMatch: boolean
+      canSendUnlimited: boolean
+      singleMessageUsedByMe: boolean
+    }
+  }
+}
+
 export default function ChatPage() {
   const { t } = useLanguage()
   const { user, loading } = useAuth()
@@ -58,6 +98,7 @@ export default function ChatPage() {
   const [loadingConversations, setLoadingConversations] = useState(false)
   const [inlineNotice, setInlineNotice] = useState("")
   const [introLocked, setIntroLocked] = useState(false)
+  const hasToken = Boolean(getAccessToken())
 
   const headerName = useMemo(() => {
     if (!targetUserId) return t.chat.title
@@ -66,35 +107,25 @@ export default function ChatPage() {
   }, [targetUser, targetUserId, t.chat.title])
 
   const loadMessages = async (convId: string) => {
-    const res = await fetch(`/api/chat/messages/${convId}`, {
+    const data = await apiRequest<MessagesResponse>(`/chat/messages/${convId}`, {
       cache: "no-store",
+      auth: true,
     })
 
-    const data = await res.json()
-
-    if (!res.ok) {
-      throw new Error(data.error || "Failed to load messages")
-    }
-
-    const safeMessages = Array.isArray(data.messages) ? data.messages : []
+    const safeMessages = Array.isArray(data.data.messages) ? data.data.messages : []
     setMessages(safeMessages)
 
     return safeMessages as ChatMessage[]
   }
 
   const loadConversations = async () => {
-    const res = await fetch("/api/chat/conversations", {
+    const data = await apiRequest<ConversationsResponse>("/chat/conversations", {
       cache: "no-store",
+      auth: true,
     })
 
-    const data = await res.json()
-
-    if (!res.ok) {
-      throw new Error(data.error || "Failed to load conversations")
-    }
-
-    const safeConversations = Array.isArray(data.conversations)
-        ? data.conversations.filter(
+    const safeConversations = Array.isArray(data.data.conversations)
+        ? data.data.conversations.filter(
             (item: ConversationSummary) =>
                 item &&
                 typeof item.other_user_id === "string" &&
@@ -109,7 +140,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (loading) return
-    if (!user) return
+    if (!hasToken) return
 
     let cancelled = false
 
@@ -138,34 +169,26 @@ export default function ChatPage() {
           throw new Error("Invalid target user")
         }
 
-        const res = await fetch("/api/chat/conversations", {
+        const data = await apiRequest<CreateConversationResponse>("/chat/conversations", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          auth: true,
           body: JSON.stringify({ targetUserId: safeTargetUserId }),
         })
 
-        const data = await res.json()
-
-        if (!res.ok) {
-          throw new Error(data.error || "Failed to initialize chat")
-        }
-
         if (cancelled) return
 
-        if (!data.conversationId) {
+        if (!data.data.conversationId) {
           throw new Error("Conversation ID not found")
         }
 
-        if (!data.targetUser) {
+        if (!data.data.targetUser) {
           throw new Error("Target user data not found")
         }
 
-        setConversationId(data.conversationId)
-        setTargetUser(data.targetUser)
+        setConversationId(data.data.conversationId)
+        setTargetUser(data.data.targetUser)
 
-        const loadedMessages = await loadMessages(data.conversationId)
+        const loadedMessages = await loadMessages(data.data.conversationId)
 
         // 如果当前会话里已经有我发出的消息，并且还没 match，就锁住输入框
         const hasMyMessage = loadedMessages.some(
@@ -193,7 +216,7 @@ export default function ChatPage() {
     return () => {
       cancelled = true
     }
-  }, [loading, user, targetUserId])
+  }, [loading, user, targetUserId, hasToken])
 
   useEffect(() => {
     if (!conversationId) return
@@ -219,14 +242,14 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (targetUserId) return
-    if (loading || !user) return
+    if (loading || !hasToken) return
 
     const timer = setInterval(() => {
       loadConversations().catch(() => {})
     }, 3000)
 
     return () => clearInterval(timer)
-  }, [targetUserId, loading, user])
+  }, [targetUserId, loading, hasToken])
 
   const handleSend = async () => {
     if (!conversationId || !inputText.trim() || sending || introLocked) return
@@ -238,40 +261,14 @@ export default function ChatPage() {
 
       const text = inputText.trim()
 
-      const res = await fetch("/api/chat/messages", {
+      const data = await apiRequest<SendMessageResponse>("/chat/messages", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        auth: true,
         body: JSON.stringify({
           conversationId,
           content: text,
         }),
       })
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        const errorMessage = data.error || "Failed to send message"
-
-        if (
-            data.code === "INTRO_MESSAGE_LIMIT_REACHED" ||
-            data.code === "LIKE_REQUIRED" ||
-            data.code === "MESSAGE_NOT_ALLOWED"
-        ) {
-          setInlineNotice(errorMessage)
-
-          if (data.code === "INTRO_MESSAGE_LIMIT_REACHED") {
-            setIntroLocked(true)
-          }
-
-          await loadMessages(conversationId)
-          return
-        }
-
-        setPageError(errorMessage)
-        return
-      }
 
       setInputText("")
       setPageError("")
@@ -279,7 +276,7 @@ export default function ChatPage() {
       // 发成功后立刻重新拉取，确保第一条消息显示出来
       await loadMessages(conversationId)
 
-      if (!data.access?.isMatch) {
+      if (!data.data.access?.isMatch) {
         setInlineNotice(
             "当前还未双向匹配，你只能先发送 1 条消息。请等待对方也给你点红心后继续聊天。"
         )
@@ -289,6 +286,22 @@ export default function ChatPage() {
         setIntroLocked(false)
       }
     } catch (error: unknown) {
+      if (
+          error instanceof ApiError &&
+          (error.code === "INTRO_MESSAGE_LIMIT_REACHED" ||
+              error.code === "LIKE_REQUIRED" ||
+              error.code === "MESSAGE_NOT_ALLOWED")
+      ) {
+        setInlineNotice(error.message)
+
+        if (error.code === "INTRO_MESSAGE_LIMIT_REACHED") {
+          setIntroLocked(true)
+        }
+
+        await loadMessages(conversationId)
+        return
+      }
+
       if (error instanceof Error) {
         setPageError(error.message)
       } else {

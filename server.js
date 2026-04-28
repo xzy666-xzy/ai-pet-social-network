@@ -255,6 +255,105 @@ async function getOrCreateConversation(currentUserId, targetUserId) {
   return conversation
 }
 
+async function getConversationById(conversationId) {
+  const { data, error } = await supabase
+    .from("conversations")
+    .select("*")
+    .eq("id", conversationId)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  return data
+}
+
+async function getConversationMessages(conversationId) {
+  const { data, error } = await supabase
+    .from("messages")
+    .select("*")
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: true })
+
+  if (error) {
+    throw error
+  }
+
+  return data || []
+}
+
+async function createMessage(conversationId, senderId, content) {
+  const { data, error } = await supabase
+    .from("messages")
+    .insert({
+      conversation_id: conversationId,
+      sender_id: senderId,
+      content,
+      created_at: new Date().toISOString(),
+    })
+    .select("*")
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  return data
+}
+
+async function getConversationAccess(conversationId, currentUserId) {
+  const conversation = await getConversationById(conversationId)
+
+  if (!conversation) {
+    return null
+  }
+
+  const otherUserId =
+    conversation.user1_id === currentUserId
+      ? conversation.user2_id
+      : conversation.user2_id === currentUserId
+        ? conversation.user1_id
+        : null
+
+  if (!otherUserId) {
+    return null
+  }
+
+  const likedByMe = await hasLiked(currentUserId, otherUserId)
+  const likedMe = await hasLiked(otherUserId, currentUserId)
+  const isMatch = likedByMe && likedMe
+
+  const { count, error } = await supabase
+    .from("messages")
+    .select("*", { count: "exact", head: true })
+    .eq("conversation_id", conversationId)
+    .eq("sender_id", currentUserId)
+
+  if (error) {
+    throw error
+  }
+
+  const sentCount = count || 0
+  const singleMessageUsedByMe = sentCount >= 1
+  const canSendUnlimited = isMatch
+  const canSendOneIntroMessage = likedByMe && !isMatch && !singleMessageUsedByMe
+  const canSendMessage = canSendUnlimited || canSendOneIntroMessage
+
+  return {
+    conversation_id: conversationId,
+    current_user_id: currentUserId,
+    other_user_id: otherUserId,
+    liked_by_me: likedByMe,
+    liked_me: likedMe,
+    is_match: isMatch,
+    single_message_used_by_me: singleMessageUsedByMe,
+    can_send_unlimited: canSendUnlimited,
+    can_send_one_intro_message: canSendOneIntroMessage,
+    can_send_message: canSendMessage,
+  }
+}
+
 function buildMatchReasons(currentUser, candidate) {
   const reasons = []
 
@@ -725,6 +824,267 @@ app.post("/membership/checkout", authMiddleware, async (req, res) => {
     return res.status(500).json({
       success: false,
       error: "Failed to activate membership",
+    })
+  }
+})
+
+app.get("/chat/conversations", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = req.user?.userId
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    const { data: conversations, error } = await supabase
+      .from("conversations")
+      .select("*")
+      .or(`user1_id.eq.${currentUserId},user2_id.eq.${currentUserId}`)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      throw error
+    }
+
+    const enriched = await Promise.all(
+      (conversations || []).map(async (conversation) => {
+        const otherUserId =
+          conversation.user1_id === currentUserId ? conversation.user2_id : conversation.user1_id
+        const otherUser = await getCurrentUserById(otherUserId)
+
+        if (!otherUser) {
+          return null
+        }
+
+        const [{ data: lastMessage }, likedByMe, likedMe, { count: sentCount }] = await Promise.all([
+          supabase
+            .from("messages")
+            .select("content, created_at")
+            .eq("conversation_id", conversation.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          hasLiked(String(currentUserId), String(otherUserId)),
+          hasLiked(String(otherUserId), String(currentUserId)),
+          supabase
+            .from("messages")
+            .select("*", { count: "exact", head: true })
+            .eq("conversation_id", conversation.id)
+            .eq("sender_id", currentUserId),
+        ])
+
+        return {
+          id: conversation.id,
+          other_user_id: otherUser.id,
+          other_username: otherUser.username ?? "",
+          other_pet_name: otherUser.pet_name ?? "",
+          other_avatar_url: otherUser.avatar_url ?? "",
+          other_user_is_ai: otherUser.is_ai ? 1 : 0,
+          last_message: lastMessage?.content ?? null,
+          last_message_time: lastMessage?.created_at ?? null,
+          liked_by_me: likedByMe ? 1 : 0,
+          liked_me: likedMe ? 1 : 0,
+          is_match: likedByMe && likedMe ? 1 : 0,
+          single_message_used_by_me: (sentCount || 0) >= 1 ? 1 : 0,
+        }
+      })
+    )
+
+    return toDataResponse(res, {
+      conversations: enriched.filter(Boolean),
+    })
+  } catch (error) {
+    console.error("Chat conversations error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load conversations",
+    })
+  }
+})
+
+app.post("/chat/conversations", authMiddleware, async (req, res) => {
+  try {
+    const currentUser = await getCurrentUserById(req.user?.userId)
+
+    if (!currentUser) {
+      return sendUnauthorized(res)
+    }
+
+    const targetUserId = String(req.body?.targetUserId || "").trim()
+
+    if (!targetUserId || targetUserId === "undefined" || targetUserId === "null") {
+      return res.status(400).json({
+        success: false,
+        error: "targetUserId is required",
+      })
+    }
+
+    if (String(currentUser.id) === targetUserId) {
+      return res.status(400).json({
+        success: false,
+        error: "You cannot create a conversation with yourself",
+      })
+    }
+
+    const targetUser = await getCurrentUserById(targetUserId)
+
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        error: "Target user not found",
+      })
+    }
+
+    const conversation = await getOrCreateConversation(String(currentUser.id), targetUserId)
+
+    return toDataResponse(res, {
+      conversationId: conversation.id,
+      conversation,
+      targetUser: toSafeUser(targetUser),
+    })
+  } catch (error) {
+    console.error("Chat create conversation error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to create conversation",
+    })
+  }
+})
+
+app.get("/chat/messages/:conversationId", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = req.user?.userId
+    const conversationId = String(req.params?.conversationId || "").trim()
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    if (!conversationId) {
+      return res.status(400).json({
+        success: false,
+        error: "conversationId is required",
+      })
+    }
+
+    const conversation = await getConversationById(conversationId)
+
+    if (
+      !conversation ||
+      (conversation.user1_id !== currentUserId && conversation.user2_id !== currentUserId)
+    ) {
+      return res.status(404).json({
+        success: false,
+        error: "Conversation not found",
+      })
+    }
+
+    const messages = await getConversationMessages(conversationId)
+
+    return toDataResponse(res, {
+      messages,
+    })
+  } catch (error) {
+    console.error("Chat messages error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load messages",
+    })
+  }
+})
+
+app.post("/chat/messages", authMiddleware, async (req, res) => {
+  try {
+    const currentUser = await getCurrentUserById(req.user?.userId)
+
+    if (!currentUser) {
+      return sendUnauthorized(res)
+    }
+
+    const conversationId = String(req.body?.conversationId || "").trim()
+    const content = String(req.body?.content || "").trim()
+
+    if (!conversationId) {
+      return res.status(400).json({
+        success: false,
+        error: "conversationId is required",
+      })
+    }
+
+    if (!content) {
+      return res.status(400).json({
+        success: false,
+        error: "content is required",
+      })
+    }
+
+    const conversation = await getConversationById(conversationId)
+
+    if (
+      !conversation ||
+      (conversation.user1_id !== currentUser.id && conversation.user2_id !== currentUser.id)
+    ) {
+      return res.status(404).json({
+        success: false,
+        error: "Conversation not found",
+      })
+    }
+
+    const access = await getConversationAccess(conversationId, String(currentUser.id))
+
+    if (!access) {
+      return res.status(404).json({
+        success: false,
+        error: "Conversation access not found",
+      })
+    }
+
+    if (!access.liked_by_me) {
+      return res.status(403).json({
+        success: false,
+        error: "LIKE_REQUIRED",
+        code: "LIKE_REQUIRED",
+      })
+    }
+
+    if (!access.can_send_message) {
+      if (access.single_message_used_by_me && !access.is_match) {
+        return res.status(403).json({
+          success: false,
+          error: "INTRO_MESSAGE_LIMIT_REACHED",
+          code: "INTRO_MESSAGE_LIMIT_REACHED",
+        })
+      }
+
+      return res.status(403).json({
+        success: false,
+        error: "MESSAGE_NOT_ALLOWED",
+        code: "MESSAGE_NOT_ALLOWED",
+      })
+    }
+
+    const message = await createMessage(conversationId, String(currentUser.id), content)
+    const latestAccess = await getConversationAccess(conversationId, String(currentUser.id))
+
+    return toDataResponse(res, {
+      message,
+      access: {
+        likedByMe: latestAccess?.liked_by_me ?? false,
+        likedMe: latestAccess?.liked_me ?? false,
+        isMatch: latestAccess?.is_match ?? false,
+        canSendUnlimited: latestAccess?.can_send_unlimited ?? false,
+        singleMessageUsedByMe: latestAccess?.single_message_used_by_me ?? false,
+      },
+    })
+  } catch (error) {
+    console.error("Chat send message error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to send message",
     })
   }
 })
