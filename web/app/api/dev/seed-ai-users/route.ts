@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createAiUser, getAllUsers } from "@/lib/supabase-db"
+import { getAllUsers } from "@/lib/supabase-db"
 
 type AiTemplate = {
   pet_name: string
@@ -56,28 +56,16 @@ const aiTemplates: AiTemplate[] = [
 
 async function seedAiUsers() {
   const users = await getAllUsers()
-
   const aiUsers = users.filter((u: any) => u.is_ai)
-
-  if (aiUsers.length > 0) {
-    return {
-      success: true,
-      message: "AI users already exist",
-      users: aiUsers,
-    }
-  }
-
-  const createdUsers = []
-
-  for (const template of aiTemplates) {
-    const user = await createAiUser(template)
-    createdUsers.push(user)
-  }
 
   return {
     success: true,
-    message: "AI users seeded successfully",
-    users: createdUsers,
+    message:
+        aiUsers.length > 0
+            ? "AI users already exist"
+            : "AI user creation is disabled because createAiUser is not implemented",
+    users: aiUsers,
+    templates: aiUsers.length > 0 ? [] : aiTemplates,
   }
 }
 
@@ -97,7 +85,7 @@ export async function GET() {
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(_req: NextRequest) {
   try {
     if (process.env.NODE_ENV !== "development") {
       return NextResponse.json({ error: "Not found" }, { status: 404 })

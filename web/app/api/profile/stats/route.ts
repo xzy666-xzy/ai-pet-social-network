@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import {
     getActiveMembership,
-    getProfileStats,
+    getLikesReceivedByUser,
+    getLikesSentByUser,
     getSessionUser,
+    getUserConversations,
 } from "@/lib/supabase-db"
 
 export async function GET(req: NextRequest) {
@@ -19,8 +21,19 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
-        const stats = await getProfileStats(currentUser.id)
-        const membership = await getActiveMembership(currentUser.id)
+        const [likesSent, likesReceived, conversations, membership] =
+            await Promise.all([
+                getLikesSentByUser(currentUser.id),
+                getLikesReceivedByUser(currentUser.id),
+                getUserConversations(currentUser.id),
+                getActiveMembership(currentUser.id),
+            ])
+
+        const stats = {
+            likesSent: likesSent.length,
+            likesReceived: likesReceived.length,
+            conversations: conversations.length,
+        }
 
         return NextResponse.json({
             success: true,

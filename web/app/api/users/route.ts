@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getAvailableMatchUsers, getSessionUser } from "@/lib/supabase-db"
+import { getAllOtherUsers, getSessionUser } from "@/lib/supabase-db"
 
 export async function GET(req: NextRequest) {
   try {
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const users = await getAvailableMatchUsers(currentUser.id)
+    const users = await getAllOtherUsers(currentUser.id)
 
     return NextResponse.json({
       success: true,
