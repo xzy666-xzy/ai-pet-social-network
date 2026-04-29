@@ -3,8 +3,8 @@ import { router } from "expo-router"
 import { StyleSheet, Text, View } from "react-native"
 import { AppScaffold } from "@/components/AppScaffold"
 import { ConversationCard } from "@/components/chat/ConversationCard"
-import { InfoCard } from "@/components/InfoCard"
 import { PrimaryButton } from "@/components/PrimaryButton"
+import { ScreenState } from "@/components/ScreenState"
 import { apiRequest } from "@/lib/api"
 import { colors } from "@/theme/colors"
 import { spacing } from "@/theme/spacing"
@@ -58,21 +58,17 @@ export default function ChatListPage() {
   }
 
   return (
-    <AppScaffold title="Messages">
-      <View style={styles.header}>
-        <Text style={styles.brand}>WePet</Text>
-        <Text style={styles.title}>Messages</Text>
-        <Text style={styles.subtitle}>Recent chats with pet friends</Text>
-      </View>
-
+    <AppScaffold title="Messages" subtitle="Recent chats with pet friends">
       {items.length === 0 ? (
-        <InfoCard style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>No conversations yet</Text>
-          <Text style={styles.emptyText}>Start with Match to meet nearby pet friends.</Text>
+        <View style={styles.emptyActionCard}>
+          <ScreenState
+            title="No conversations yet"
+            message="Start with Match to meet nearby pet friends."
+          />
           <PrimaryButton onPress={() => router.push("/match")} style={styles.emptyButton}>
             Go to Match
           </PrimaryButton>
-        </InfoCard>
+        </View>
       ) : (
         <View style={styles.list}>
           {items.map((item) => {
@@ -107,40 +103,12 @@ export default function ChatListPage() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    gap: spacing.xs,
-  },
-  brand: {
-    color: colors.primaryDark,
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  title: {
-    color: colors.text,
-    fontSize: 28,
-    fontWeight: "800",
-  },
-  subtitle: {
-    color: colors.textSubtle,
-    fontSize: 14,
-  },
   list: {
     gap: spacing.md,
   },
-  emptyCard: {
-    alignItems: "center",
+  emptyActionCard: {
     gap: spacing.md,
-    paddingVertical: spacing["3xl"],
-  },
-  emptyTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "800",
-  },
-  emptyText: {
-    color: colors.textSubtle,
-    lineHeight: 20,
-    textAlign: "center",
+    padding: 0,
   },
   emptyButton: {
     marginTop: spacing.sm,

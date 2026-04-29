@@ -5,6 +5,7 @@ import { Avatar } from "@/components/Avatar"
 import { Badge } from "@/components/Badge"
 import { InfoCard } from "@/components/InfoCard"
 import { PrimaryButton } from "@/components/PrimaryButton"
+import { ScreenState } from "@/components/ScreenState"
 import { apiRequest } from "@/lib/api"
 import { colors } from "@/theme/colors"
 import { radii, spacing } from "@/theme/spacing"
@@ -52,7 +53,7 @@ export default function MatchPage() {
   const matchScore = currentPet?.matchScore ?? 92
 
   return (
-    <AppScaffold title="Match">
+    <AppScaffold title="Match" subtitle="Find nearby pet friends">
       <View style={styles.topRow}>
         <View>
           <Text style={styles.eyebrow}>Discover</Text>
@@ -90,10 +91,10 @@ export default function MatchPage() {
           </View>
         </InfoCard>
       ) : (
-        <InfoCard style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>No recommendations yet</Text>
-          <Text style={styles.emptyText}>Check back later for more pet friends.</Text>
-        </InfoCard>
+        <ScreenState
+          title="No recommendations yet"
+          message="Check back later for more pet friends."
+        />
       )}
 
       <View style={styles.actionRow}>
@@ -202,20 +203,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingBottom: spacing.lg,
     paddingHorizontal: spacing.lg,
-  },
-  emptyCard: {
-    alignItems: "center",
-    gap: spacing.sm,
-    paddingVertical: spacing["3xl"],
-  },
-  emptyTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "800",
-  },
-  emptyText: {
-    color: colors.textSubtle,
-    textAlign: "center",
   },
   actionRow: {
     flexDirection: "row",

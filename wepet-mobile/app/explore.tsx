@@ -4,6 +4,7 @@ import { AppScaffold } from "@/components/AppScaffold"
 import { Badge } from "@/components/Badge"
 import { InfoCard } from "@/components/InfoCard"
 import { PrimaryButton } from "@/components/PrimaryButton"
+import { ScreenState } from "@/components/ScreenState"
 import { apiRequest } from "@/lib/api"
 import { colors } from "@/theme/colors"
 import { radii, spacing } from "@/theme/spacing"
@@ -149,13 +150,7 @@ export default function ExplorePage() {
   }
 
   return (
-    <AppScaffold title="Explore">
-      <View style={styles.header}>
-        <Text style={styles.brand}>WePet</Text>
-        <Text style={styles.title}>Explore</Text>
-        <Text style={styles.subtitle}>Nearby events + map interaction</Text>
-      </View>
-
+    <AppScaffold title="Explore" subtitle="Nearby events + map interaction">
       <View style={styles.searchRow}>
         <View style={styles.searchBox}>
           <Text style={styles.searchIcon}>Search</Text>
@@ -220,10 +215,7 @@ export default function ExplorePage() {
       </View>
 
       {filteredEvents.length === 0 ? (
-        <InfoCard style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>No events found</Text>
-          <Text style={styles.emptyText}>Try another search keyword.</Text>
-        </InfoCard>
+        <ScreenState title="No events found" message="Try another search keyword." />
       ) : (
         <View style={styles.eventList}>
           {filteredEvents.map((item) => {
@@ -264,23 +256,6 @@ export default function ExplorePage() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    gap: spacing.xs,
-  },
-  brand: {
-    color: colors.primaryDark,
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  title: {
-    color: colors.text,
-    fontSize: 28,
-    fontWeight: "900",
-  },
-  subtitle: {
-    color: colors.textSubtle,
-    fontSize: 14,
-  },
   searchRow: {
     flexDirection: "row",
     gap: spacing.sm,
@@ -402,19 +377,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "900",
   },
-  emptyCard: {
-    alignItems: "center",
-    gap: spacing.sm,
-    paddingVertical: spacing["3xl"],
-  },
-  emptyTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "900",
-  },
-  emptyText: {
-    color: colors.textSubtle,
-  },
   eventList: {
     gap: spacing.md,
   },
@@ -535,4 +497,3 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 })
-

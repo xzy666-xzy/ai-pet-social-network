@@ -1,6 +1,6 @@
 import type { PropsWithChildren } from "react"
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native"
-import { colors } from "@/theme/colors"
+import { colors, shadows } from "@/theme/colors"
 import { radii, spacing } from "@/theme/spacing"
 
 type InfoCardProps = PropsWithChildren<{
@@ -19,11 +19,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.xl,
     borderWidth: 1,
     padding: spacing.lg,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    elevation: 2,
+    ...shadows.card,
   },
   warm: {
     backgroundColor: colors.surfaceWarm,

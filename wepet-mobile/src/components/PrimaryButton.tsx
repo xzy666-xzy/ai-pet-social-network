@@ -1,27 +1,32 @@
 import type { PropsWithChildren } from "react"
-import { Pressable, StyleSheet, Text, type ViewStyle } from "react-native"
-import { colors } from "@/theme/colors"
+import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from "react-native"
+import { colors, shadows } from "@/theme/colors"
 import { radii, spacing } from "@/theme/spacing"
 
 type PrimaryButtonProps = PropsWithChildren<{
   onPress?: () => void
   disabled?: boolean
-  style?: ViewStyle | ViewStyle[]
+  loading?: boolean
+  style?: StyleProp<ViewStyle>
 }>
 
-export function PrimaryButton({ children, onPress, disabled = false, style }: PrimaryButtonProps) {
+export function PrimaryButton({ children, onPress, disabled = false, loading = false, style }: PrimaryButtonProps) {
+  const inactive = disabled || loading
+
   return (
     <Pressable
       onPress={onPress}
-      disabled={disabled}
+      disabled={inactive}
       style={({ pressed }) => [
         styles.button,
-        pressed && !disabled && styles.pressed,
-        disabled && styles.disabled,
+        pressed && !inactive && styles.pressed,
+        inactive && styles.disabled,
         style,
       ]}
     >
-      <Text style={[styles.text, disabled && styles.textDisabled]}>{children}</Text>
+      <Text style={[styles.text, inactive && styles.textDisabled]}>
+        {loading ? "Loading..." : children}
+      </Text>
     </Pressable>
   )
 }
@@ -35,11 +40,8 @@ const styles = StyleSheet.create({
     minHeight: 46,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+    ...shadows.card,
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.22,
-    shadowRadius: 14,
-    elevation: 2,
   },
   pressed: {
     backgroundColor: colors.primaryDark,
@@ -58,4 +60,3 @@ const styles = StyleSheet.create({
     color: colors.textSubtle,
   },
 })
-

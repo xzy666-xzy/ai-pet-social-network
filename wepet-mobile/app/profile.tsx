@@ -102,7 +102,7 @@ export default function ProfilePage() {
   const description = user?.description?.trim() || "No description yet. Add your pet profile info."
 
   return (
-    <AppScaffold title="Profile">
+    <AppScaffold title="Profile" subtitle="Your pet profile and activity">
       <InfoCard warm style={styles.heroCard}>
         <Avatar uri={user?.avatar_url} label={displayName} size={64} />
         <View style={styles.heroText}>

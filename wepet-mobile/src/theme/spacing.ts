@@ -8,6 +8,13 @@ export const spacing = {
   "3xl": 32,
 } as const
 
+export const layout = {
+  pagePadding: 20,
+  sectionGap: 16,
+  headerPaddingTop: 18,
+  headerPaddingBottom: 14,
+} as const
+
 export const radii = {
   sm: 10,
   md: 14,
@@ -15,4 +22,3 @@ export const radii = {
   xl: 22,
   full: 999,
 } as const
-

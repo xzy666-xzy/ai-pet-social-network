@@ -12,23 +12,27 @@ export function Avatar({ uri, label, size = 48 }: AvatarProps) {
   const dimension = { height: size, width: size, borderRadius: size / 2 }
 
   if (uri) {
-    return <Image source={{ uri }} style={[styles.image, dimension]} />
+    return <Image source={{ uri }} style={[styles.avatarBase, styles.image, dimension]} />
   }
 
   return (
-    <View style={[styles.fallback, dimension]}>
+    <View style={[styles.avatarBase, styles.fallback, dimension]}>
       <Text style={[styles.initial, { fontSize: Math.max(14, size * 0.36) }]}>{initial}</Text>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
+  avatarBase: {
+    borderColor: colors.white,
+    borderWidth: 2,
+  },
   image: {
     backgroundColor: colors.border,
   },
   fallback: {
     alignItems: "center",
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primaryDark,
     justifyContent: "center",
   },
   initial: {
@@ -36,4 +40,3 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 })
-

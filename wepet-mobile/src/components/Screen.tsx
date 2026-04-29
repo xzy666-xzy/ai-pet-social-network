@@ -1,5 +1,6 @@
 import type { PropsWithChildren } from "react"
 import { SafeAreaView, StyleSheet, View } from "react-native"
+import { colors } from "@/theme/colors"
 
 export function Screen({ children }: PropsWithChildren) {
   return (
@@ -12,7 +13,7 @@ export function Screen({ children }: PropsWithChildren) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#fff7ed",
+    backgroundColor: colors.background,
   },
   container: {
     flex: 1,

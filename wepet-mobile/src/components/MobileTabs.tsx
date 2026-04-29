@@ -1,12 +1,14 @@
 import { usePathname, useRouter } from "expo-router"
 import { Pressable, StyleSheet, Text, View } from "react-native"
+import { colors } from "@/theme/colors"
+import { radii, spacing } from "@/theme/spacing"
 
 const tabs = [
-  { label: "Match", href: "/match" },
-  { label: "Chat", href: "/chat" },
-  { label: "Doctor", href: "/doctor" },
-  { label: "Explore", href: "/explore" },
-  { label: "Profile", href: "/profile" },
+  { label: "Match", href: "/match", icon: "M" },
+  { label: "Chat", href: "/chat", icon: "C" },
+  { label: "Doctor", href: "/doctor", icon: "D" },
+  { label: "Explore", href: "/explore", icon: "E" },
+  { label: "Profile", href: "/profile", icon: "P" },
 ]
 
 export function MobileTabs() {
@@ -23,8 +25,9 @@ export function MobileTabs() {
           <Pressable
             key={tab.href}
             onPress={() => router.push(tab.href as never)}
-            style={[styles.tab, active && styles.tabActive]}
+            style={[styles.tab, active ? styles.tabActive : undefined]}
           >
+            <Text style={[styles.tabIcon, active ? styles.tabTextActive : undefined]}>{tab.icon}</Text>
             <Text style={[styles.tabText, active && styles.tabTextActive]}>{tab.label}</Text>
           </Pressable>
         )
@@ -35,29 +38,37 @@ export function MobileTabs() {
 
 const styles = StyleSheet.create({
   wrapper: {
-    flexDirection: "row",
-    gap: 8,
+    backgroundColor: colors.surface,
+    borderTopColor: colors.border,
     borderTopWidth: 1,
-    borderTopColor: "#fed7aa",
-    backgroundColor: "#ffffff",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    flexDirection: "row",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   tab: {
-    flex: 1,
     alignItems: "center",
-    borderRadius: 999,
-    paddingVertical: 10,
+    borderRadius: radii.lg,
+    flex: 1,
+    gap: 2,
+    minHeight: 52,
+    justifyContent: "center",
+    paddingVertical: 6,
   },
   tabActive: {
-    backgroundColor: "#f97316",
+    backgroundColor: colors.primarySoft,
+  },
+  tabIcon: {
+    color: colors.textSubtle,
+    fontSize: 14,
+    fontWeight: "900",
   },
   tabText: {
-    color: "#57534e",
-    fontSize: 12,
-    fontWeight: "600",
+    color: colors.textSubtle,
+    fontSize: 10,
+    fontWeight: "800",
   },
   tabTextActive: {
-    color: "#ffffff",
+    color: colors.primaryDark,
   },
 })

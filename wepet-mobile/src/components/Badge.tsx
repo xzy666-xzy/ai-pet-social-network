@@ -1,17 +1,19 @@
 import type { PropsWithChildren } from "react"
-import { StyleSheet, Text, View, type ViewStyle } from "react-native"
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native"
 import { colors } from "@/theme/colors"
 import { radii, spacing } from "@/theme/spacing"
 
 type BadgeProps = PropsWithChildren<{
   tone?: "warm" | "dark" | "neutral"
-  style?: ViewStyle | ViewStyle[]
+  style?: StyleProp<ViewStyle>
 }>
 
 export function Badge({ children, tone = "neutral", style }: BadgeProps) {
   return (
     <View style={[styles.badge, styles[tone], style]}>
-      <Text style={[styles.text, tone === "dark" && styles.darkText]}>{children}</Text>
+      <Text style={[styles.text, tone === "neutral" && styles.neutralText, tone === "dark" && styles.darkText]}>
+        {children}
+      </Text>
     </View>
   )
 }
@@ -30,7 +32,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.text,
   },
   neutral: {
-    backgroundColor: "#f5f5f4",
+    backgroundColor: colors.surfaceMuted,
   },
   text: {
     color: colors.primaryDark,
@@ -40,5 +42,7 @@ const styles = StyleSheet.create({
   darkText: {
     color: colors.white,
   },
+  neutralText: {
+    color: colors.textMuted,
+  },
 })
-
