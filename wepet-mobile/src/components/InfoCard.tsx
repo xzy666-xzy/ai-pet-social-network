@@ -1,10 +1,10 @@
 import type { PropsWithChildren } from "react"
-import { StyleSheet, View, type ViewStyle } from "react-native"
+import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native"
 import { colors } from "@/theme/colors"
 import { radii, spacing } from "@/theme/spacing"
 
 type InfoCardProps = PropsWithChildren<{
-  style?: ViewStyle | ViewStyle[]
+  style?: StyleProp<ViewStyle>
   warm?: boolean
 }>
 
@@ -30,4 +30,3 @@ const styles = StyleSheet.create({
     borderColor: colors.borderWarm,
   },
 })
-
