@@ -7,6 +7,7 @@ import { InfoCard } from "@/components/InfoCard"
 import { PrimaryButton } from "@/components/PrimaryButton"
 import { ScreenState } from "@/components/ScreenState"
 import { apiRequest } from "@/lib/api"
+import { useLanguage, type Language } from "@/lib/language-context"
 import { colors } from "@/theme/colors"
 import { radii, spacing } from "@/theme/spacing"
 
@@ -21,7 +22,71 @@ type MatchUser = {
   matchScore?: number
 }
 
+const copy: Record<
+  Language,
+  {
+    title: string
+    subtitle: string
+    discover: string
+    nearby: string
+    analysis: string
+    upNext: string
+    like: string
+    likes: string
+    noUsersTitle: string
+    noUsersMessage: string
+    loadError: string
+    likeError: string
+  }
+> = {
+  en: {
+    title: "Match",
+    subtitle: "Find nearby pet friends",
+    discover: "Discover",
+    nearby: "Pet friends nearby",
+    analysis: "AI Analysis",
+    upNext: "Up next",
+    like: "Like",
+    likes: "likes",
+    noUsersTitle: "No recommendations yet",
+    noUsersMessage: "Check back later for more pet friends.",
+    loadError: "Failed to load match data",
+    likeError: "Failed to like this pet",
+  },
+  zh: {
+    title: "匹配",
+    subtitle: "寻找附近宠物朋友",
+    discover: "发现",
+    nearby: "附近的宠物朋友",
+    analysis: "AI 分析",
+    upNext: "下一个",
+    like: "喜欢",
+    likes: "次喜欢",
+    noUsersTitle: "暂无推荐",
+    noUsersMessage: "稍后再来看看新的宠物朋友。",
+    loadError: "加载匹配数据失败",
+    likeError: "喜欢失败，请稍后再试",
+  },
+  ko: {
+    title: "매칭",
+    subtitle: "근처 반려동물 친구 찾기",
+    discover: "발견",
+    nearby: "주변 반려동물 친구",
+    analysis: "AI 분석",
+    upNext: "다음 추천",
+    like: "좋아요",
+    likes: "좋아요",
+    noUsersTitle: "아직 추천이 없어요",
+    noUsersMessage: "잠시 후 새로운 반려동물 친구를 확인해 주세요.",
+    loadError: "매칭 데이터를 불러오지 못했습니다",
+    likeError: "좋아요에 실패했습니다",
+  },
+}
+
 export default function MatchPage() {
+  const { language } = useLanguage()
+  const t = copy[language]
+
   const [users, setUsers] = useState<MatchUser[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [remaining, setRemaining] = useState<number>(3)
@@ -34,12 +99,12 @@ export default function MatchPage() {
         setError("")
         await Promise.all([loadRecommend(), loadLikeQuota()])
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load match data")
+        setError(err instanceof Error ? err.message : t.loadError)
       }
     }
 
     load()
-  }, [])
+  }, [t.loadError])
 
   async function loadRecommend() {
     const recommend = await apiRequest<{ success: true; data: { users: MatchUser[] } }>("/match/recommend", {
@@ -56,6 +121,8 @@ export default function MatchPage() {
       data: {
         remaining?: number | null
         remainingLikes?: number | null
+        isMember?: boolean | null
+        unlocked?: boolean | null
       }
     }>("/match/likes/today", { auth: true })
 
@@ -85,7 +152,7 @@ export default function MatchPage() {
 
       await Promise.all([loadRecommend(), loadLikeQuota()])
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to like this pet")
+      setError(err instanceof Error ? err.message : t.likeError)
       await loadLikeQuota().catch(() => {})
     } finally {
       setActionLoading(false)
@@ -101,15 +168,17 @@ export default function MatchPage() {
   const matchScore = currentPet?.matchScore ?? 92
 
   return (
-    <AppScaffold title="Match" subtitle="Find nearby pet friends">
+    <AppScaffold title={t.title} subtitle={t.subtitle}>
       <View style={styles.topRow}>
         <View style={styles.topCopy}>
-          <Text style={styles.eyebrow}>Discover</Text>
+          <Text style={styles.eyebrow}>{t.discover}</Text>
           <Text style={styles.pageTitle} numberOfLines={1}>
-            Pet friends nearby
+            {t.nearby}
           </Text>
         </View>
-        <Badge tone="warm">{remaining ?? "-"} likes</Badge>
+        <Badge tone="warm">
+          {remaining} {t.likes}
+        </Badge>
       </View>
 
       {error ? (
@@ -136,7 +205,7 @@ export default function MatchPage() {
           </View>
 
           <InfoCard warm style={styles.analysisCard}>
-            <Text style={styles.analysisLabel}>AI Analysis</Text>
+            <Text style={styles.analysisLabel}>{t.analysis}</Text>
             <Text style={styles.desc}>{displayDescription}</Text>
           </InfoCard>
 
@@ -148,8 +217,8 @@ export default function MatchPage() {
         </InfoCard>
       ) : (
         <ScreenState
-          title="No recommendations yet"
-          message="Check back later for more pet friends."
+          title={t.noUsersTitle}
+          message={t.noUsersMessage}
         />
       )}
 
@@ -158,6 +227,7 @@ export default function MatchPage() {
           style={[styles.circleButton, styles.passButton, actionLoading && styles.disabledButton]}
           onPress={handleSkip}
           disabled={actionLoading || !currentPet}
+          hitSlop={12}
         >
           <Text style={[styles.passText, actionLoading && styles.disabledText]}>X</Text>
         </Pressable>
@@ -165,16 +235,17 @@ export default function MatchPage() {
           style={[styles.circleButton, styles.likeButton, actionLoading && styles.disabledButton]}
           onPress={handleLike}
           disabled={actionLoading || !currentPet}
+          hitSlop={12}
         >
           <Text style={[styles.likeText, actionLoading && styles.disabledText]}>
-            {actionLoading ? "..." : "Like"}
+            {actionLoading ? "..." : t.like}
           </Text>
         </Pressable>
       </View>
 
       {users.length > currentIndex + 1 ? (
         <InfoCard style={styles.queueCard}>
-          <Text style={styles.queueTitle}>Up next</Text>
+          <Text style={styles.queueTitle}>{t.upNext}</Text>
           {users.slice(currentIndex + 1, currentIndex + 4).map((user) => (
             <View key={user.id} style={styles.queueItem}>
               <Avatar uri={user.avatar_url} label={user.pet_name || user.username} size={38} />
@@ -188,16 +259,28 @@ export default function MatchPage() {
       ) : null}
 
       <PrimaryButton disabled={!currentPet || actionLoading} loading={actionLoading} onPress={handleLike}>
-        Like
+        {t.like}
       </PrimaryButton>
     </AppScaffold>
   )
 }
 
-function readRemainingLikes(data: { remaining?: number | null; remainingLikes?: number | null }) {
-  if (typeof data.remaining === "number") return data.remaining
-  if (typeof data.remainingLikes === "number") return data.remainingLikes
-  return 3
+function readRemainingLikes(data: {
+  remaining?: number | null
+  remainingLikes?: number | null
+  isMember?: boolean | null
+  unlocked?: boolean | null
+}) {
+  const value =
+    typeof data.remaining === "number"
+      ? data.remaining
+      : typeof data.remainingLikes === "number"
+        ? data.remainingLikes
+        : 3
+
+  if (data.isMember || data.unlocked) return value
+  if (value > 3) return 3
+  return value
 }
 
 const styles = StyleSheet.create({

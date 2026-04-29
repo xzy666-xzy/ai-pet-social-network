@@ -1,6 +1,6 @@
-import { useState } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import { Avatar } from "@/components/Avatar"
+import { useLanguage } from "@/lib/language-context"
 import { colors } from "@/theme/colors"
 import { layout, radii, spacing } from "@/theme/spacing"
 
@@ -11,7 +11,7 @@ type AppHeaderProps = {
 }
 
 export function AppHeader({ title, subtitle, showAvatar = true }: AppHeaderProps) {
-  const [language, setLanguage] = useState<"EN" | "中">("EN")
+  const { languageLabel, cycleLanguage } = useLanguage()
 
   return (
     <View style={styles.header}>
@@ -23,11 +23,8 @@ export function AppHeader({ title, subtitle, showAvatar = true }: AppHeaderProps
         <Text style={styles.title}>{title}</Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       </View>
-      <Pressable
-        style={styles.languageButton}
-        onPress={() => setLanguage((current) => (current === "EN" ? "中" : "EN"))}
-      >
-        <Text style={styles.languageText}>{language}</Text>
+      <Pressable style={styles.languageButton} onPress={cycleLanguage}>
+        <Text style={styles.languageText}>{languageLabel}</Text>
       </Pressable>
       {showAvatar ? <Avatar label="WePet" size={40} /> : null}
     </View>
@@ -95,3 +92,4 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
 })
+
