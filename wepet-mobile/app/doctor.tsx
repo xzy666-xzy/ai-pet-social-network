@@ -11,12 +11,10 @@ import {
   View,
 } from "react-native"
 import * as ImagePicker from "expo-image-picker"
-import { Avatar } from "@/components/Avatar"
-import { Badge } from "@/components/Badge"
+import { AppHeader } from "@/components/AppHeader"
 import { ChatComposer } from "@/components/chat/ChatComposer"
 import { MessageBubble } from "@/components/chat/MessageBubble"
 import { InfoCard } from "@/components/InfoCard"
-import { LanguageMenu } from "@/components/LanguageMenu"
 import { MobileTabs } from "@/components/MobileTabs"
 import { PrimaryButton } from "@/components/PrimaryButton"
 import { Screen } from "@/components/Screen"
@@ -39,6 +37,8 @@ const quickPrompts = [
   "When should I visit a vet immediately?",
   "My pet has low appetite. What can I do?",
 ]
+
+const doctorAvatar = require("../assets/pet-doctor-avatar.png")
 
 const imageCopy: Record<
   Language,
@@ -290,23 +290,13 @@ export default function DoctorPage() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.root}
       >
-        <View style={styles.header}>
-          <View style={styles.doctorIcon}>
-            <Text style={styles.doctorIconText}>AI</Text>
-          </View>
-          <View style={styles.headerText}>
-            <Text style={styles.title}>AI Pet Doctor</Text>
-            <View style={styles.statusRow}>
-              <View style={styles.onlineDot} />
-              <Text style={styles.onlineText}>Online</Text>
-              <Badge tone="warm" style={styles.statusBadge}>
-                First-pass advice
-              </Badge>
-            </View>
-          </View>
-          <LanguageMenu />
-          <Avatar label="Doctor" size={44} />
-        </View>
+        <AppHeader
+          title="AI Pet Doctor"
+          subtitle="Online"
+          profileImage={doctorAvatar}
+          profileLabel="Doctor"
+          online
+        />
 
         <View style={styles.segmented}>
           <Pressable

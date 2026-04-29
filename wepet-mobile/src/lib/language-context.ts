@@ -2,15 +2,17 @@ import { createContext, createElement, type PropsWithChildren, useContext, useMe
 
 export type Language = "en" | "zh" | "ko"
 
+type LanguageLabel = "EN" | "中" | "한"
+
 type LanguageContextValue = {
   language: Language
-  languageLabel: "EN" | "中" | "한"
+  languageLabel: LanguageLabel
   setLanguage: (language: Language) => void
 }
 
 const LanguageContext = createContext<LanguageContextValue | null>(null)
 
-const labels: Record<Language, LanguageContextValue["languageLabel"]> = {
+const labels: Record<Language, LanguageLabel> = {
   en: "EN",
   zh: "中",
   ko: "한",
@@ -40,4 +42,3 @@ export function useLanguage() {
 
   return value
 }
-

@@ -1,15 +1,20 @@
-import { Image, StyleSheet, Text, View } from "react-native"
+import { Image, StyleSheet, Text, View, type ImageSourcePropType } from "react-native"
 import { colors } from "@/theme/colors"
 
 type AvatarProps = {
   uri?: string | null
+  source?: ImageSourcePropType
   label?: string | null
   size?: number
 }
 
-export function Avatar({ uri, label, size = 48 }: AvatarProps) {
+export function Avatar({ uri, source, label, size = 48 }: AvatarProps) {
   const initial = label?.trim()?.charAt(0)?.toUpperCase() || "W"
   const dimension = { height: size, width: size, borderRadius: size / 2 }
+
+  if (source) {
+    return <Image source={source} style={[styles.avatarBase, styles.image, dimension]} />
+  }
 
   if (uri) {
     return <Image source={{ uri }} style={[styles.avatarBase, styles.image, dimension]} />

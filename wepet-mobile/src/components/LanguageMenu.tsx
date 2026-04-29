@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
   },
   button: {
     alignItems: "center",
-    backgroundColor: colors.primarySoft,
+    backgroundColor: "rgba(255,255,255,0.92)",
     borderRadius: radii.full,
     justifyContent: "center",
     minWidth: 42,
@@ -98,4 +98,3 @@ const styles = StyleSheet.create({
     color: colors.primaryDark,
   },
 })
-
