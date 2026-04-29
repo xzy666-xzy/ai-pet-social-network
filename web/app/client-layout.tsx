@@ -19,6 +19,21 @@ import { useLanguage } from "@/lib/i18n/language-context"
 import { useAuth } from "@/lib/auth-context"
 import { LanguageSwitcher } from "@/components/language-switcher"
 
+function isCapacitorRuntime() {
+  if (typeof window === "undefined") {
+    return false
+  }
+
+  const hasCapacitorBridge = Boolean(
+      (window as typeof window & { Capacitor?: unknown }).Capacitor
+  )
+  const hasCapacitorUserAgent = navigator.userAgent
+      .toLowerCase()
+      .includes("capacitor")
+
+  return hasCapacitorBridge || hasCapacitorUserAgent
+}
+
 export default function ClientLayout({
                                        children,
                                      }: {
@@ -28,7 +43,7 @@ export default function ClientLayout({
   const { user, loading } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
-  const [isCapacitor, setIsCapacitor] = useState(false)
+  const [isCapacitor, setIsCapacitor] = useState(isCapacitorRuntime)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -37,14 +52,7 @@ export default function ClientLayout({
   }, [loading, user, router])
 
   useEffect(() => {
-    const hasCapacitorBridge = Boolean(
-        (window as typeof window & { Capacitor?: unknown }).Capacitor
-    )
-    const hasCapacitorUserAgent = navigator.userAgent
-        .toLowerCase()
-        .includes("capacitor")
-
-    setIsCapacitor(hasCapacitorBridge || hasCapacitorUserAgent)
+    setIsCapacitor(isCapacitorRuntime())
   }, [])
 
   const displayName = useMemo(() => {
@@ -138,7 +146,7 @@ export default function ClientLayout({
 
   if (isCapacitor) {
     return (
-        <div className="h-screen w-screen overflow-hidden bg-stone-50">
+        <div className="fixed inset-0 h-[100dvh] w-screen overflow-hidden bg-stone-50">
           <div className="fixed left-2 top-2 z-[9999] rounded bg-red-600 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow">
             CAPACITOR MODE
           </div>
