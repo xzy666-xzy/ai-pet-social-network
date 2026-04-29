@@ -1,11 +1,19 @@
-import { Image, StyleSheet, Text, View, type ImageSourcePropType } from "react-native"
+import {
+  Image,
+  Platform,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+  type ImageSourcePropType,
+} from "react-native"
 import { Avatar } from "@/components/Avatar"
 import { LanguageMenu } from "@/components/LanguageMenu"
 import { useLanguage } from "@/lib/language-context"
 import { colors, shadows } from "@/theme/colors"
 import { radii, spacing } from "@/theme/spacing"
 
-const wepetLogo = require("../../assets/apple-icon.png")
+const wepetLogo = require("../../assets/wetpet商标.png")
 
 type AppHeaderProps = {
   title: string
@@ -34,7 +42,9 @@ export function AppHeader({
         <Image source={wepetLogo} style={styles.brandLogo} />
       </View>
       <View style={styles.copy}>
-        <Text style={styles.title} numberOfLines={1}>WePet</Text>
+        <Text style={styles.title} numberOfLines={1}>
+          WePet
+        </Text>
         <View style={styles.subtitleRow}>
           {online ? <View style={styles.onlineDot} /> : null}
           <Text style={styles.subtitle} numberOfLines={1}>
@@ -43,7 +53,7 @@ export function AppHeader({
         </View>
       </View>
       <LanguageMenu />
-      {showAvatar ? <Avatar source={profileImage} label={profileLabel} size={42} /> : null}
+      {showAvatar ? <Avatar source={profileImage} label={profileLabel} size={40} /> : null}
     </View>
   )
 }
@@ -60,7 +70,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     paddingBottom: spacing.md,
     paddingHorizontal: 16,
-    paddingTop: spacing.md,
+    paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight ?? 0) + spacing.sm : spacing.md,
   },
   headerGlow: {
     backgroundColor: "rgba(254,243,199,0.45)",
@@ -75,14 +85,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.95)",
     borderRadius: radii.full,
-    height: 44,
+    height: 40,
     justifyContent: "center",
-    width: 44,
+    width: 40,
     ...shadows.card,
   },
   brandLogo: {
-    height: 26,
-    width: 26,
+    height: 28,
+    width: 28,
   },
   copy: {
     flex: 1,
@@ -109,7 +119,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     color: "rgba(255,255,255,0.82)",
-    fontSize: 13,
     flex: 1,
+    fontSize: 13,
   },
 })

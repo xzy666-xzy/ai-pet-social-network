@@ -1,7 +1,9 @@
 import { useEffect, useRef } from "react"
-import { Animated, Easing, StyleSheet, Text, View } from "react-native"
+import { Animated, Easing, Image, StyleSheet, Text, View } from "react-native"
 import { colors, shadows } from "@/theme/colors"
 import { radii, spacing } from "@/theme/spacing"
+
+const wepetLogo = require("../../assets/wetpet商标.png")
 
 export function SplashScreen() {
   const dotScales = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current
@@ -33,13 +35,8 @@ export function SplashScreen() {
 
   return (
     <View style={styles.root}>
-      <View style={styles.topGlow} />
-      <View style={styles.bottomGlow} />
-
-      <View style={styles.logoWrap}>
-        <View style={styles.logo}>
-          <Text style={styles.paw}>🐾</Text>
-        </View>
+      <View style={styles.logo}>
+        <Image source={wepetLogo} style={styles.logoImage} />
       </View>
 
       <Text style={styles.name}>WePet</Text>
@@ -82,46 +79,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: spacing["2xl"],
   },
-  topGlow: {
-    backgroundColor: "rgba(254,243,199,0.55)",
-    borderRadius: 180,
-    height: 360,
-    position: "absolute",
-    right: -110,
-    top: -90,
-    width: 360,
-  },
-  bottomGlow: {
-    backgroundColor: "rgba(251,191,36,0.42)",
-    borderRadius: 180,
-    bottom: -120,
-    height: 360,
-    left: -120,
-    position: "absolute",
-    width: 360,
-  },
-  logoWrap: {
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.14)",
-    borderRadius: 30,
-    height: 104,
-    justifyContent: "center",
-    width: 104,
-  },
   logo: {
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.22)",
     borderColor: "rgba(255,255,255,0.32)",
     borderRadius: 24,
     borderWidth: 1,
-    height: 80,
+    height: 86,
     justifyContent: "center",
-    width: 80,
+    width: 86,
     ...shadows.raised,
   },
-  paw: {
-    color: colors.white,
-    fontSize: 36,
+  logoImage: {
+    height: 58,
+    width: 58,
   },
   name: {
     color: colors.white,
