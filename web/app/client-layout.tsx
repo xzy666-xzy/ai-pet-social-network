@@ -147,9 +147,6 @@ export default function ClientLayout({
   if (isCapacitor) {
     return (
         <div className="fixed inset-0 h-[100dvh] w-screen overflow-hidden bg-stone-50">
-          <div className="fixed left-2 top-2 z-[9999] rounded bg-red-600 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow">
-            CAPACITOR MODE
-          </div>
           {appContent}
         </div>
     )
