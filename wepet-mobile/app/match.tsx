@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from "react-native"
+import { Animated, Easing, Image, Modal, Pressable, StyleSheet, Text, View } from "react-native"
 import { AppScaffold } from "@/components/AppScaffold"
 import { Avatar } from "@/components/Avatar"
 import { Badge } from "@/components/Badge"
@@ -19,6 +19,14 @@ type MatchUser = {
   pet_age?: number | null
   description: string | null
   avatar_url?: string | null
+  image?: string | null
+  imageUrl?: string | null
+  avatar?: string | null
+  avatarUrl?: string | null
+  photo?: string | null
+  photoUrl?: string | null
+  petImage?: string | null
+  petImageUrl?: string | null
   matchScore?: number
 }
 
@@ -123,6 +131,8 @@ export default function MatchPage() {
   const [showMembershipModal, setShowMembershipModal] = useState(false)
   const [membershipLoading, setMembershipLoading] = useState(false)
   const [membershipError, setMembershipError] = useState("")
+  const [imageFailed, setImageFailed] = useState(false)
+  const currentPet = users[currentIndex] ?? null
 
   useEffect(() => {
     async function load() {
@@ -136,6 +146,10 @@ export default function MatchPage() {
 
     load()
   }, [])
+
+  useEffect(() => {
+    setImageFailed(false)
+  }, [currentPet?.id])
 
   async function loadRecommend() {
     const recommend = await apiRequest<{ success: true; data: { users: MatchUser[] } }>("/match/recommend", {
@@ -241,13 +255,13 @@ export default function MatchPage() {
     }
   }
 
-  const currentPet = users[currentIndex] ?? null
   const displayName = currentPet?.pet_name || currentPet?.username || "Unknown Pet"
   const displayType = currentPet?.pet_type || "Unknown Type"
   const displayAge =
     currentPet?.pet_age !== null && currentPet?.pet_age !== undefined ? `${currentPet.pet_age} yrs` : ""
   const displayDescription = currentPet?.description || "No description yet."
   const matchScore = currentPet?.matchScore ?? 92
+  const imageUri = currentPet ? getPetImageUri(currentPet) : null
 
   const cardAnimatedStyle = {
     opacity: swipeX.interpolate({
@@ -292,7 +306,16 @@ export default function MatchPage() {
           <Animated.View style={cardAnimatedStyle}>
             <InfoCard style={styles.matchCard}>
               <View style={styles.photoArea}>
-                <Avatar uri={currentPet.avatar_url} label={displayName} size={112} />
+                {imageUri && !imageFailed ? (
+                  <Image
+                    source={{ uri: imageUri }}
+                    style={styles.petImage}
+                    resizeMode="cover"
+                    onError={() => setImageFailed(true)}
+                  />
+                ) : (
+                  <Avatar uri={currentPet.avatar_url} label={displayName} size={112} />
+                )}
                 <View style={styles.scorePill}>
                   <Text style={styles.scoreText}>{matchScore}% Match</Text>
                 </View>
@@ -343,24 +366,6 @@ export default function MatchPage() {
           </Pressable>
         </View>
 
-        {users.length > currentIndex + 1 ? (
-          <InfoCard style={styles.queueCard}>
-            <Text style={styles.queueTitle}>{t.upNext}</Text>
-            {users.slice(currentIndex + 1, currentIndex + 4).map((user) => (
-              <View key={user.id} style={styles.queueItem}>
-                <Avatar uri={user.avatar_url} label={user.pet_name || user.username} size={38} />
-                <View style={styles.queueText}>
-                  <Text style={styles.queueName}>{user.pet_name || user.username || "Unknown Pet"}</Text>
-                  <Text style={styles.queueMeta}>{user.pet_type || "Unknown Type"}</Text>
-                </View>
-              </View>
-            ))}
-          </InfoCard>
-        ) : null}
-
-        <PrimaryButton disabled={!currentPet || actionLoading} loading={actionLoading} onPress={handleLike}>
-          {t.like}
-        </PrimaryButton>
       </AppScaffold>
 
       <Modal transparent visible={showMembershipModal} animationType="fade">
@@ -394,6 +399,21 @@ export default function MatchPage() {
         </View>
       </Modal>
     </>
+  )
+}
+
+function getPetImageUri(user: MatchUser) {
+  return (
+    user.image ||
+    user.imageUrl ||
+    user.avatar ||
+    user.avatarUrl ||
+    user.photo ||
+    user.photoUrl ||
+    user.petImage ||
+    user.petImageUrl ||
+    user.avatar_url ||
+    null
   )
 }
 
@@ -442,6 +462,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primarySoft,
     minHeight: 220,
     justifyContent: "center",
+  },
+  petImage: {
+    height: 240,
+    width: "100%",
   },
   scorePill: {
     backgroundColor: "rgba(255,255,255,0.92)",

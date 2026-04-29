@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
+import MapView, { Marker, type Region } from "react-native-maps"
 import { AppScaffold } from "@/components/AppScaffold"
 import { Badge } from "@/components/Badge"
 import { InfoCard } from "@/components/InfoCard"
@@ -61,8 +62,30 @@ const events: EventItem[] = [
   },
 ]
 
+const defaultRegion: Region = {
+  latitude: 37.3212,
+  longitude: 126.8309,
+  latitudeDelta: 0.025,
+  longitudeDelta: 0.025,
+}
+
+function hasCoordinates(event: EventItem) {
+  return Number.isFinite(event.lat) && Number.isFinite(event.lng)
+}
+
+function getEventRegion(event: EventItem): Region {
+  if (!hasCoordinates(event)) return defaultRegion
+
+  return {
+    latitude: event.lat as number,
+    longitude: event.lng as number,
+    latitudeDelta: 0.015,
+    longitudeDelta: 0.015,
+  }
+}
+
 function formatLocationPreview(event: EventItem) {
-  if (Number.isFinite(event.lat) && Number.isFinite(event.lng)) {
+  if (hasCoordinates(event)) {
     return `${event.lat?.toFixed(4)}, ${event.lng?.toFixed(4)}`
   }
 
@@ -70,6 +93,7 @@ function formatLocationPreview(event: EventItem) {
 }
 
 export default function ExplorePage() {
+  const mapRef = useRef<MapView | null>(null)
   const [query, setQuery] = useState("")
   const [selectedId, setSelectedId] = useState<number>(events[0].id)
   const [joinedMap, setJoinedMap] = useState<Record<number, boolean>>({})
@@ -110,15 +134,22 @@ export default function ExplorePage() {
   const selectedEvent = filteredEvents.find((item) => item.id === selectedId) ?? filteredEvents[0]
   const detailEvent = filteredEvents.find((item) => item.id === detailId) ?? null
 
+  useEffect(() => {
+    if (!selectedEvent || !hasCoordinates(selectedEvent)) return
+    mapRef.current?.animateToRegion(getEventRegion(selectedEvent), 350)
+  }, [selectedEvent?.id])
+
   function handleJoin(id: number) {
     setJoinedMap((prev) => ({ ...prev, [id]: true }))
   }
 
   async function handleLocate(event: EventItem) {
     setSelectedId(event.id)
+    if (hasCoordinates(event)) {
+      mapRef.current?.animateToRegion(getEventRegion(event), 350)
+    }
 
-    const hasCoordinates = Number.isFinite(event.lat) && Number.isFinite(event.lng)
-    const query = hasCoordinates
+    const query = hasCoordinates(event)
       ? `${event.lat},${event.lng}`
       : encodeURIComponent(event.address || event.title)
     const url = `https://www.google.com/maps/search/?api=1&query=${query}`
@@ -200,31 +231,42 @@ export default function ExplorePage() {
       ) : null}
 
       <InfoCard style={styles.mapCard}>
-        <View style={styles.mapFallback}>
-          <Text style={styles.mapTitle}>Map Preview</Text>
-          <Text style={styles.mapText}>
-            {selectedEvent
-              ? `${selectedEvent.address}\n${formatLocationPreview(selectedEvent)}`
-              : "Select an event to preview its location."}
-          </Text>
-          <View style={styles.mapPins}>
-            {filteredEvents.map((item) => {
-              const active = item.id === selectedId
-              return (
-                <Pressable
-                  key={item.id}
-                  style={[styles.mapPin, active && styles.mapPinActive]}
-                  onPress={() => setSelectedId(item.id)}
-                >
-                  <Text style={[styles.mapPinText, active && styles.mapPinTextActive]}>
-                    {item.address}
-                  </Text>
-                </Pressable>
-              )
-            })}
-          </View>
+        <View style={styles.mapShell}>
+          <MapView
+            ref={mapRef}
+            style={styles.realMap}
+            initialRegion={defaultRegion}
+            showsUserLocation={false}
+            toolbarEnabled={false}
+          >
+            {filteredEvents.filter(hasCoordinates).map((item) => (
+              <Marker
+                key={item.id}
+                coordinate={{ latitude: item.lat as number, longitude: item.lng as number }}
+                title={item.title}
+                description={item.address}
+                pinColor={item.id === selectedId ? colors.primary : colors.textMuted}
+                onPress={() => setSelectedId(item.id)}
+              />
+            ))}
+          </MapView>
         </View>
-        <Text style={styles.mapHint}>Tap event cards or locate buttons to sync the map.</Text>
+        <View style={styles.mapInfoRow}>
+          <View style={styles.mapInfoText}>
+            <Text style={styles.mapTitle}>Google Maps</Text>
+            <Text style={styles.mapText}>
+              {selectedEvent
+                ? `${selectedEvent.address} - ${formatLocationPreview(selectedEvent)}`
+                : "Select an event to preview its location."}
+            </Text>
+          </View>
+          {selectedEvent ? (
+            <Pressable style={styles.mapOpenButton} onPress={() => handleLocate(selectedEvent)}>
+              <Text style={styles.mapOpenText}>Open</Text>
+            </Pressable>
+          ) : null}
+        </View>
+        <Text style={styles.mapHint}>Tap event markers to move the map, or Locate to open Google Maps.</Text>
       </InfoCard>
 
       <InfoCard warm style={styles.countCard}>
@@ -326,14 +368,25 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     padding: spacing.md,
   },
-  mapFallback: {
-    backgroundColor: "#f5f5f4",
+  mapShell: {
     borderColor: colors.border,
     borderRadius: radii.xl,
-    borderStyle: "dashed",
     borderWidth: 1,
-    minHeight: 260,
-    padding: spacing.lg,
+    height: 260,
+    overflow: "hidden",
+  },
+  realMap: {
+    height: "100%",
+    width: "100%",
+  },
+  mapInfoRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  mapInfoText: {
+    flex: 1,
+    minWidth: 0,
   },
   mapTitle: {
     color: colors.text,
@@ -346,33 +399,18 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: spacing.sm,
   },
-  mapPins: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-    marginTop: spacing.xl,
-  },
-  mapPin: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.full,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 1,
-  },
-  mapPinActive: {
+  mapOpenButton: {
+    alignItems: "center",
     backgroundColor: colors.primary,
+    borderRadius: radii.md,
+    minHeight: 42,
+    justifyContent: "center",
+    paddingHorizontal: spacing.lg,
   },
-  mapPinText: {
-    color: colors.textMuted,
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  mapPinTextActive: {
+  mapOpenText: {
     color: colors.white,
+    fontSize: 13,
+    fontWeight: "800",
   },
   mapHint: {
     color: colors.textSubtle,
