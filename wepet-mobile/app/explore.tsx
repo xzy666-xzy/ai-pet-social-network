@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
+import {
+  Image,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type ImageSourcePropType,
+} from "react-native"
 import MapView, { Marker, type Region } from "react-native-maps"
 import { AppScaffold } from "@/components/AppScaffold"
 import { Badge } from "@/components/Badge"
@@ -27,6 +37,7 @@ type EventItem = {
   desc: string
   lat?: number
   lng?: number
+  image: ImageSourcePropType
 }
 
 const events: EventItem[] = [
@@ -39,6 +50,7 @@ const events: EventItem[] = [
     desc: "A casual weekend meetup for walking, socializing, and meeting nearby pet friends.",
     lat: 37.3212,
     lng: 126.8309,
+    image: require("../assets/event-dog-park.jpg"),
   },
   {
     id: 2,
@@ -49,6 +61,7 @@ const events: EventItem[] = [
     desc: "A relaxed cafe meetup for pet owners and pets meeting for the first time.",
     lat: 37.3186,
     lng: 126.8348,
+    image: require("../assets/event-pet-cafe.jpg"),
   },
   {
     id: 3,
@@ -59,6 +72,7 @@ const events: EventItem[] = [
     desc: "An easy after-work walking group to help pets release energy.",
     lat: 37.3159,
     lng: 126.8322,
+    image: require("../assets/event-evening-walk.jpg"),
   },
 ]
 
@@ -172,9 +186,7 @@ export default function ExplorePage() {
         </Pressable>
 
         <InfoCard style={styles.detailCard}>
-          <View style={styles.detailImage}>
-            <Text style={styles.detailImageText}>EVENT</Text>
-          </View>
+          <Image source={detailEvent.image} style={styles.detailImage} resizeMode="cover" />
 
           <Badge tone="warm">EVENT</Badge>
           <Text style={styles.detailTitle}>{detailEvent.title}</Text>
@@ -288,6 +300,7 @@ export default function ExplorePage() {
 
             return (
               <InfoCard key={item.id} style={[styles.eventCard, selected && styles.eventCardSelected]}>
+                <Image source={item.image} style={styles.eventImage} resizeMode="cover" />
                 <View style={styles.eventTopRow}>
                   <View style={styles.eventContent}>
                     <Badge tone="warm">EVENT</Badge>
@@ -442,6 +455,8 @@ const styles = StyleSheet.create({
   },
   eventCard: {
     gap: spacing.md,
+    overflow: "hidden",
+    padding: 0,
   },
   eventCardSelected: {
     backgroundColor: colors.surfaceWarm,
@@ -452,6 +467,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.md,
     justifyContent: "space-between",
+    paddingHorizontal: spacing.lg,
+  },
+  eventImage: {
+    height: 142,
+    width: "100%",
   },
   eventContent: {
     flex: 1,
@@ -485,10 +505,13 @@ const styles = StyleSheet.create({
     color: colors.textSubtle,
     fontSize: 12,
     fontWeight: "700",
+    paddingHorizontal: spacing.lg,
   },
   buttonRow: {
     flexDirection: "row",
     gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
   },
   flexButton: {
     flex: 1,
@@ -520,15 +543,8 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   detailImage: {
-    alignItems: "center",
-    backgroundColor: colors.primarySoft,
-    minHeight: 210,
-    justifyContent: "center",
-  },
-  detailImageText: {
-    color: colors.primaryDark,
-    fontSize: 24,
-    fontWeight: "900",
+    height: 230,
+    width: "100%",
   },
   detailTitle: {
     color: colors.text,

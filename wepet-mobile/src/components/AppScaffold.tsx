@@ -25,6 +25,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     gap: layout.sectionGap,
     paddingHorizontal: layout.pagePadding,
-    paddingVertical: layout.sectionGap,
+    paddingTop: layout.sectionGap,
+    paddingBottom: layout.sectionGap * 2,
   },
 })

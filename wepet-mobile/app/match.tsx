@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState } from "react"
-import { Animated, Easing, Image, Modal, Pressable, StyleSheet, Text, View } from "react-native"
+import {
+  Animated,
+  Easing,
+  Image,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type ImageSourcePropType,
+} from "react-native"
 import { AppScaffold } from "@/components/AppScaffold"
 import { Avatar } from "@/components/Avatar"
 import { Badge } from "@/components/Badge"
@@ -36,6 +46,12 @@ type LikeQuotaData = {
   isMember?: boolean | null
   unlocked?: boolean | null
 }
+
+const fallbackPetImages: ImageSourcePropType[] = [
+  require("../assets/golden-retriever.png"),
+  require("../assets/samoyed-dog-smiling.jpg"),
+  require("../assets/shetland-sheepdog-fluffy.jpg"),
+]
 
 const copy: Record<
   Language,
@@ -262,6 +278,7 @@ export default function MatchPage() {
   const displayDescription = currentPet?.description || "No description yet."
   const matchScore = currentPet?.matchScore ?? 92
   const imageUri = currentPet ? getPetImageUri(currentPet) : null
+  const fallbackImage = currentPet ? getFallbackPetImage(currentPet.id) : null
 
   const cardAnimatedStyle = {
     opacity: swipeX.interpolate({
@@ -313,6 +330,8 @@ export default function MatchPage() {
                     resizeMode="cover"
                     onError={() => setImageFailed(true)}
                   />
+                ) : fallbackImage && !imageFailed ? (
+                  <Image source={fallbackImage} style={styles.petImage} resizeMode="cover" />
                 ) : (
                   <Avatar uri={currentPet.avatar_url} label={displayName} size={112} />
                 )}
@@ -415,6 +434,14 @@ function getPetImageUri(user: MatchUser) {
     user.avatar_url ||
     null
   )
+}
+
+function getFallbackPetImage(id: string) {
+  const index = Math.abs(
+    id.split("").reduce((total, char) => total + char.charCodeAt(0), 0)
+  ) % fallbackPetImages.length
+
+  return fallbackPetImages[index]
 }
 
 function readRemainingLikes(data: LikeQuotaData) {
