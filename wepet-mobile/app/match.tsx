@@ -23,28 +23,76 @@ type MatchUser = {
 
 export default function MatchPage() {
   const [users, setUsers] = useState<MatchUser[]>([])
-  const [remaining, setRemaining] = useState<number | null>(null)
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [remaining, setRemaining] = useState<number>(3)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     async function load() {
       try {
-        const recommend = await apiRequest<{ success: true; data: { users: MatchUser[] } }>("/match/recommend", {
-          auth: true,
-        })
-        const quota = await apiRequest<{ success: true; data: { remaining: number; remainingLikes: number } }>(
-          "/match/likes/today",
-          { auth: true }
-        )
-
-        setUsers(recommend.data.users)
-        setRemaining(quota.data.remaining ?? quota.data.remainingLikes)
-      } catch {}
+        setError("")
+        await Promise.all([loadRecommend(), loadLikeQuota()])
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load match data")
+      }
     }
 
     load()
   }, [])
 
-  const currentPet = users[0] ?? null
+  async function loadRecommend() {
+    const recommend = await apiRequest<{ success: true; data: { users: MatchUser[] } }>("/match/recommend", {
+      auth: true,
+    })
+
+    setUsers(Array.isArray(recommend.data.users) ? recommend.data.users : [])
+    setCurrentIndex(0)
+  }
+
+  async function loadLikeQuota() {
+    const quota = await apiRequest<{
+      success: true
+      data: {
+        remaining?: number | null
+        remainingLikes?: number | null
+      }
+    }>("/match/likes/today", { auth: true })
+
+    setRemaining(readRemainingLikes(quota.data))
+  }
+
+  async function handleSkip() {
+    if (!currentPet || actionLoading) return
+    setError("")
+    setCurrentIndex((value) => value + 1)
+  }
+
+  async function handleLike() {
+    if (!currentPet || actionLoading) return
+
+    try {
+      setActionLoading(true)
+      setError("")
+
+      await apiRequest("/match/like", {
+        method: "POST",
+        auth: true,
+        body: JSON.stringify({
+          targetUserId: currentPet.id,
+        }),
+      })
+
+      await Promise.all([loadRecommend(), loadLikeQuota()])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to like this pet")
+      await loadLikeQuota().catch(() => {})
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const currentPet = users[currentIndex] ?? null
   const displayName = currentPet?.pet_name || currentPet?.username || "Unknown Pet"
   const displayType = currentPet?.pet_type || "Unknown Type"
   const displayAge =
@@ -63,6 +111,12 @@ export default function MatchPage() {
         </View>
         <Badge tone="warm">{remaining ?? "-"} likes</Badge>
       </View>
+
+      {error ? (
+        <InfoCard style={styles.errorCard}>
+          <Text style={styles.errorText}>{error}</Text>
+        </InfoCard>
+      ) : null}
 
       {currentPet ? (
         <InfoCard style={styles.matchCard}>
@@ -100,18 +154,28 @@ export default function MatchPage() {
       )}
 
       <View style={styles.actionRow}>
-        <Pressable style={[styles.circleButton, styles.passButton]}>
-          <Text style={styles.passText}>X</Text>
+        <Pressable
+          style={[styles.circleButton, styles.passButton, actionLoading && styles.disabledButton]}
+          onPress={handleSkip}
+          disabled={actionLoading || !currentPet}
+        >
+          <Text style={[styles.passText, actionLoading && styles.disabledText]}>X</Text>
         </Pressable>
-        <Pressable style={[styles.circleButton, styles.likeButton]}>
-          <Text style={styles.likeText}>Like</Text>
+        <Pressable
+          style={[styles.circleButton, styles.likeButton, actionLoading && styles.disabledButton]}
+          onPress={handleLike}
+          disabled={actionLoading || !currentPet}
+        >
+          <Text style={[styles.likeText, actionLoading && styles.disabledText]}>
+            {actionLoading ? "..." : "Like"}
+          </Text>
         </Pressable>
       </View>
 
-      {users.length > 1 ? (
+      {users.length > currentIndex + 1 ? (
         <InfoCard style={styles.queueCard}>
           <Text style={styles.queueTitle}>Up next</Text>
-          {users.slice(1, 4).map((user) => (
+          {users.slice(currentIndex + 1, currentIndex + 4).map((user) => (
             <View key={user.id} style={styles.queueItem}>
               <Avatar uri={user.avatar_url} label={user.pet_name || user.username} size={38} />
               <View style={styles.queueText}>
@@ -123,9 +187,17 @@ export default function MatchPage() {
         </InfoCard>
       ) : null}
 
-      <PrimaryButton disabled={!currentPet}>Like</PrimaryButton>
+      <PrimaryButton disabled={!currentPet || actionLoading} loading={actionLoading} onPress={handleLike}>
+        Like
+      </PrimaryButton>
     </AppScaffold>
   )
+}
+
+function readRemainingLikes(data: { remaining?: number | null; remainingLikes?: number | null }) {
+  if (typeof data.remaining === "number") return data.remaining
+  if (typeof data.remainingLikes === "number") return data.remainingLikes
+  return 3
 }
 
 const styles = StyleSheet.create({
@@ -210,6 +282,16 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
     paddingHorizontal: spacing.lg,
   },
+  errorCard: {
+    backgroundColor: colors.dangerSoft,
+    borderColor: "#fecaca",
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: 13,
+    fontWeight: "700",
+    lineHeight: 19,
+  },
   actionRow: {
     flexDirection: "row",
     gap: spacing["2xl"],
@@ -235,6 +317,11 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 2,
   },
+  disabledButton: {
+    backgroundColor: colors.border,
+    borderColor: colors.border,
+    shadowOpacity: 0,
+  },
   passText: {
     color: colors.textSubtle,
     fontSize: 18,
@@ -244,6 +331,9 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 14,
     fontWeight: "800",
+  },
+  disabledText: {
+    color: colors.textSubtle,
   },
   queueCard: {
     gap: spacing.md,
