@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
+import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
 import { AppScaffold } from "@/components/AppScaffold"
 import { Badge } from "@/components/Badge"
 import { InfoCard } from "@/components/InfoCard"
@@ -24,8 +24,8 @@ type EventItem = {
   time: string
   joined: number
   desc: string
-  lat: number
-  lng: number
+  lat?: number
+  lng?: number
 }
 
 const events: EventItem[] = [
@@ -60,6 +60,14 @@ const events: EventItem[] = [
     lng: 126.8322,
   },
 ]
+
+function formatLocationPreview(event: EventItem) {
+  if (Number.isFinite(event.lat) && Number.isFinite(event.lng)) {
+    return `${event.lat?.toFixed(4)}, ${event.lng?.toFixed(4)}`
+  }
+
+  return "Open map search"
+}
 
 export default function ExplorePage() {
   const [query, setQuery] = useState("")
@@ -106,6 +114,23 @@ export default function ExplorePage() {
     setJoinedMap((prev) => ({ ...prev, [id]: true }))
   }
 
+  async function handleLocate(event: EventItem) {
+    setSelectedId(event.id)
+
+    const hasCoordinates = Number.isFinite(event.lat) && Number.isFinite(event.lng)
+    const query = hasCoordinates
+      ? `${event.lat},${event.lng}`
+      : encodeURIComponent(event.address || event.title)
+    const url = `https://www.google.com/maps/search/?api=1&query=${query}`
+
+    try {
+      setError("")
+      await Linking.openURL(url)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to open map.")
+    }
+  }
+
   if (detailEvent) {
     const joined = joinedMap[detailEvent.id]
 
@@ -136,10 +161,7 @@ export default function ExplorePage() {
             </PrimaryButton>
             <Pressable
               style={styles.outlineButton}
-              onPress={() => {
-                setSelectedId(detailEvent.id)
-                setDetailId(null)
-              }}
+              onPress={() => handleLocate(detailEvent)}
             >
               <Text style={styles.outlineButtonText}>Locate</Text>
             </Pressable>
@@ -182,7 +204,7 @@ export default function ExplorePage() {
           <Text style={styles.mapTitle}>Map Preview</Text>
           <Text style={styles.mapText}>
             {selectedEvent
-              ? `${selectedEvent.address}\n${selectedEvent.lat.toFixed(4)}, ${selectedEvent.lng.toFixed(4)}`
+              ? `${selectedEvent.address}\n${formatLocationPreview(selectedEvent)}`
               : "Select an event to preview its location."}
           </Text>
           <View style={styles.mapPins}>
@@ -231,7 +253,7 @@ export default function ExplorePage() {
                     <Text style={styles.eventMeta}>{item.address}</Text>
                     <Text style={styles.eventMeta}>{item.time}</Text>
                   </View>
-                  <Pressable style={styles.locateButton} onPress={() => setSelectedId(item.id)}>
+                  <Pressable style={styles.locateButton} onPress={() => handleLocate(item)}>
                     <Text style={styles.locateText}>Locate</Text>
                   </Pressable>
                 </View>
