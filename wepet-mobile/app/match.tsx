@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native"
+import { useEffect, useRef, useState } from "react"
+import { Animated, Easing, Modal, Pressable, StyleSheet, Text, View } from "react-native"
 import { AppScaffold } from "@/components/AppScaffold"
 import { Avatar } from "@/components/Avatar"
 import { Badge } from "@/components/Badge"
@@ -113,6 +113,7 @@ const copy: Record<
 export default function MatchPage() {
   const { language } = useLanguage()
   const t = copy[language]
+  const swipeX = useRef(new Animated.Value(0)).current
 
   const [users, setUsers] = useState<MatchUser[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -143,6 +144,7 @@ export default function MatchPage() {
 
     setUsers(Array.isArray(recommend.data.users) ? recommend.data.users : [])
     setCurrentIndex(0)
+    resetSwipe()
   }
 
   async function loadLikeQuota() {
@@ -153,10 +155,33 @@ export default function MatchPage() {
     setRemaining(readRemainingLikes(quota.data))
   }
 
+  function resetSwipe() {
+    swipeX.setValue(0)
+  }
+
+  function runSwipe(direction: -1 | 1) {
+    return new Promise<void>((resolve) => {
+      Animated.timing(swipeX, {
+        toValue: direction * 420,
+        duration: 240,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start(() => resolve())
+    })
+  }
+
   async function handleSkip() {
     if (!currentPet || actionLoading) return
-    setError("")
-    setCurrentIndex((value) => value + 1)
+
+    try {
+      setActionLoading(true)
+      setError("")
+      await runSwipe(-1)
+      setCurrentIndex((value) => value + 1)
+      resetSwipe()
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   async function handleLike() {
@@ -168,9 +193,13 @@ export default function MatchPage() {
       return
     }
 
+    const previousRemaining = remaining
+
     try {
       setActionLoading(true)
       setError("")
+      setRemaining((value) => Math.max(0, value - 1))
+      await runSwipe(1)
 
       await apiRequest("/match/like", {
         method: "POST",
@@ -182,8 +211,9 @@ export default function MatchPage() {
 
       await Promise.all([loadRecommend(), loadLikeQuota()])
     } catch (err) {
+      setRemaining(previousRemaining)
       setError(err instanceof Error ? err.message : t.likeError)
-      await loadLikeQuota().catch(() => {})
+      resetSwipe()
     } finally {
       setActionLoading(false)
     }
@@ -219,6 +249,24 @@ export default function MatchPage() {
   const displayDescription = currentPet?.description || "No description yet."
   const matchScore = currentPet?.matchScore ?? 92
 
+  const cardAnimatedStyle = {
+    opacity: swipeX.interpolate({
+      inputRange: [-420, 0, 420],
+      outputRange: [0.3, 1, 0.3],
+      extrapolate: "clamp" as const,
+    }),
+    transform: [
+      { translateX: swipeX },
+      {
+        rotate: swipeX.interpolate({
+          inputRange: [-420, 0, 420],
+          outputRange: ["-8deg", "0deg", "8deg"],
+          extrapolate: "clamp",
+        }),
+      },
+    ],
+  }
+
   return (
     <>
       <AppScaffold title={t.title} subtitle={t.subtitle}>
@@ -241,33 +289,35 @@ export default function MatchPage() {
         ) : null}
 
         {currentPet ? (
-          <InfoCard style={styles.matchCard}>
-            <View style={styles.photoArea}>
-              <Avatar uri={currentPet.avatar_url} label={displayName} size={112} />
-              <View style={styles.scorePill}>
-                <Text style={styles.scoreText}>{matchScore}% Match</Text>
+          <Animated.View style={cardAnimatedStyle}>
+            <InfoCard style={styles.matchCard}>
+              <View style={styles.photoArea}>
+                <Avatar uri={currentPet.avatar_url} label={displayName} size={112} />
+                <View style={styles.scorePill}>
+                  <Text style={styles.scoreText}>{matchScore}% Match</Text>
+                </View>
               </View>
-            </View>
 
-            <View style={styles.profileBlock}>
-              <Text style={styles.name}>
-                {displayName}
-                {displayAge ? `, ${displayAge}` : ""}
-              </Text>
-              <Text style={styles.meta}>{displayType} - 1.2km</Text>
-            </View>
+              <View style={styles.profileBlock}>
+                <Text style={styles.name}>
+                  {displayName}
+                  {displayAge ? `, ${displayAge}` : ""}
+                </Text>
+                <Text style={styles.meta}>{displayType} - 1.2km</Text>
+              </View>
 
-            <InfoCard warm style={styles.analysisCard}>
-              <Text style={styles.analysisLabel}>{t.analysis}</Text>
-              <Text style={styles.desc}>{displayDescription}</Text>
+              <InfoCard warm style={styles.analysisCard}>
+                <Text style={styles.analysisLabel}>{t.analysis}</Text>
+                <Text style={styles.desc}>{displayDescription}</Text>
+              </InfoCard>
+
+              <View style={styles.badgeRow}>
+                <Badge>{displayType}</Badge>
+                {displayAge ? <Badge>{displayAge}</Badge> : null}
+                <Badge>@{currentPet.username || "user"}</Badge>
+              </View>
             </InfoCard>
-
-            <View style={styles.badgeRow}>
-              <Badge>{displayType}</Badge>
-              {displayAge ? <Badge>{displayAge}</Badge> : null}
-              <Badge>@{currentPet.username || "user"}</Badge>
-            </View>
-          </InfoCard>
+          </Animated.View>
         ) : (
           <ScreenState title={t.noUsersTitle} message={t.noUsersMessage} />
         )}
@@ -480,6 +530,7 @@ const styles = StyleSheet.create({
   disabledButton: {
     backgroundColor: colors.border,
     borderColor: colors.border,
+    opacity: 0.55,
     shadowOpacity: 0,
   },
   passText: {
