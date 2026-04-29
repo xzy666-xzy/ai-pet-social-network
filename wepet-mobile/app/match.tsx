@@ -55,9 +55,11 @@ export default function MatchPage() {
   return (
     <AppScaffold title="Match" subtitle="Find nearby pet friends">
       <View style={styles.topRow}>
-        <View>
+        <View style={styles.topCopy}>
           <Text style={styles.eyebrow}>Discover</Text>
-          <Text style={styles.pageTitle}>Pet friends nearby</Text>
+          <Text style={styles.pageTitle} numberOfLines={1}>
+            Pet friends nearby
+          </Text>
         </View>
         <Badge tone="warm">{remaining ?? "-"} likes</Badge>
       </View>
@@ -102,7 +104,7 @@ export default function MatchPage() {
           <Text style={styles.passText}>X</Text>
         </Pressable>
         <Pressable style={[styles.circleButton, styles.likeButton]}>
-          <Text style={styles.likeText}>Heart</Text>
+          <Text style={styles.likeText}>Like</Text>
         </Pressable>
       </View>
 
@@ -132,6 +134,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     gap: spacing.md,
+  },
+  topCopy: {
+    flex: 1,
+    minWidth: 0,
   },
   eyebrow: {
     color: colors.primaryDark,
@@ -236,7 +242,7 @@ const styles = StyleSheet.create({
   },
   likeText: {
     color: colors.white,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "800",
   },
   queueCard: {

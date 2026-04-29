@@ -429,6 +429,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
+    paddingBottom: spacing.lg,
   },
   uploadCard: {
     gap: spacing.md,
@@ -490,4 +491,3 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
 })
-
