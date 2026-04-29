@@ -1,5 +1,6 @@
 import { useState } from "react"
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -9,6 +10,7 @@ import {
   TextInput,
   View,
 } from "react-native"
+import * as ImagePicker from "expo-image-picker"
 import { Avatar } from "@/components/Avatar"
 import { Badge } from "@/components/Badge"
 import { ChatComposer } from "@/components/chat/ChatComposer"
@@ -19,6 +21,7 @@ import { MobileTabs } from "@/components/MobileTabs"
 import { PrimaryButton } from "@/components/PrimaryButton"
 import { Screen } from "@/components/Screen"
 import { apiRequest } from "@/lib/api"
+import { useLanguage, type Language } from "@/lib/language-context"
 import { colors } from "@/theme/colors"
 import { radii, spacing } from "@/theme/spacing"
 
@@ -37,7 +40,109 @@ const quickPrompts = [
   "My pet has low appetite. What can I do?",
 ]
 
+const imageCopy: Record<
+  Language,
+  {
+    tabChat: string
+    tabImage: string
+    title: string
+    description: string
+    choose: string
+    chooseAgain: string
+    emptyUploadTitle: string
+    emptyUploadText: string
+    previewTitle: string
+    inputPlaceholder: string
+    analyze: string
+    analyzing: string
+    resultTitle: string
+    resultEmpty: string
+    safetyTitle: string
+    safetyText: string
+    noImageError: string
+    permissionError: string
+    imageReadError: string
+    fallback: string
+  }
+> = {
+  en: {
+    tabChat: "Text Chat",
+    tabImage: "Image Diagnosis",
+    title: "AI Image Diagnosis",
+    description: "Choose a pet photo, add symptom details, and get an initial AI observation.",
+    choose: "Choose Photo",
+    chooseAgain: "Choose Again",
+    emptyUploadTitle: "Upload a pet photo",
+    emptyUploadText: "Select an image from your album before starting diagnosis.",
+    previewTitle: "Image Preview",
+    inputPlaceholder: "Add symptom details, e.g. red ears for 2 days, scratching often...",
+    analyze: "Analyze",
+    analyzing: "Analyzing...",
+    resultTitle: "Diagnosis Result",
+    resultEmpty: "Analysis result will appear here after you choose an image and start diagnosis.",
+    safetyTitle: "Safety Notice",
+    safetyText:
+      "Image diagnosis cannot replace an in-person veterinary exam. If symptoms are severe or worsening, visit a vet immediately.",
+    noImageError: "Please choose a photo first.",
+    permissionError: "Photo library permission is required to choose an image.",
+    imageReadError: "Unable to read this image. Please choose another photo.",
+    fallback: "Sorry, image diagnosis is unavailable right now. Please try again later.",
+  },
+  zh: {
+    tabChat: "文字咨询",
+    tabImage: "图片诊断",
+    title: "AI 图片诊断",
+    description: "选择宠物照片，补充症状描述，AI 会给出初步观察建议。",
+    choose: "选择图片",
+    chooseAgain: "重新选择",
+    emptyUploadTitle: "上传宠物照片",
+    emptyUploadText: "开始诊断前，请先从相册选择一张图片。",
+    previewTitle: "图片预览",
+    inputPlaceholder: "补充症状描述，例如：耳朵发红两天、一直抓挠...",
+    analyze: "分析",
+    analyzing: "分析中...",
+    resultTitle: "诊断结果",
+    resultEmpty: "选择图片并开始诊断后，分析结果会显示在这里。",
+    safetyTitle: "安全提示",
+    safetyText: "图片诊断不能替代线下兽医面诊；如果症状严重或持续恶化，请立即就医。",
+    noImageError: "请先选择图片。",
+    permissionError: "需要相册权限才能选择图片。",
+    imageReadError: "无法读取这张图片，请重新选择。",
+    fallback: "抱歉，当前无法完成图片诊断，请稍后再试。",
+  },
+  ko: {
+    tabChat: "텍스트 상담",
+    tabImage: "이미지 진단",
+    title: "AI 이미지 진단",
+    description: "반려동물 사진을 선택하고 증상을 입력하면 AI가 1차 관찰 의견을 제공합니다.",
+    choose: "사진 선택",
+    chooseAgain: "다시 선택",
+    emptyUploadTitle: "반려동물 사진 업로드",
+    emptyUploadText: "진단을 시작하기 전에 앨범에서 이미지를 선택하세요.",
+    previewTitle: "이미지 미리보기",
+    inputPlaceholder: "증상을 입력하세요. 예: 귀가 이틀째 붉고 계속 긁어요...",
+    analyze: "진단",
+    analyzing: "진단 중...",
+    resultTitle: "진단 결과",
+    resultEmpty: "이미지를 선택하고 진단을 시작하면 결과가 여기에 표시됩니다.",
+    safetyTitle: "안전 안내",
+    safetyText: "이미지 진단은 대면 진료를 대신할 수 없습니다. 증상이 심하거나 악화되면 병원에 방문하세요.",
+    noImageError: "먼저 사진을 선택해 주세요.",
+    permissionError: "사진을 선택하려면 앨범 권한이 필요합니다.",
+    imageReadError: "이미지를 읽을 수 없습니다. 다른 사진을 선택해 주세요.",
+    fallback: "죄송합니다. 지금은 이미지 진단을 완료할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+  },
+}
+
+type PickedImage = {
+  uri: string
+  base64: string
+  mimeType: string
+}
+
 export default function DoctorPage() {
+  const { language } = useLanguage()
+  const imageText = imageCopy[language]
   const [activeTab, setActiveTab] = useState<DoctorTab>("chat")
   const [message, setMessage] = useState("")
   const [messages, setMessages] = useState<DoctorMessage[]>([
@@ -52,7 +157,10 @@ export default function DoctorPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [imageNotes, setImageNotes] = useState("")
+  const [pickedImage, setPickedImage] = useState<PickedImage | null>(null)
   const [imageResult, setImageResult] = useState("")
+  const [imageError, setImageError] = useState("")
+  const [imageLoading, setImageLoading] = useState(false)
 
   async function askDoctor(preset?: string) {
     const text = (preset ?? message).trim()
@@ -110,10 +218,70 @@ export default function DoctorPage() {
     }
   }
 
-  function handleImagePlaceholder() {
-    setImageResult(
-      "Image diagnosis UI is ready, but photo upload is not enabled in this mobile build yet. Describe symptoms here or use Text Chat for AI guidance."
-    )
+  async function chooseImage() {
+    if (imageLoading) return
+
+    setImageError("")
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!permission.granted) {
+      setImageError(imageText.permissionError)
+      return
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: false,
+      quality: 0.85,
+      base64: true,
+    })
+
+    if (result.canceled) return
+
+    const asset = result.assets[0]
+    if (!asset?.uri || !asset.base64) {
+      setImageError(imageText.imageReadError)
+      return
+    }
+
+    setPickedImage({
+      uri: asset.uri,
+      base64: asset.base64,
+      mimeType: asset.mimeType || "image/jpeg",
+    })
+    setImageResult("")
+    setImageError("")
+  }
+
+  async function handleImageDiagnose() {
+    if (imageLoading) return
+
+    if (!pickedImage) {
+      setImageError(imageText.noImageError)
+      return
+    }
+
+    try {
+      setImageLoading(true)
+      setImageError("")
+      setImageResult("")
+
+      const data = await apiRequest<{ success: true; data: { result: string } }>("/ai/diagnose", {
+        method: "POST",
+        auth: true,
+        body: JSON.stringify({
+          imageBase64: pickedImage.base64,
+          mimeType: pickedImage.mimeType,
+          symptom: imageNotes,
+        }),
+      })
+
+      setImageResult(data.data.result || imageText.fallback)
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : imageText.fallback)
+    } finally {
+      setImageLoading(false)
+    }
   }
 
   return (
@@ -146,7 +314,7 @@ export default function DoctorPage() {
             onPress={() => setActiveTab("chat")}
           >
             <Text style={[styles.segmentText, activeTab === "chat" && styles.segmentTextActive]}>
-              Text Chat
+              {imageText.tabChat}
             </Text>
           </Pressable>
           <Pressable
@@ -154,7 +322,7 @@ export default function DoctorPage() {
             onPress={() => setActiveTab("image")}
           >
             <Text style={[styles.segmentText, activeTab === "image" && styles.segmentTextActive]}>
-              Image Diagnosis
+              {imageText.tabImage}
             </Text>
           </Pressable>
         </View>
@@ -217,43 +385,66 @@ export default function DoctorPage() {
         ) : (
           <ScrollView style={styles.content} contentContainerStyle={styles.imageContent}>
             <InfoCard style={styles.uploadCard}>
-              <Text style={styles.sectionTitle}>AI Image Diagnosis</Text>
-              <Text style={styles.sectionText}>
-                Upload support is not enabled yet. This area preserves the Web layout so a photo
-                picker can be connected later without changing the page structure.
-              </Text>
+              <Text style={styles.sectionTitle}>{imageText.title}</Text>
+              <Text style={styles.sectionText}>{imageText.description}</Text>
 
-              <View style={styles.uploadBox}>
-                <Text style={styles.uploadIcon}>+</Text>
-                <Text style={styles.uploadTitle}>Photo upload placeholder</Text>
-                <Text style={styles.uploadText}>No camera or image picker dependency is installed.</Text>
-              </View>
+              <Pressable
+                style={[styles.uploadBox, imageLoading && styles.disabledControl]}
+                onPress={chooseImage}
+                disabled={imageLoading}
+              >
+                {pickedImage ? (
+                  <>
+                    <Image source={{ uri: pickedImage.uri }} style={styles.previewImage} />
+                    <Text style={styles.previewLabel}>{imageText.previewTitle}</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.uploadIcon}>+</Text>
+                    <Text style={styles.uploadTitle}>{imageText.emptyUploadTitle}</Text>
+                    <Text style={styles.uploadText}>{imageText.emptyUploadText}</Text>
+                  </>
+                )}
+              </Pressable>
+
+              <PrimaryButton onPress={chooseImage} disabled={imageLoading}>
+                {pickedImage ? imageText.chooseAgain : imageText.choose}
+              </PrimaryButton>
 
               <TextInput
                 style={styles.imageInput}
                 value={imageNotes}
                 onChangeText={setImageNotes}
-                placeholder="Add symptom details, e.g. red ears for 2 days, scratching often..."
+                placeholder={imageText.inputPlaceholder}
                 placeholderTextColor={colors.textSubtle}
                 multiline
+                editable={!imageLoading}
               />
 
-              <PrimaryButton onPress={handleImagePlaceholder}>Start Diagnosis</PrimaryButton>
+              {imageError ? (
+                <View style={styles.errorBanner}>
+                  <Text style={styles.errorText}>{imageError}</Text>
+                </View>
+              ) : null}
+
+              <PrimaryButton
+                onPress={handleImageDiagnose}
+                disabled={imageLoading}
+              >
+                {imageLoading ? imageText.analyzing : imageText.analyze}
+              </PrimaryButton>
             </InfoCard>
 
             <InfoCard style={styles.resultCard}>
-              <Text style={styles.sectionTitle}>Diagnosis Result</Text>
+              <Text style={styles.sectionTitle}>{imageText.resultTitle}</Text>
               <Text style={styles.resultText}>
-                {imageResult || "Analysis result will appear here after image upload is enabled."}
+                {imageResult || imageText.resultEmpty}
               </Text>
             </InfoCard>
 
             <InfoCard warm style={styles.safetyCard}>
-              <Text style={styles.safetyTitle}>Safety Notice</Text>
-              <Text style={styles.safetyText}>
-                Image diagnosis cannot replace an in-person veterinary exam. If symptoms are
-                severe or worsening, visit a vet immediately.
-              </Text>
+              <Text style={styles.safetyTitle}>{imageText.safetyTitle}</Text>
+              <Text style={styles.safetyText}>{imageText.safetyText}</Text>
             </InfoCard>
           </ScrollView>
         )}
@@ -456,6 +647,20 @@ const styles = StyleSheet.create({
     minHeight: 150,
     justifyContent: "center",
     padding: spacing.lg,
+  },
+  disabledControl: {
+    opacity: 0.6,
+  },
+  previewImage: {
+    borderRadius: radii.lg,
+    height: 210,
+    width: "100%",
+  },
+  previewLabel: {
+    color: colors.textSubtle,
+    fontSize: 12,
+    fontWeight: "800",
+    marginTop: spacing.sm,
   },
   uploadIcon: {
     color: colors.primary,
