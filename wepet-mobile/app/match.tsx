@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Pressable, StyleSheet, Text, View } from "react-native"
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native"
 import { AppScaffold } from "@/components/AppScaffold"
 import { Avatar } from "@/components/Avatar"
 import { Badge } from "@/components/Badge"
@@ -22,6 +22,13 @@ type MatchUser = {
   matchScore?: number
 }
 
+type LikeQuotaData = {
+  remaining?: number | null
+  remainingLikes?: number | null
+  isMember?: boolean | null
+  unlocked?: boolean | null
+}
+
 const copy: Record<
   Language,
   {
@@ -37,6 +44,11 @@ const copy: Record<
     noUsersMessage: string
     loadError: string
     likeError: string
+    upgradeTitle: string
+    upgradeDesc: string
+    upgrade: string
+    later: string
+    upgrading: string
   }
 > = {
   en: {
@@ -52,6 +64,11 @@ const copy: Record<
     noUsersMessage: "Check back later for more pet friends.",
     loadError: "Failed to load match data",
     likeError: "Failed to like this pet",
+    upgradeTitle: "Upgrade to Premium",
+    upgradeDesc: "Get unlimited likes and more matches",
+    upgrade: "Upgrade",
+    later: "Maybe later",
+    upgrading: "Upgrading...",
   },
   zh: {
     title: "匹配",
@@ -66,6 +83,11 @@ const copy: Record<
     noUsersMessage: "稍后再来看看新的宠物朋友。",
     loadError: "加载匹配数据失败",
     likeError: "喜欢失败，请稍后再试",
+    upgradeTitle: "升级会员",
+    upgradeDesc: "解锁更多喜欢次数和匹配机会",
+    upgrade: "升级",
+    later: "稍后再说",
+    upgrading: "升级中...",
   },
   ko: {
     title: "매칭",
@@ -80,6 +102,11 @@ const copy: Record<
     noUsersMessage: "잠시 후 새로운 반려동물 친구를 확인해 주세요.",
     loadError: "매칭 데이터를 불러오지 못했습니다",
     likeError: "좋아요에 실패했습니다",
+    upgradeTitle: "프리미엄 업그레이드",
+    upgradeDesc: "더 많은 좋아요와 매칭 기회를 이용하세요",
+    upgrade: "업그레이드",
+    later: "나중에",
+    upgrading: "업그레이드 중...",
   },
 }
 
@@ -92,6 +119,9 @@ export default function MatchPage() {
   const [remaining, setRemaining] = useState<number>(3)
   const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState("")
+  const [showMembershipModal, setShowMembershipModal] = useState(false)
+  const [membershipLoading, setMembershipLoading] = useState(false)
+  const [membershipError, setMembershipError] = useState("")
 
   useEffect(() => {
     async function load() {
@@ -99,12 +129,12 @@ export default function MatchPage() {
         setError("")
         await Promise.all([loadRecommend(), loadLikeQuota()])
       } catch (err) {
-        setError(err instanceof Error ? err.message : t.loadError)
+        setError(err instanceof Error ? err.message : copy.en.loadError)
       }
     }
 
     load()
-  }, [t.loadError])
+  }, [])
 
   async function loadRecommend() {
     const recommend = await apiRequest<{ success: true; data: { users: MatchUser[] } }>("/match/recommend", {
@@ -116,15 +146,9 @@ export default function MatchPage() {
   }
 
   async function loadLikeQuota() {
-    const quota = await apiRequest<{
-      success: true
-      data: {
-        remaining?: number | null
-        remainingLikes?: number | null
-        isMember?: boolean | null
-        unlocked?: boolean | null
-      }
-    }>("/match/likes/today", { auth: true })
+    const quota = await apiRequest<{ success: true; data: LikeQuotaData }>("/match/likes/today", {
+      auth: true,
+    })
 
     setRemaining(readRemainingLikes(quota.data))
   }
@@ -137,6 +161,12 @@ export default function MatchPage() {
 
   async function handleLike() {
     if (!currentPet || actionLoading) return
+
+    if (remaining <= 0) {
+      setMembershipError("")
+      setShowMembershipModal(true)
+      return
+    }
 
     try {
       setActionLoading(true)
@@ -159,6 +189,28 @@ export default function MatchPage() {
     }
   }
 
+  async function handleUpgrade() {
+    try {
+      setMembershipLoading(true)
+      setMembershipError("")
+
+      await apiRequest("/membership/checkout", {
+        method: "POST",
+        auth: true,
+        body: JSON.stringify({
+          plan: "monthly",
+        }),
+      })
+
+      setShowMembershipModal(false)
+      await loadLikeQuota()
+    } catch (err) {
+      setMembershipError(err instanceof Error ? err.message : "Upgrade failed")
+    } finally {
+      setMembershipLoading(false)
+    }
+  }
+
   const currentPet = users[currentIndex] ?? null
   const displayName = currentPet?.pet_name || currentPet?.username || "Unknown Pet"
   const displayType = currentPet?.pet_type || "Unknown Type"
@@ -168,109 +220,134 @@ export default function MatchPage() {
   const matchScore = currentPet?.matchScore ?? 92
 
   return (
-    <AppScaffold title={t.title} subtitle={t.subtitle}>
-      <View style={styles.topRow}>
-        <View style={styles.topCopy}>
-          <Text style={styles.eyebrow}>{t.discover}</Text>
-          <Text style={styles.pageTitle} numberOfLines={1}>
-            {t.nearby}
-          </Text>
-        </View>
-        <Badge tone="warm">
-          {remaining} {t.likes}
-        </Badge>
-      </View>
-
-      {error ? (
-        <InfoCard style={styles.errorCard}>
-          <Text style={styles.errorText}>{error}</Text>
-        </InfoCard>
-      ) : null}
-
-      {currentPet ? (
-        <InfoCard style={styles.matchCard}>
-          <View style={styles.photoArea}>
-            <Avatar uri={currentPet.avatar_url} label={displayName} size={112} />
-            <View style={styles.scorePill}>
-              <Text style={styles.scoreText}>{matchScore}% Match</Text>
-            </View>
-          </View>
-
-          <View style={styles.profileBlock}>
-            <Text style={styles.name}>
-              {displayName}
-              {displayAge ? `, ${displayAge}` : ""}
+    <>
+      <AppScaffold title={t.title} subtitle={t.subtitle}>
+        <View style={styles.topRow}>
+          <View style={styles.topCopy}>
+            <Text style={styles.eyebrow}>{t.discover}</Text>
+            <Text style={styles.pageTitle} numberOfLines={1}>
+              {t.nearby}
             </Text>
-            <Text style={styles.meta}>{displayType} - 1.2km</Text>
           </View>
+          <Badge tone="warm">
+            {remaining} {t.likes}
+          </Badge>
+        </View>
 
-          <InfoCard warm style={styles.analysisCard}>
-            <Text style={styles.analysisLabel}>{t.analysis}</Text>
-            <Text style={styles.desc}>{displayDescription}</Text>
+        {error ? (
+          <InfoCard style={styles.errorCard}>
+            <Text style={styles.errorText}>{error}</Text>
           </InfoCard>
+        ) : null}
 
-          <View style={styles.badgeRow}>
-            <Badge>{displayType}</Badge>
-            {displayAge ? <Badge>{displayAge}</Badge> : null}
-            <Badge>@{currentPet.username || "user"}</Badge>
-          </View>
-        </InfoCard>
-      ) : (
-        <ScreenState
-          title={t.noUsersTitle}
-          message={t.noUsersMessage}
-        />
-      )}
-
-      <View style={styles.actionRow}>
-        <Pressable
-          style={[styles.circleButton, styles.passButton, actionLoading && styles.disabledButton]}
-          onPress={handleSkip}
-          disabled={actionLoading || !currentPet}
-          hitSlop={12}
-        >
-          <Text style={[styles.passText, actionLoading && styles.disabledText]}>X</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.circleButton, styles.likeButton, actionLoading && styles.disabledButton]}
-          onPress={handleLike}
-          disabled={actionLoading || !currentPet}
-          hitSlop={12}
-        >
-          <Text style={[styles.likeText, actionLoading && styles.disabledText]}>
-            {actionLoading ? "..." : t.like}
-          </Text>
-        </Pressable>
-      </View>
-
-      {users.length > currentIndex + 1 ? (
-        <InfoCard style={styles.queueCard}>
-          <Text style={styles.queueTitle}>{t.upNext}</Text>
-          {users.slice(currentIndex + 1, currentIndex + 4).map((user) => (
-            <View key={user.id} style={styles.queueItem}>
-              <Avatar uri={user.avatar_url} label={user.pet_name || user.username} size={38} />
-              <View style={styles.queueText}>
-                <Text style={styles.queueName}>{user.pet_name || user.username || "Unknown Pet"}</Text>
-                <Text style={styles.queueMeta}>{user.pet_type || "Unknown Type"}</Text>
+        {currentPet ? (
+          <InfoCard style={styles.matchCard}>
+            <View style={styles.photoArea}>
+              <Avatar uri={currentPet.avatar_url} label={displayName} size={112} />
+              <View style={styles.scorePill}>
+                <Text style={styles.scoreText}>{matchScore}% Match</Text>
               </View>
             </View>
-          ))}
-        </InfoCard>
-      ) : null}
 
-      <PrimaryButton disabled={!currentPet || actionLoading} loading={actionLoading} onPress={handleLike}>
-        {t.like}
-      </PrimaryButton>
-    </AppScaffold>
+            <View style={styles.profileBlock}>
+              <Text style={styles.name}>
+                {displayName}
+                {displayAge ? `, ${displayAge}` : ""}
+              </Text>
+              <Text style={styles.meta}>{displayType} - 1.2km</Text>
+            </View>
+
+            <InfoCard warm style={styles.analysisCard}>
+              <Text style={styles.analysisLabel}>{t.analysis}</Text>
+              <Text style={styles.desc}>{displayDescription}</Text>
+            </InfoCard>
+
+            <View style={styles.badgeRow}>
+              <Badge>{displayType}</Badge>
+              {displayAge ? <Badge>{displayAge}</Badge> : null}
+              <Badge>@{currentPet.username || "user"}</Badge>
+            </View>
+          </InfoCard>
+        ) : (
+          <ScreenState title={t.noUsersTitle} message={t.noUsersMessage} />
+        )}
+
+        <View style={styles.actionRow}>
+          <Pressable
+            style={[styles.circleButton, styles.passButton, actionLoading && styles.disabledButton]}
+            onPress={handleSkip}
+            disabled={actionLoading || !currentPet}
+            hitSlop={12}
+          >
+            <Text style={[styles.passText, actionLoading && styles.disabledText]}>X</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.circleButton, styles.likeButton, actionLoading && styles.disabledButton]}
+            onPress={handleLike}
+            disabled={actionLoading || !currentPet}
+            hitSlop={12}
+          >
+            <Text style={[styles.likeText, actionLoading && styles.disabledText]}>
+              {actionLoading ? "..." : t.like}
+            </Text>
+          </Pressable>
+        </View>
+
+        {users.length > currentIndex + 1 ? (
+          <InfoCard style={styles.queueCard}>
+            <Text style={styles.queueTitle}>{t.upNext}</Text>
+            {users.slice(currentIndex + 1, currentIndex + 4).map((user) => (
+              <View key={user.id} style={styles.queueItem}>
+                <Avatar uri={user.avatar_url} label={user.pet_name || user.username} size={38} />
+                <View style={styles.queueText}>
+                  <Text style={styles.queueName}>{user.pet_name || user.username || "Unknown Pet"}</Text>
+                  <Text style={styles.queueMeta}>{user.pet_type || "Unknown Type"}</Text>
+                </View>
+              </View>
+            ))}
+          </InfoCard>
+        ) : null}
+
+        <PrimaryButton disabled={!currentPet || actionLoading} loading={actionLoading} onPress={handleLike}>
+          {t.like}
+        </PrimaryButton>
+      </AppScaffold>
+
+      <Modal transparent visible={showMembershipModal} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <InfoCard style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{t.upgradeTitle}</Text>
+            <Text style={styles.modalDesc}>{t.upgradeDesc}</Text>
+
+            {membershipError ? (
+              <View style={styles.membershipError}>
+                <Text style={styles.errorText}>{membershipError}</Text>
+              </View>
+            ) : null}
+
+            <View style={styles.modalActions}>
+              <Pressable
+                style={styles.modalSecondaryButton}
+                onPress={() => {
+                  setShowMembershipModal(false)
+                  setMembershipError("")
+                }}
+                disabled={membershipLoading}
+              >
+                <Text style={styles.modalSecondaryText}>{t.later}</Text>
+              </Pressable>
+              <PrimaryButton onPress={handleUpgrade} disabled={membershipLoading} style={styles.modalPrimaryButton}>
+                {membershipLoading ? t.upgrading : t.upgrade}
+              </PrimaryButton>
+            </View>
+          </InfoCard>
+        </View>
+      </Modal>
+    </>
   )
 }
 
-function readRemainingLikes(data: {
-  remaining?: number | null
-  remainingLikes?: number | null
-  isMember?: boolean | null
-  unlocked?: boolean | null
-}) {
+function readRemainingLikes(data: LikeQuotaData) {
   const value =
     typeof data.remaining === "number"
       ? data.remaining
@@ -442,5 +519,55 @@ const styles = StyleSheet.create({
     color: colors.textSubtle,
     fontSize: 12,
     marginTop: 2,
+  },
+  modalOverlay: {
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.45)",
+    flex: 1,
+    justifyContent: "center",
+    padding: spacing.xl,
+  },
+  modalCard: {
+    gap: spacing.md,
+    width: "100%",
+  },
+  modalTitle: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: "900",
+  },
+  modalDesc: {
+    color: colors.textMuted,
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  membershipError: {
+    backgroundColor: colors.dangerSoft,
+    borderColor: "#fecaca",
+    borderRadius: radii.md,
+    borderWidth: 1,
+    padding: spacing.md,
+  },
+  modalActions: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  modalSecondaryButton: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    flex: 1,
+    justifyContent: "center",
+    minHeight: 46,
+  },
+  modalSecondaryText: {
+    color: colors.textMuted,
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  modalPrimaryButton: {
+    flex: 1,
   },
 })

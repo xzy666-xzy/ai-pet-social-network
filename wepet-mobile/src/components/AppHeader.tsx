@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import { Avatar } from "@/components/Avatar"
-import { useLanguage } from "@/lib/language-context"
+import { LanguageMenu } from "@/components/LanguageMenu"
 import { colors } from "@/theme/colors"
 import { layout, radii, spacing } from "@/theme/spacing"
 
@@ -11,8 +11,6 @@ type AppHeaderProps = {
 }
 
 export function AppHeader({ title, subtitle, showAvatar = true }: AppHeaderProps) {
-  const { languageLabel, cycleLanguage } = useLanguage()
-
   return (
     <View style={styles.header}>
       <View style={styles.brandMark}>
@@ -23,9 +21,7 @@ export function AppHeader({ title, subtitle, showAvatar = true }: AppHeaderProps
         <Text style={styles.title}>{title}</Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       </View>
-      <Pressable style={styles.languageButton} onPress={cycleLanguage}>
-        <Text style={styles.languageText}>{languageLabel}</Text>
-      </Pressable>
+      <LanguageMenu />
       {showAvatar ? <Avatar label="WePet" size={40} /> : null}
     </View>
   )
@@ -77,19 +73,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 3,
   },
-  languageButton: {
-    alignItems: "center",
-    backgroundColor: colors.primarySoft,
-    borderRadius: radii.full,
-    justifyContent: "center",
-    minWidth: 42,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 7,
-  },
-  languageText: {
-    color: colors.primaryDark,
-    fontSize: 12,
-    fontWeight: "900",
-  },
 })
-

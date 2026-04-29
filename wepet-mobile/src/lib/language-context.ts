@@ -5,7 +5,7 @@ export type Language = "en" | "zh" | "ko"
 type LanguageContextValue = {
   language: Language
   languageLabel: "EN" | "中" | "한"
-  cycleLanguage: () => void
+  setLanguage: (language: Language) => void
 }
 
 const LanguageContext = createContext<LanguageContextValue | null>(null)
@@ -16,12 +16,6 @@ const labels: Record<Language, LanguageContextValue["languageLabel"]> = {
   ko: "한",
 }
 
-const nextLanguage: Record<Language, Language> = {
-  en: "zh",
-  zh: "ko",
-  ko: "en",
-}
-
 export function LanguageProvider({ children }: PropsWithChildren) {
   const [language, setLanguage] = useState<Language>("en")
 
@@ -29,7 +23,7 @@ export function LanguageProvider({ children }: PropsWithChildren) {
     () => ({
       language,
       languageLabel: labels[language],
-      cycleLanguage: () => setLanguage((current) => nextLanguage[current]),
+      setLanguage,
     }),
     [language],
   )

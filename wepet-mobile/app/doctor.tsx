@@ -14,6 +14,7 @@ import { Badge } from "@/components/Badge"
 import { ChatComposer } from "@/components/chat/ChatComposer"
 import { MessageBubble } from "@/components/chat/MessageBubble"
 import { InfoCard } from "@/components/InfoCard"
+import { LanguageMenu } from "@/components/LanguageMenu"
 import { MobileTabs } from "@/components/MobileTabs"
 import { PrimaryButton } from "@/components/PrimaryButton"
 import { Screen } from "@/components/Screen"
@@ -135,6 +136,7 @@ export default function DoctorPage() {
               </Badge>
             </View>
           </View>
+          <LanguageMenu />
           <Avatar label="Doctor" size={44} />
         </View>
 
