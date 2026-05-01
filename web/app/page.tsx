@@ -39,7 +39,7 @@ export default function SplashPage() {
 
   return (
       <div
-          className={`min-h-screen bg-gradient-to-br from-orange-500 via-orange-400 to-amber-300 flex items-center justify-center transition-opacity duration-500 ${
+          className={`fixed inset-0 z-[9999] flex h-screen min-h-[100dvh] w-screen items-center justify-center overflow-hidden bg-[linear-gradient(135deg,#f97316_0%,#fb923c_52%,#fbbf24_100%)] transition-opacity duration-500 ${
               fadeOut ? "opacity-0" : "opacity-100"
           }`}
       >

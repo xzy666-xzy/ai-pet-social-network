@@ -123,9 +123,14 @@
   html,
   body {
     background-color: #ff6a00;
+    min-height: 100%;
   }
 
   body {
     @apply text-foreground;
+  }
+
+  body > div {
+    background-color: #ff6a00;
   }
 }

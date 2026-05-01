@@ -9,7 +9,6 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        getWindow().setBackgroundDrawableResource(com.wepet.app.R.color.splash_background);
         super.onCreate(savedInstanceState);
 
         WebView webView = getBridge().getWebView();

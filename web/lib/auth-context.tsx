@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     const token = getAccessToken()
-    const isPublicPath = pathname === "/login" || pathname === "/register"
+    const isPublicPath = pathname === "/" || pathname === "/login" || pathname === "/register"
 
     if (!token) {
       setUser(null)
