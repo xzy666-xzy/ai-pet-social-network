@@ -5,6 +5,7 @@
 node_modules/
 .next/
 out/
+dist/
 build/
 
 # logs
@@ -15,6 +16,8 @@ pnpm-debug.log*
 
 # env files
 .env
+.env.*
+!.env.example
 .env.local
 .env.development
 .env.production

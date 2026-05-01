@@ -1,3 +1,5 @@
+const fs = require("fs")
+const path = require("path")
 const express = require("express")
 const cors = require("cors")
 const jwt = require("jsonwebtoken")
@@ -5,6 +7,11 @@ const bcrypt = require("bcryptjs")
 const { createClient } = require("@supabase/supabase-js")
 const OpenAI = require("openai")
 const authMiddleware = require("./middleware/auth")
+
+const envPath = path.join(__dirname, ".env")
+if (fs.existsSync(envPath)) {
+  process.loadEnvFile(envPath)
+}
 
 const app = express()
 
