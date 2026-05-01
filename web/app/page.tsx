@@ -8,8 +8,13 @@ import { apiRequest, getAccessToken, type AuthSuccessResponse } from "@/lib/api-
 export default function SplashPage() {
   const router = useRouter()
   const [fadeOut, setFadeOut] = useState(false)
+  const [showContent, setShowContent] = useState(false)
 
   useEffect(() => {
+    const contentTimer = window.setTimeout(() => {
+      setShowContent(true)
+    }, 120)
+
     const start = async () => {
       try {
         await new Promise((resolve) => setTimeout(resolve, 1600))
@@ -35,15 +40,23 @@ export default function SplashPage() {
     }
 
     start()
+
+    return () => {
+      window.clearTimeout(contentTimer)
+    }
   }, [router])
 
   return (
       <div
-          className={`fixed inset-0 z-[9999] flex h-screen min-h-[100dvh] w-screen items-center justify-center overflow-hidden bg-[linear-gradient(135deg,#f97316_0%,#fb923c_52%,#fbbf24_100%)] transition-opacity duration-500 ${
+          className={`fixed inset-0 z-[9999] flex h-screen min-h-[100dvh] w-screen items-center justify-center overflow-hidden bg-[#FF6A00] transition-opacity duration-500 ${
               fadeOut ? "opacity-0" : "opacity-100"
           }`}
       >
-        <div className="flex flex-col items-center justify-center px-6 text-center">
+        <div
+            className={`flex flex-col items-center justify-center px-6 text-center transition-all duration-500 ${
+                showContent ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
+            }`}
+        >
           <div className="w-24 h-24 rounded-3xl bg-white/20 backdrop-blur-md border border-white/30 shadow-2xl flex items-center justify-center animate-pulse">
             <PawPrint className="w-12 h-12 text-white" />
           </div>
