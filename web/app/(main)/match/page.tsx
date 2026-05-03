@@ -99,6 +99,7 @@ export default function MatchPage() {
   const hasToken = Boolean(getAccessToken())
   const dragX = useMotionValue(0)
   const dragRotate = useTransform(dragX, [-200, 0, 200], [-10, 0, 10])
+  const swipeExitX = direction * (typeof window === "undefined" ? 300 : window.innerWidth)
 
   const loadLikeQuota = async () => {
     const data = await apiRequest<LikeQuotaResponse>("/match/likes/today", {
@@ -343,7 +344,7 @@ export default function MatchPage() {
                         key={`${currentPet.id}-${currentIndex}`}
                         initial={{ x: direction * 300, opacity: 0, rotate: direction * 10 }}
                         animate={{ x: 0, opacity: 1, rotate: 0 }}
-                        exit={{ x: direction * -300, opacity: 0, rotate: direction * -10 }}
+                        exit={{ x: swipeExitX, opacity: 0, rotate: direction * 10 }}
                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
                         className="absolute inset-0"
                     >
