@@ -1,12 +1,15 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { apiRequest, getAccessToken } from "@/lib/api-client"
 
 export default function ProfileEditPage() {
+  const router = useRouter()
   const [form, setForm] = useState({
     petName: "",
     petAge: "",
@@ -20,6 +23,35 @@ export default function ProfileEditPage() {
       ...current,
       [field]: value,
     }))
+  }
+
+  const handleSave = async () => {
+    const token = getAccessToken()
+
+    if (!token) {
+      alert("请先登录")
+      router.push("/login")
+      return
+    }
+
+    try {
+      await apiRequest("/profile", {
+        method: "PUT",
+        auth: true,
+        body: JSON.stringify({
+          pet_name: form.petName,
+          pet_age: form.petAge,
+          pet_type: form.petType,
+          description: form.about || form.tagline,
+        }),
+      })
+
+      alert("保存成功")
+      router.push("/profile")
+    } catch (error) {
+      console.error(error)
+      alert(error instanceof Error ? error.message : "保存失败")
+    }
   }
 
   return (
@@ -95,7 +127,7 @@ export default function ProfileEditPage() {
 
           <Button
             type="button"
-            onClick={() => console.log(form)}
+            onClick={handleSave}
             className="mt-6 w-full rounded-full bg-orange-500 text-white hover:bg-orange-600"
           >
             保存
