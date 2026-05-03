@@ -40,9 +40,8 @@ export default function ProfilePage() {
   })
   const [statsError, setStatsError] = useState("")
   const [coverLiked, setCoverLiked] = useState(false)
-  const [isCoverExpanded, setIsCoverExpanded] = useState(false)
+  const [isCoverExpanded, setIsCoverExpanded] = useState(true)
   const profileRootRef = useRef<HTMLDivElement>(null)
-  const hasScrolledCoverRef = useRef(false)
 
   useEffect(() => {
     setMounted(true)
@@ -62,14 +61,11 @@ export default function ProfilePage() {
     function handleScroll() {
       const scrollTop = scrollContainer.scrollTop
 
-      if (scrollTop > 24) {
-        hasScrolledCoverRef.current = true
-      }
-
-      setIsCoverExpanded(hasScrolledCoverRef.current && scrollTop <= 4)
+      setIsCoverExpanded(scrollTop <= 5)
     }
 
     scrollContainer.addEventListener("scroll", handleScroll, { passive: true })
+    handleScroll()
 
     return () => {
       scrollContainer.removeEventListener("scroll", handleScroll)
@@ -166,7 +162,7 @@ export default function ProfilePage() {
           ref={profileRootRef}
           className="min-h-screen overflow-x-hidden bg-gradient-to-b from-[#fff8ef] via-orange-50 to-white p-4"
       >
-        <div className="sticky top-0 z-0 -mx-4 -mt-4 h-[260px] bg-gradient-to-br from-orange-200 via-amber-100 to-rose-100">
+        <div className="sticky top-0 z-0 -mx-4 -mt-4 h-[320px] bg-gradient-to-br from-orange-200 via-amber-100 to-rose-100">
           <button
               type="button"
               onClick={() => (window.location.href = "/settings")}
@@ -177,7 +173,7 @@ export default function ProfilePage() {
           </button>
 
           <div className="absolute right-4 bottom-4 flex items-center gap-2">
-            {!isCoverExpanded ? (
+            {isCoverExpanded === false ? (
                 <button
                     type="button"
                     aria-pressed={coverLiked}
@@ -189,7 +185,7 @@ export default function ProfilePage() {
                   {coverLiked ? "❤️" : "♡"} {coverLiked ? 2 : 1}
                 </button>
             ) : null}
-            {isCoverExpanded ? (
+            {isCoverExpanded === true ? (
                 <button
                     type="button"
                     onClick={() => console.log("change cover")}
@@ -201,7 +197,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="relative z-10 -mt-4 mx-auto max-w-md space-y-5 pt-4">
+        <div className="relative z-10 mx-auto max-w-md space-y-5 pt-4">
           <Card className="rounded-3xl border-orange-100 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-4">
               <div className="w-24 shrink-0 text-center">
