@@ -85,7 +85,7 @@ export default function ProfilePage() {
 
   if (!mounted || loading) {
     return (
-        <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white p-4">
+        <div className="min-h-screen bg-gradient-to-b from-[#fff8ef] via-orange-50 to-white p-4">
           <div className="mx-auto max-w-md pt-10 text-center text-stone-500">
             Loading profile...
           </div>
@@ -95,7 +95,7 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-        <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white p-4">
+        <div className="min-h-screen bg-gradient-to-b from-[#fff8ef] via-orange-50 to-white p-4">
           <div className="mx-auto max-w-md pt-10 text-center">
             <p className="text-stone-600 mb-4">Please log in first.</p>
             <Button onClick={() => (window.location.href = "/login")}>
@@ -129,9 +129,9 @@ export default function ProfilePage() {
       user.description || "No description yet. Add your pet profile info."
 
   return (
-      <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white p-4">
-        <div className="mx-auto max-w-md space-y-4 pt-4">
-          <Card className="p-4 rounded-2xl border-orange-100 bg-gradient-to-r from-orange-50 to-amber-50">
+      <div className="min-h-screen bg-gradient-to-b from-[#fff8ef] via-orange-50 to-white p-4">
+        <div className="mx-auto max-w-md space-y-5 pt-4">
+          <Card className="rounded-3xl border-orange-100 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-4">
               {user.avatar_url ? (
                   <img
@@ -168,13 +168,13 @@ export default function ProfilePage() {
             </div>
           </Card>
 
-          <Card className="rounded-2xl border-orange-100 bg-white px-4 py-3">
+          <Card className="rounded-3xl border-orange-100 bg-white px-4 py-3 shadow-sm">
             <p className="text-sm font-medium leading-6 text-stone-800">
               ✨ {user.description || "非常活泼，喜欢和小伙伴玩"}
             </p>
           </Card>
 
-          <Card className="p-4 rounded-2xl">
+          <Card className="rounded-3xl border-orange-100 bg-white p-4 shadow-sm">
             <h2 className="mb-4 text-lg font-bold text-stone-900">🐾 我的宠物</h2>
 
             <div className="space-y-4 text-sm">
@@ -191,7 +191,7 @@ export default function ProfilePage() {
             </div>
           </Card>
 
-          <Card className="p-4 rounded-2xl">
+          <Card className="rounded-3xl border-orange-100 bg-white p-4 shadow-sm">
             <h2 className="text-lg font-bold text-stone-900 mb-3">Account Info</h2>
 
             <div className="space-y-3 text-sm">
@@ -213,7 +213,7 @@ export default function ProfilePage() {
             </div>
           </Card>
 
-          <Card className="p-4 rounded-2xl">
+          <Card className="rounded-3xl border-orange-100 bg-white p-4 shadow-sm">
             <h2 className="text-lg font-bold text-stone-900 mb-3">Activity Stats</h2>
 
             {statsError ? (
@@ -238,7 +238,7 @@ export default function ProfilePage() {
             )}
           </Card>
 
-          <Card className="p-4 rounded-2xl">
+          <Card className="rounded-3xl border-orange-100 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <h2 className="text-lg font-bold text-stone-900">🌟 月度会员</h2>
