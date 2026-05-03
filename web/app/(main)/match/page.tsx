@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, animate, useMotionValue, useTransform } from "framer-motion"
 import { X, Heart, Sparkles, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -97,6 +97,8 @@ export default function MatchPage() {
   const [checkingOut, setCheckingOut] = useState(false)
   const [membershipError, setMembershipError] = useState("")
   const hasToken = Boolean(getAccessToken())
+  const dragX = useMotionValue(0)
+  const dragRotate = useTransform(dragX, [-200, 0, 200], [-10, 0, 10])
 
   const loadLikeQuota = async () => {
     const data = await apiRequest<LikeQuotaResponse>("/match/likes/today", {
@@ -335,7 +337,7 @@ export default function MatchPage() {
               </div>
           ) : (
               <>
-                <div className="relative flex-1 min-h-0">
+                <div className="relative flex-1 min-h-0 overflow-hidden">
                   <AnimatePresence mode="wait">
                     <motion.div
                         key={`${currentPet.id}-${currentIndex}`}
@@ -345,6 +347,28 @@ export default function MatchPage() {
                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
                         className="absolute inset-0"
                     >
+                      <motion.div
+                          className="h-full cursor-grab active:cursor-grabbing"
+                          drag="x"
+                          dragConstraints={{ left: 0, right: 0 }}
+                          dragMomentum={false}
+                          style={{ x: dragX, rotate: dragRotate, touchAction: "pan-y" }}
+                          onDragEnd={(_, info) => {
+                            if (info.offset.x > 100) {
+                              dragX.set(0)
+                              handleLike()
+                              return
+                            }
+
+                            if (info.offset.x < -100) {
+                              dragX.set(0)
+                              handleDislike()
+                              return
+                            }
+
+                            animate(dragX, 0, { type: "spring", stiffness: 300, damping: 30 })
+                          }}
+                      >
                       <Card className="h-full overflow-hidden border-0 shadow-xl bg-white">
                         <div className="relative h-[55%]">
                           <img
@@ -417,6 +441,7 @@ export default function MatchPage() {
                           </div>
                         </div>
                       </Card>
+                      </motion.div>
                     </motion.div>
                   </AnimatePresence>
                 </div>
