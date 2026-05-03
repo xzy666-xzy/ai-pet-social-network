@@ -16,14 +16,14 @@ export function LanguageSwitcher() {
           <span className="sr-only">Switch language</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setLocale("ko")} className={locale === "ko" ? "bg-orange-50" : ""}>
+      <DropdownMenuContent align="end" className="z-[9999] w-[120px] min-w-[120px] max-w-[140px] overflow-hidden rounded-xl bg-white">
+        <DropdownMenuItem onClick={() => setLocale("ko")} className={locale === "ko" ? "w-full bg-orange-50" : "w-full"}>
           한국어
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setLocale("en")} className={locale === "en" ? "bg-orange-50" : ""}>
+        <DropdownMenuItem onClick={() => setLocale("en")} className={locale === "en" ? "w-full bg-orange-50" : "w-full"}>
           English
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setLocale("zh")} className={locale === "zh" ? "bg-orange-50" : ""}>
+        <DropdownMenuItem onClick={() => setLocale("zh")} className={locale === "zh" ? "w-full bg-orange-50" : "w-full"}>
           中文
         </DropdownMenuItem>
       </DropdownMenuContent>
