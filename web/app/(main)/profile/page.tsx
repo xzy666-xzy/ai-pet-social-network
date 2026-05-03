@@ -24,6 +24,9 @@ type ProfileStatsResponse = {
   }
 }
 
+const DEFAULT_COVER_HEIGHT = 220
+const EXPANDED_COVER_HEIGHT = 320
+
 export default function ProfilePage() {
   const { user, loading } = useAuth()
   const [mounted, setMounted] = useState(false)
@@ -40,8 +43,10 @@ export default function ProfilePage() {
   })
   const [statsError, setStatsError] = useState("")
   const [coverLiked, setCoverLiked] = useState(false)
-  const [isCoverExpanded, setIsCoverExpanded] = useState(true)
+  const [coverHeight, setCoverHeight] = useState(DEFAULT_COVER_HEIGHT)
+  const [isCoverExpanded, setIsCoverExpanded] = useState(false)
   const profileRootRef = useRef<HTMLDivElement>(null)
+  const touchStartYRef = useRef(0)
 
   useEffect(() => {
     setMounted(true)
@@ -61,7 +66,10 @@ export default function ProfilePage() {
     function handleScroll() {
       const scrollTop = scrollContainer.scrollTop
 
-      setIsCoverExpanded(scrollTop <= 5)
+      if (scrollTop > 5) {
+        setCoverHeight(DEFAULT_COVER_HEIGHT)
+        setIsCoverExpanded(false)
+      }
     }
 
     scrollContainer.addEventListener("scroll", handleScroll, { passive: true })
@@ -71,6 +79,35 @@ export default function ProfilePage() {
       scrollContainer.removeEventListener("scroll", handleScroll)
     }
   }, [mounted, loading, user])
+
+  function handleCoverTouchStart(event: React.TouchEvent<HTMLDivElement>) {
+    touchStartYRef.current = event.touches[0]?.clientY ?? 0
+  }
+
+  function handleCoverTouchMove(event: React.TouchEvent<HTMLDivElement>) {
+    const scrollContainer = profileRootRef.current?.parentElement
+
+    if (!scrollContainer || scrollContainer.scrollTop > 0) {
+      return
+    }
+
+    const currentY = event.touches[0]?.clientY ?? 0
+    const pullDistance = Math.max(0, currentY - touchStartYRef.current)
+
+    if (pullDistance <= 0) {
+      return
+    }
+
+    setCoverHeight(
+        Math.min(DEFAULT_COVER_HEIGHT + pullDistance, EXPANDED_COVER_HEIGHT)
+    )
+    setIsCoverExpanded(pullDistance > 40)
+  }
+
+  function handleCoverTouchEnd() {
+    setCoverHeight(DEFAULT_COVER_HEIGHT)
+    setIsCoverExpanded(false)
+  }
 
   useEffect(() => {
     if (!mounted || loading || !user) {
@@ -160,9 +197,15 @@ export default function ProfilePage() {
   return (
       <div
           ref={profileRootRef}
+          onTouchStart={handleCoverTouchStart}
+          onTouchMove={handleCoverTouchMove}
+          onTouchEnd={handleCoverTouchEnd}
           className="min-h-screen overflow-x-hidden bg-gradient-to-b from-[#fff8ef] via-orange-50 to-white p-4"
       >
-        <div className="sticky top-0 z-0 -mx-4 -mt-4 h-[320px] bg-gradient-to-br from-orange-200 via-amber-100 to-rose-100">
+        <div
+            className="sticky top-0 z-0 -mx-4 -mt-4 bg-gradient-to-br from-orange-200 via-amber-100 to-rose-100 transition-[height] duration-200 ease-out"
+            style={{ height: coverHeight }}
+        >
           <button
               type="button"
               onClick={() => (window.location.href = "/settings")}
