@@ -38,6 +38,7 @@ export default function ProfilePage() {
     startedAt: null as string | null,
   })
   const [statsError, setStatsError] = useState("")
+  const [coverLiked, setCoverLiked] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -129,26 +130,50 @@ export default function ProfilePage() {
       user.description || "No description yet. Add your pet profile info."
 
   return (
-      <div className="min-h-screen bg-gradient-to-b from-[#fff8ef] via-orange-50 to-white p-4">
-        <div className="mx-auto max-w-md space-y-5 pt-4">
+      <div className="min-h-screen overflow-x-hidden bg-gradient-to-b from-[#fff8ef] via-orange-50 to-white p-4">
+        <div className="sticky top-0 z-0 -mx-4 -mt-4 h-[260px] bg-gradient-to-br from-orange-200 via-amber-100 to-rose-100">
+          <div className="absolute right-4 bottom-4 flex items-center gap-2">
+            <button
+                type="button"
+                aria-pressed={coverLiked}
+                onClick={() => setCoverLiked((liked) => !liked)}
+                className={`rounded-full bg-white/80 px-3 py-2 text-sm font-semibold shadow-sm backdrop-blur ${
+                    coverLiked ? "text-rose-500" : "text-stone-700"
+                }`}
+            >
+              {coverLiked ? "❤️" : "♡"} {coverLiked ? 2 : 1}
+            </button>
+            <button
+                type="button"
+                onClick={() => console.log("change cover")}
+                className="rounded-full bg-white/80 px-4 py-2 text-sm font-semibold text-stone-700 shadow-sm backdrop-blur"
+            >
+              换封面
+            </button>
+          </div>
+        </div>
+
+        <div className="relative z-10 mx-auto max-w-md space-y-5 pt-4">
           <Card className="rounded-3xl border-orange-100 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-4">
-              {user.avatar_url ? (
-                  <img
-                      src={user.avatar_url}
-                      alt={displayName}
-                      className="h-20 w-20 shrink-0 rounded-full border-4 border-white object-cover shadow-md"
-                  />
-              ) : (
-                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-white bg-orange-500 text-2xl font-bold text-white shadow-md">
-                    {displayInitial}
-                  </div>
-              )}
+              <div className="w-24 shrink-0 text-center">
+                {user.avatar_url ? (
+                    <img
+                        src={user.avatar_url}
+                        alt={displayName}
+                        className="mx-auto h-20 w-20 rounded-full border-4 border-white object-cover shadow-md"
+                    />
+                ) : (
+                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-orange-500 text-2xl font-bold text-white shadow-md">
+                      {displayInitial}
+                    </div>
+                )}
+                <p className="mt-2 truncate text-sm font-bold text-stone-900">{petName}</p>
+              </div>
 
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xl font-bold text-stone-900">
-                  {petName}
-                  {petAge !== "Age not set" ? ` · ${petAge}` : ""}
+                  {petAge !== "Age not set" ? petAge : "Age not set"}
                 </p>
                 <p className="mt-1 truncate text-xs text-stone-500">{user.email}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -164,6 +189,13 @@ export default function ProfilePage() {
                       </span>
                   ) : null}
                 </div>
+                <Button
+                    type="button"
+                    onClick={() => (window.location.href = "/profile/edit")}
+                    className="mt-4 rounded-full bg-orange-500 px-4 text-sm font-semibold text-white hover:bg-orange-600"
+                >
+                  编辑个人主页
+                </Button>
               </div>
             </div>
           </Card>

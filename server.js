@@ -37,6 +37,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     persistSession: false,
   },
 })
+const supabaseAdmin = supabase
 
 app.use(
     cors({
@@ -845,6 +846,79 @@ app.get("/profile/stats", authMiddleware, async (req, res) => {
     return res.status(500).json({
       success: false,
       error: "Failed to load profile stats",
+    })
+  }
+})
+
+app.put("/profile", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = req.user?.userId
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    const updates = {
+      updated_at: new Date().toISOString(),
+    }
+
+    if (req.body?.username !== undefined) {
+      updates.username = String(req.body.username).trim() || null
+    }
+
+    if (req.body?.pet_name !== undefined) {
+      updates.pet_name = String(req.body.pet_name).trim() || null
+    }
+
+    if (req.body?.pet_type !== undefined) {
+      updates.pet_type = String(req.body.pet_type).trim() || null
+    }
+
+    if (req.body?.pet_age !== undefined) {
+      updates.pet_age =
+        req.body.pet_age !== null && String(req.body.pet_age).trim() !== ""
+          ? Number(req.body.pet_age)
+          : null
+
+      if (updates.pet_age !== null && Number.isNaN(updates.pet_age)) {
+        return res.status(400).json({
+          success: false,
+          error: "pet_age must be a number",
+        })
+      }
+    }
+
+    if (req.body?.description !== undefined) {
+      updates.description = String(req.body.description).trim() || null
+    }
+
+    if (req.body?.avatar_url !== undefined) {
+      updates.avatar_url = String(req.body.avatar_url).trim() || null
+    }
+
+    const { data: updatedUser, error } = await supabaseAdmin
+      .from("users")
+      .update(updates)
+      .eq("id", currentUserId)
+      .select("*")
+      .maybeSingle()
+
+    if (error) throw error
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        error: "User not found",
+      })
+    }
+
+    return toDataResponse(res, toSafeUser(updatedUser))
+  } catch (error) {
+    console.error("Profile update error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update profile",
     })
   }
 })

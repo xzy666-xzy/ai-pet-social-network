@@ -23,11 +23,12 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     autoRefreshToken: false,
   },
 })
+const supabaseAdmin = supabase
 
 function setCorsHeaders(res) {
   res.setHeader("Access-Control-Allow-Origin", CORS_ORIGIN)
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization")
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
 }
 
 function sendJson(res, statusCode, body) {
@@ -351,6 +352,93 @@ async function handleMe(req, res) {
   }
 }
 
+async function handleUpdateProfile(req, res) {
+  try {
+    const accessToken = getBearerToken(req)
+
+    if (!accessToken) {
+      return sendJson(res, 401, {
+        success: false,
+        error: "Missing access token",
+      })
+    }
+
+    const payload = verifyToken(accessToken)
+    const userId = String(payload.sub || "").trim()
+
+    if (!userId) {
+      return sendJson(res, 401, {
+        success: false,
+        error: "Invalid access token",
+      })
+    }
+
+    const body = await parseJsonBody(req)
+    const updates = {
+      updated_at: new Date().toISOString(),
+    }
+
+    if (body.username !== undefined) {
+      updates.username = String(body.username).trim() || null
+    }
+
+    if (body.pet_name !== undefined) {
+      updates.pet_name = String(body.pet_name).trim() || null
+    }
+
+    if (body.pet_type !== undefined) {
+      updates.pet_type = String(body.pet_type).trim() || null
+    }
+
+    if (body.pet_age !== undefined) {
+      updates.pet_age =
+        body.pet_age !== null && String(body.pet_age).trim() !== ""
+          ? Number(body.pet_age)
+          : null
+
+      if (updates.pet_age !== null && Number.isNaN(updates.pet_age)) {
+        return sendJson(res, 400, {
+          success: false,
+          error: "pet_age must be a number",
+        })
+      }
+    }
+
+    if (body.description !== undefined) {
+      updates.description = String(body.description).trim() || null
+    }
+
+    const { data: updatedUser, error } = await supabaseAdmin
+      .from("users")
+      .update(updates)
+      .eq("id", userId)
+      .select("*")
+      .maybeSingle()
+
+    if (error) {
+      throw error
+    }
+
+    if (!updatedUser) {
+      return sendJson(res, 404, {
+        success: false,
+        error: "User not found",
+      })
+    }
+
+    return sendJson(res, 200, {
+      success: true,
+      data: toSafeUser(updatedUser),
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to update profile"
+    return sendJson(res, 500, {
+      success: false,
+      error: message,
+    })
+  }
+}
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`)
 
@@ -373,6 +461,11 @@ const server = createServer(async (req, res) => {
 
   if (req.method === "GET" && url.pathname === "/auth/me") {
     await handleMe(req, res)
+    return
+  }
+
+  if (req.method === "PUT" && url.pathname === "/profile") {
+    await handleUpdateProfile(req, res)
     return
   }
 
