@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Settings } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -40,10 +40,41 @@ export default function ProfilePage() {
   })
   const [statsError, setStatsError] = useState("")
   const [coverLiked, setCoverLiked] = useState(false)
+  const [isCoverExpanded, setIsCoverExpanded] = useState(false)
+  const profileRootRef = useRef<HTMLDivElement>(null)
+  const hasScrolledCoverRef = useRef(false)
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (!mounted || loading || !user) {
+      return
+    }
+
+    const scrollContainer = profileRootRef.current?.parentElement
+
+    if (!scrollContainer) {
+      return
+    }
+
+    function handleScroll() {
+      const scrollTop = scrollContainer.scrollTop
+
+      if (scrollTop > 24) {
+        hasScrolledCoverRef.current = true
+      }
+
+      setIsCoverExpanded(hasScrolledCoverRef.current && scrollTop <= 4)
+    }
+
+    scrollContainer.addEventListener("scroll", handleScroll, { passive: true })
+
+    return () => {
+      scrollContainer.removeEventListener("scroll", handleScroll)
+    }
+  }, [mounted, loading, user])
 
   useEffect(() => {
     if (!mounted || loading || !user) {
@@ -131,7 +162,10 @@ export default function ProfilePage() {
       user.description || "No description yet. Add your pet profile info."
 
   return (
-      <div className="min-h-screen overflow-x-hidden bg-gradient-to-b from-[#fff8ef] via-orange-50 to-white p-4">
+      <div
+          ref={profileRootRef}
+          className="min-h-screen overflow-x-hidden bg-gradient-to-b from-[#fff8ef] via-orange-50 to-white p-4"
+      >
         <div className="sticky top-0 z-0 -mx-4 -mt-4 h-[260px] bg-gradient-to-br from-orange-200 via-amber-100 to-rose-100">
           <button
               type="button"
@@ -143,27 +177,31 @@ export default function ProfilePage() {
           </button>
 
           <div className="absolute right-4 bottom-4 flex items-center gap-2">
-            <button
-                type="button"
-                aria-pressed={coverLiked}
-                onClick={() => setCoverLiked((liked) => !liked)}
-                className={`rounded-full bg-white/80 px-3 py-2 text-sm font-semibold shadow-sm backdrop-blur ${
-                    coverLiked ? "text-rose-500" : "text-stone-700"
-                }`}
-            >
-              {coverLiked ? "❤️" : "♡"} {coverLiked ? 2 : 1}
-            </button>
-            <button
-                type="button"
-                onClick={() => console.log("change cover")}
-                className="rounded-full bg-white/80 px-4 py-2 text-sm font-semibold text-stone-700 shadow-sm backdrop-blur"
-            >
-              换封面
-            </button>
+            {!isCoverExpanded ? (
+                <button
+                    type="button"
+                    aria-pressed={coverLiked}
+                    onClick={() => setCoverLiked((liked) => !liked)}
+                    className={`rounded-full bg-white/80 px-3 py-2 text-sm font-semibold shadow-sm backdrop-blur ${
+                        coverLiked ? "text-rose-500" : "text-stone-700"
+                    }`}
+                >
+                  {coverLiked ? "❤️" : "♡"} {coverLiked ? 2 : 1}
+                </button>
+            ) : null}
+            {isCoverExpanded ? (
+                <button
+                    type="button"
+                    onClick={() => console.log("change cover")}
+                    className="rounded-full bg-white/80 px-4 py-2 text-sm font-semibold text-stone-700 shadow-sm backdrop-blur"
+                >
+                  换封面
+                </button>
+            ) : null}
           </div>
         </div>
 
-        <div className="relative z-10 mx-auto max-w-md space-y-5 pt-4">
+        <div className="relative z-10 -mt-4 mx-auto max-w-md space-y-5 pt-4">
           <Card className="rounded-3xl border-orange-100 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-4">
               <div className="w-24 shrink-0 text-center">
@@ -199,21 +237,8 @@ export default function ProfilePage() {
                       </span>
                   ) : null}
                 </div>
-                <Button
-                    type="button"
-                    onClick={() => (window.location.href = "/profile/edit")}
-                    className="mt-4 rounded-full bg-orange-500 px-4 text-sm font-semibold text-white hover:bg-orange-600"
-                >
-                  编辑个人主页
-                </Button>
               </div>
             </div>
-          </Card>
-
-          <Card className="rounded-3xl border-orange-100 bg-white px-4 py-3 shadow-sm">
-            <p className="text-sm font-medium leading-6 text-stone-800">
-              ✨ {user.description || "非常活泼，喜欢和小伙伴玩"}
-            </p>
           </Card>
 
           <Card className="rounded-3xl border-orange-100 bg-white p-4 shadow-sm">
