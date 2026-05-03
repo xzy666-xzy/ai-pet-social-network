@@ -132,48 +132,61 @@ export default function ProfilePage() {
       <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white p-4">
         <div className="mx-auto max-w-md space-y-4 pt-4">
           <Card className="p-4 rounded-2xl border-orange-100 bg-gradient-to-r from-orange-50 to-amber-50">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               {user.avatar_url ? (
                   <img
                       src={user.avatar_url}
                       alt={displayName}
-                      className="h-12 w-12 rounded-full object-cover border"
+                      className="h-20 w-20 shrink-0 rounded-full border-4 border-white object-cover shadow-md"
                   />
               ) : (
-                  <div className="h-12 w-12 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-white bg-orange-500 text-2xl font-bold text-white shadow-md">
                     {displayInitial}
                   </div>
               )}
 
-              <div className="min-w-0">
-                <p className="font-bold text-stone-900 truncate">{displayName}</p>
-                <p className="text-xs text-stone-500 truncate">{user.email}</p>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xl font-bold text-stone-900">
+                  {petName}
+                  {petAge !== "Age not set" ? ` · ${petAge}` : ""}
+                </p>
+                <p className="mt-1 truncate text-xs text-stone-500">{user.email}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700 shadow-sm">
+                    {petType}
+                  </span>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700 shadow-sm">
+                    {displayName}
+                  </span>
+                  {user.description ? (
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700 shadow-sm">
+                        Profile ready
+                      </span>
+                  ) : null}
+                </div>
               </div>
             </div>
           </Card>
 
+          <Card className="rounded-2xl border-orange-100 bg-white px-4 py-3">
+            <p className="text-sm font-medium leading-6 text-stone-800">
+              ✨ {user.description || "非常活泼，喜欢和小伙伴玩"}
+            </p>
+          </Card>
+
           <Card className="p-4 rounded-2xl">
-            <h2 className="text-lg font-bold text-stone-900 mb-3">Pet Profile</h2>
+            <h2 className="mb-4 text-lg font-bold text-stone-900">🐾 我的宠物</h2>
 
-            <div className="space-y-3 text-sm">
-              <div>
-                <p className="text-stone-500">Pet Name</p>
-                <p className="font-medium text-stone-900">{petName}</p>
+            <div className="space-y-4 text-sm">
+              <div className="space-y-2 rounded-2xl bg-stone-50 p-4">
+                <p className="font-medium text-stone-900">名字：{petName}</p>
+                <p className="font-medium text-stone-900">类型：{petType}</p>
+                <p className="font-medium text-stone-900">年龄：{petAge}</p>
               </div>
 
               <div>
-                <p className="text-stone-500">Pet Type</p>
-                <p className="font-medium text-stone-900">{petType}</p>
-              </div>
-
-              <div>
-                <p className="text-stone-500">Pet Age</p>
-                <p className="font-medium text-stone-900">{petAge}</p>
-              </div>
-
-              <div>
-                <p className="text-stone-500">Description</p>
-                <p className="font-medium text-stone-900">{bio}</p>
+                <p className="mb-2 font-bold text-stone-900">✨ 关于它：</p>
+                <p className="leading-6 text-stone-700">{bio}</p>
               </div>
             </div>
           </Card>
@@ -226,40 +239,20 @@ export default function ProfilePage() {
           </Card>
 
           <Card className="p-4 rounded-2xl">
-            <h2 className="text-lg font-bold text-stone-900 mb-3">Membership</h2>
-
-            <div className="space-y-3 text-sm">
-              <div>
-                <p className="text-stone-500">Status</p>
-                <p className="font-medium text-stone-900">
-                  {membership.isActive ? "Active" : "Inactive"}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-stone-500">Plan</p>
-                <p className="font-medium text-stone-900">
-                  {membership.planName || "No active plan"}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-stone-500">Started At</p>
-                <p className="font-medium text-stone-900">
-                  {membership.startedAt
-                    ? new Date(membership.startedAt).toLocaleString()
-                    : "Not started"}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-stone-500">Expires At</p>
-                <p className="font-medium text-stone-900">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <h2 className="text-lg font-bold text-stone-900">🌟 月度会员</h2>
+                <p className="mt-2 text-sm text-stone-500">
+                  到期：
                   {membership.expiresAt
-                    ? new Date(membership.expiresAt).toLocaleString()
-                    : "No expiry"}
+                    ? new Date(membership.expiresAt).toLocaleDateString()
+                    : "暂无"}
                 </p>
               </div>
+
+              <Button className="shrink-0 rounded-full bg-orange-500 px-4 text-white hover:bg-orange-600">
+                升级会员
+              </Button>
             </div>
           </Card>
         </div>
