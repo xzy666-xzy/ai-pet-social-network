@@ -24,8 +24,8 @@ type ProfileStatsResponse = {
   }
 }
 
-const DEFAULT_COVER_HEIGHT = 220
-const EXPANDED_COVER_HEIGHT = 320
+const COLLAPSED_COVER_HEIGHT = 220
+const EXPANDED_COVER_HEIGHT = 420
 
 export default function ProfilePage() {
   const { user, loading } = useAuth()
@@ -43,7 +43,6 @@ export default function ProfilePage() {
   })
   const [statsError, setStatsError] = useState("")
   const [coverLiked, setCoverLiked] = useState(false)
-  const [coverHeight, setCoverHeight] = useState(DEFAULT_COVER_HEIGHT)
   const [isCoverExpanded, setIsCoverExpanded] = useState(false)
   const profileRootRef = useRef<HTMLDivElement>(null)
   const touchStartYRef = useRef(0)
@@ -67,7 +66,6 @@ export default function ProfilePage() {
       const scrollTop = scrollContainer.scrollTop
 
       if (scrollTop > 5) {
-        setCoverHeight(DEFAULT_COVER_HEIGHT)
         setIsCoverExpanded(false)
       }
     }
@@ -84,29 +82,31 @@ export default function ProfilePage() {
     touchStartYRef.current = event.touches[0]?.clientY ?? 0
   }
 
-  function handleCoverTouchMove(event: React.TouchEvent<HTMLDivElement>) {
+  function updateCoverExpandedState(currentY: number) {
     const scrollContainer = profileRootRef.current?.parentElement
 
-    if (!scrollContainer || scrollContainer.scrollTop > 0) {
+    if (!scrollContainer) {
       return
     }
 
-    const currentY = event.touches[0]?.clientY ?? 0
-    const pullDistance = Math.max(0, currentY - touchStartYRef.current)
+    const deltaY = currentY - touchStartYRef.current
 
-    if (pullDistance <= 0) {
+    if (deltaY < -10) {
+      setIsCoverExpanded(false)
       return
     }
 
-    setCoverHeight(
-        Math.min(DEFAULT_COVER_HEIGHT + pullDistance, EXPANDED_COVER_HEIGHT)
-    )
-    setIsCoverExpanded(pullDistance > 40)
+    if (scrollContainer.scrollTop <= 0 && deltaY > 40) {
+      setIsCoverExpanded(true)
+    }
   }
 
-  function handleCoverTouchEnd() {
-    setCoverHeight(DEFAULT_COVER_HEIGHT)
-    setIsCoverExpanded(false)
+  function handleCoverTouchMove(event: React.TouchEvent<HTMLDivElement>) {
+    updateCoverExpandedState(event.touches[0]?.clientY ?? 0)
+  }
+
+  function handleCoverTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
+    updateCoverExpandedState(event.changedTouches[0]?.clientY ?? 0)
   }
 
   useEffect(() => {
@@ -203,8 +203,12 @@ export default function ProfilePage() {
           className="min-h-screen overflow-x-hidden bg-gradient-to-b from-[#fff8ef] via-orange-50 to-white p-4"
       >
         <div
-            className="sticky top-0 z-0 -mx-4 -mt-4 bg-gradient-to-br from-orange-200 via-amber-100 to-rose-100 transition-[height] duration-200 ease-out"
-            style={{ height: coverHeight }}
+            className="sticky top-0 z-0 -mx-4 -mt-4 bg-gradient-to-br from-orange-200 via-amber-100 to-rose-100 transition-all duration-300 ease-out"
+            style={{
+              height: isCoverExpanded
+                  ? EXPANDED_COVER_HEIGHT
+                  : COLLAPSED_COVER_HEIGHT,
+            }}
         >
           <button
               type="button"
