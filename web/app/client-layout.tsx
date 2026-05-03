@@ -66,6 +66,7 @@ export default function ClientLayout({
   const avatarLetter = useMemo(() => {
     return displayName.charAt(0).toUpperCase()
   }, [displayName])
+  const showLanguageSwitcher = !pathname.startsWith("/profile")
 
   if (loading) {
     return (
@@ -95,7 +96,7 @@ export default function ClientLayout({
           </Link>
 
           <div className="flex items-center gap-3">
-            <LanguageSwitcher />
+            {showLanguageSwitcher ? <LanguageSwitcher /> : null}
 
             <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-white shadow-md">
               <span className="text-lg font-bold text-orange-500">

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { Settings } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
@@ -132,6 +133,15 @@ export default function ProfilePage() {
   return (
       <div className="min-h-screen overflow-x-hidden bg-gradient-to-b from-[#fff8ef] via-orange-50 to-white p-4">
         <div className="sticky top-0 z-0 -mx-4 -mt-4 h-[260px] bg-gradient-to-br from-orange-200 via-amber-100 to-rose-100">
+          <button
+              type="button"
+              onClick={() => (window.location.href = "/settings")}
+              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-stone-700 shadow-sm backdrop-blur"
+              aria-label="Settings"
+          >
+            <Settings className="h-5 w-5" />
+          </button>
+
           <div className="absolute right-4 bottom-4 flex items-center gap-2">
             <button
                 type="button"
@@ -219,28 +229,6 @@ export default function ProfilePage() {
               <div>
                 <p className="mb-2 font-bold text-stone-900">✨ 关于它：</p>
                 <p className="leading-6 text-stone-700">{bio}</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="rounded-3xl border-orange-100 bg-white p-4 shadow-sm">
-            <h2 className="text-lg font-bold text-stone-900 mb-3">Account Info</h2>
-
-            <div className="space-y-3 text-sm">
-              <div>
-                <p className="text-stone-500">Username</p>
-                <p className="font-medium text-stone-900">
-                  {user.username || "Not set"}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-stone-500">Created At</p>
-                <p className="font-medium text-stone-900">
-                  {user.created_at
-                      ? new Date(user.created_at).toLocaleString()
-                      : "Unknown"}
-                </p>
               </div>
             </div>
           </Card>
