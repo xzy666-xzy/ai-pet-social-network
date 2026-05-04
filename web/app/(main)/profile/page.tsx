@@ -44,7 +44,9 @@ export default function ProfilePage() {
   const [statsError, setStatsError] = useState("")
   const [coverLiked, setCoverLiked] = useState(false)
   const [isCoverExpanded, setIsCoverExpanded] = useState(false)
+  const [coverImageUrl, setCoverImageUrl] = useState("")
   const profileRootRef = useRef<HTMLDivElement>(null)
+  const coverInputRef = useRef<HTMLInputElement>(null)
   const touchStartYRef = useRef(0)
 
   useEffect(() => {
@@ -108,6 +110,33 @@ export default function ProfilePage() {
   function handleCoverTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
     updateCoverExpandedState(event.changedTouches[0]?.clientY ?? 0)
   }
+
+  function handleCoverFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+
+    if (!file) {
+      return
+    }
+
+    const imageUrl = URL.createObjectURL(file)
+
+    setCoverImageUrl((currentUrl) => {
+      if (currentUrl) {
+        URL.revokeObjectURL(currentUrl)
+      }
+
+      return imageUrl
+    })
+    event.target.value = ""
+  }
+
+  useEffect(() => {
+    return () => {
+      if (coverImageUrl) {
+        URL.revokeObjectURL(coverImageUrl)
+      }
+    }
+  }, [coverImageUrl])
 
   useEffect(() => {
     if (!mounted || loading || !user) {
@@ -203,13 +232,20 @@ export default function ProfilePage() {
           className="min-h-screen overflow-x-hidden bg-gradient-to-b from-[#fff8ef] via-orange-50 to-white p-4"
       >
         <div
-            className="sticky top-0 z-0 -mx-4 -mt-4 bg-gradient-to-br from-orange-200 via-amber-100 to-rose-100 transition-all duration-300 ease-out"
+            className="sticky top-0 z-0 -mx-4 -mt-4 overflow-hidden bg-gradient-to-br from-orange-200 via-amber-100 to-rose-100 transition-all duration-300 ease-out"
             style={{
               height: isCoverExpanded
                   ? EXPANDED_COVER_HEIGHT
                   : COLLAPSED_COVER_HEIGHT,
             }}
         >
+          {coverImageUrl ? (
+              <img
+                  src={coverImageUrl}
+                  alt=""
+                  className="absolute inset-0 h-full w-full object-cover"
+              />
+          ) : null}
           <button
               type="button"
               onClick={() => (window.location.href = "/settings")}
@@ -218,6 +254,13 @@ export default function ProfilePage() {
           >
             <Settings className="h-5 w-5" />
           </button>
+          <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleCoverFileChange}
+          />
 
           <div className="absolute right-4 bottom-4 flex items-center gap-2">
             {isCoverExpanded === false ? (
@@ -235,7 +278,7 @@ export default function ProfilePage() {
             {isCoverExpanded === true ? (
                 <button
                     type="button"
-                    onClick={() => console.log("change cover")}
+                    onClick={() => coverInputRef.current?.click()}
                     className="rounded-full bg-white/80 px-4 py-2 text-sm font-semibold text-stone-700 shadow-sm backdrop-blur"
                 >
                   换封面

@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation"
 import {
   ChevronLeft,
   ChevronRight,
-  Languages,
   LogOut,
   PencilLine,
   Repeat,
@@ -16,7 +15,6 @@ import { useAuth } from "@/lib/auth-context"
 const settingsItems = [
   { label: "账号", icon: Shield, href: "/settings/account" },
   { label: "编辑个人主页", icon: PencilLine, href: "/profile/edit" },
-  { label: "界面语言", icon: Languages, href: "/settings/language" },
   { label: "切换账号", icon: Repeat, href: "/login" },
   { label: "退出登录", icon: LogOut, action: "logout" },
 ]
