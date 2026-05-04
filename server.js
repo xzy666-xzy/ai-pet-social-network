@@ -71,6 +71,7 @@ function toSafeUser(user) {
     pet_age: user.pet_age ?? null,
     description: user.description ?? null,
     avatar_url: user.avatar_url ?? null,
+    cover_url: user.cover_url ?? null,
     created_at: user.created_at ?? null,
     updated_at: user.updated_at ?? null,
     is_ai: user.is_ai ?? false,
@@ -894,6 +895,10 @@ app.put("/profile", authMiddleware, async (req, res) => {
 
     if (req.body?.avatar_url !== undefined) {
       updates.avatar_url = String(req.body.avatar_url).trim() || null
+    }
+
+    if (req.body?.cover_url !== undefined) {
+      updates.cover_url = String(req.body.cover_url).trim() || null
     }
 
     const { data: updatedUser, error } = await supabaseAdmin

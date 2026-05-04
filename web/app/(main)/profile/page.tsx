@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Settings } from "lucide-react"
+import { ChevronLeft, MoreHorizontal, Settings } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
@@ -45,8 +45,12 @@ export default function ProfilePage() {
   const [coverLiked, setCoverLiked] = useState(false)
   const [isCoverExpanded, setIsCoverExpanded] = useState(false)
   const [coverImageUrl, setCoverImageUrl] = useState("")
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState("")
+  const [isAvatarPreviewOpen, setIsAvatarPreviewOpen] = useState(false)
+  const [isAvatarActionsOpen, setIsAvatarActionsOpen] = useState(false)
   const profileRootRef = useRef<HTMLDivElement>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
   const touchStartYRef = useRef(0)
 
   useEffect(() => {
@@ -130,6 +134,26 @@ export default function ProfilePage() {
     event.target.value = ""
   }
 
+  function handleAvatarFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+
+    if (!file) {
+      return
+    }
+
+    const imageUrl = URL.createObjectURL(file)
+
+    setAvatarPreviewUrl((currentUrl) => {
+      if (currentUrl) {
+        URL.revokeObjectURL(currentUrl)
+      }
+
+      return imageUrl
+    })
+    setIsAvatarActionsOpen(false)
+    event.target.value = ""
+  }
+
   useEffect(() => {
     return () => {
       if (coverImageUrl) {
@@ -137,6 +161,14 @@ export default function ProfilePage() {
       }
     }
   }, [coverImageUrl])
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreviewUrl) {
+        URL.revokeObjectURL(avatarPreviewUrl)
+      }
+    }
+  }, [avatarPreviewUrl])
 
   useEffect(() => {
     if (!mounted || loading || !user) {
@@ -222,6 +254,9 @@ export default function ProfilePage() {
 
   const bio =
       user.description || "No description yet. Add your pet profile info."
+  const savedCoverUrl = (user as { cover_url?: string | null }).cover_url || ""
+  const displayCoverImageUrl = coverImageUrl || savedCoverUrl
+  const displayAvatarUrl = avatarPreviewUrl || user.avatar_url
 
   return (
       <div
@@ -239,9 +274,9 @@ export default function ProfilePage() {
                   : COLLAPSED_COVER_HEIGHT,
             }}
         >
-          {coverImageUrl ? (
+          {displayCoverImageUrl ? (
               <img
-                  src={coverImageUrl}
+                  src={displayCoverImageUrl}
                   alt=""
                   className="absolute inset-0 h-full w-full object-cover"
               />
@@ -291,18 +326,31 @@ export default function ProfilePage() {
           <Card className="rounded-3xl border-orange-100 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-4">
               <div className="w-24 shrink-0 text-center">
-                {user.avatar_url ? (
-                    <img
-                        src={user.avatar_url}
-                        alt={displayName}
-                        className="mx-auto h-20 w-20 rounded-full border-4 border-white object-cover shadow-md"
-                    />
-                ) : (
-                    <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-orange-500 text-2xl font-bold text-white shadow-md">
-                      {displayInitial}
-                    </div>
-                )}
-                <p className="mt-2 truncate text-sm font-bold text-stone-900">{petName}</p>
+                <button
+                    type="button"
+                    onClick={() => setIsAvatarPreviewOpen(true)}
+                    className="mx-auto block rounded-full"
+                    aria-label="Preview avatar"
+                >
+                  {displayAvatarUrl ? (
+                      <img
+                          src={displayAvatarUrl}
+                          alt={displayName}
+                          className="h-20 w-20 rounded-full border-4 border-white object-cover shadow-md"
+                      />
+                  ) : (
+                      <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-orange-500 text-2xl font-bold text-white shadow-md">
+                        {displayInitial}
+                      </div>
+                  )}
+                </button>
+                <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarFileChange}
+                />
               </div>
 
               <div className="min-w-0 flex-1">
@@ -387,6 +435,83 @@ export default function ProfilePage() {
             </div>
           </Card>
         </div>
+
+        {isAvatarPreviewOpen ? (
+            <div className="fixed inset-0 z-50 bg-black text-white">
+              <div className="absolute left-0 right-0 top-0 z-10 flex h-14 items-center justify-between px-4">
+                <button
+                    type="button"
+                    onClick={() => {
+                      setIsAvatarActionsOpen(false)
+                      setIsAvatarPreviewOpen(false)
+                    }}
+                    className="flex h-10 w-10 items-center justify-center rounded-full text-white"
+                    aria-label="Close avatar preview"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
+                <h2 className="text-base font-semibold">个人头像</h2>
+                <button
+                    type="button"
+                    onClick={() => setIsAvatarActionsOpen(true)}
+                    className="flex h-10 w-10 items-center justify-center rounded-full text-white"
+                    aria-label="More avatar options"
+                >
+                  <MoreHorizontal className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="flex min-h-screen items-center justify-center px-4">
+                {displayAvatarUrl ? (
+                    <img
+                        src={displayAvatarUrl}
+                        alt={displayName}
+                        className="max-h-[75vh] max-w-full object-contain"
+                    />
+                ) : (
+                    <div className="flex h-48 w-48 items-center justify-center rounded-full bg-orange-500 text-6xl font-bold text-white">
+                      {displayInitial}
+                    </div>
+                )}
+              </div>
+
+              {isAvatarActionsOpen ? (
+                  <div className="absolute inset-x-0 bottom-0 z-20 px-3 pb-3">
+                    <div className="overflow-hidden rounded-2xl bg-white text-center text-base text-stone-900">
+                      <button
+                          type="button"
+                          onClick={() => alert("暂未支持拍照")}
+                          className="block w-full border-b border-stone-100 px-4 py-4"
+                      >
+                        拍照
+                      </button>
+                      <button
+                          type="button"
+                          onClick={() => avatarInputRef.current?.click()}
+                          className="block w-full border-b border-stone-100 px-4 py-4"
+                      >
+                        从手机相册选择
+                      </button>
+                      <button
+                          type="button"
+                          onClick={() => alert("暂未支持保存图片")}
+                          className="block w-full px-4 py-4"
+                      >
+                        保存图片
+                      </button>
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={() => setIsAvatarActionsOpen(false)}
+                        className="mt-2 block w-full rounded-2xl bg-white px-4 py-4 text-center text-base font-semibold text-stone-900"
+                    >
+                      取消
+                    </button>
+                  </div>
+              ) : null}
+            </div>
+        ) : null}
       </div>
   )
 }
