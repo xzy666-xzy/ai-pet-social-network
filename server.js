@@ -558,6 +558,7 @@ app.post("/auth/register", async (req, res) => {
     const petName = String(req.body?.pet_name || "").trim()
     const petType = String(req.body?.pet_type || "").trim()
     const description = String(req.body?.description || "").trim()
+    const avatar_url = String(req.body?.avatar_url || "").trim()
 
     const petAge =
         req.body?.pet_age !== undefined &&
@@ -614,6 +615,7 @@ app.post("/auth/register", async (req, res) => {
           pet_type: petType,
           pet_age: petAge,
           description,
+          avatar_url: avatar_url || null,
         })
         .select("*")
         .single()

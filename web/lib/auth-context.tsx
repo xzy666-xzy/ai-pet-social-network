@@ -43,6 +43,7 @@ interface RegisterData {
   petBreed?: string
   petAge?: string
   petBio?: string
+  avatar_url?: string | null
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -130,6 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           pet_type: registerData.petBreed || "",
           pet_age: registerData.petAge || "",
           description: registerData.petBio || "",
+          avatar_url: registerData.avatar_url || null,
         }),
       })
 

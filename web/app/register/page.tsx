@@ -19,6 +19,7 @@ import {
 import { useAuth } from "@/lib/auth-context"
 import { useLanguage } from "@/lib/i18n/language-context"
 import { LanguageSwitcher } from "@/components/language-switcher"
+import { supabase } from "@/lib/supabase"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -33,6 +34,9 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
 
   const [petName, setPetName] = useState("")
+  const [petAvatarFile, setPetAvatarFile] = useState<File | null>(null)
+  const [petAvatarPreview, setPetAvatarPreview] = useState("")
+  const [avatarUrl, setAvatarUrl] = useState("")
   const [petType, setPetType] = useState("")
   const [petAge, setPetAge] = useState("")
   const [description, setDescription] = useState("")
@@ -65,6 +69,37 @@ export default function RegisterPage() {
     setStep(2)
   }
 
+  const handlePetAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+
+    if (!file) {
+      return
+    }
+
+    setPetAvatarFile(file)
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setPetAvatarPreview(reader.result)
+      }
+    }
+    reader.readAsDataURL(file)
+
+    const filePath = `register-${Date.now()}-${file.name}`
+    const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file)
+
+    if (uploadError) {
+      setError(uploadError.message)
+      return
+    }
+
+    const { data } = supabase.storage.from("avatars").getPublicUrl(filePath)
+    setAvatarUrl(data.publicUrl)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
@@ -79,6 +114,7 @@ export default function RegisterPage() {
         petBreed: petType,
         petAge,
         petBio: description,
+        avatar_url: avatarUrl || null,
       })
 
       if (!result.success) {
@@ -317,6 +353,26 @@ export default function RegisterPage() {
                     </form>
                 ) : (
                     <form onSubmit={handleSubmit} className="space-y-4">
+                      <div className="flex justify-center">
+                        <label className="group relative flex h-24 w-24 cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-orange-200 bg-orange-50 transition hover:border-orange-300 hover:bg-orange-100">
+                          {petAvatarPreview ? (
+                              <img
+                                  src={petAvatarPreview}
+                                  alt={petAvatarFile?.name || "Pet avatar preview"}
+                                  className="h-full w-full object-cover"
+                              />
+                          ) : (
+                              <PawPrint className="h-10 w-10 text-orange-400" />
+                          )}
+                          <input
+                              type="file"
+                              accept="image/*"
+                              className="sr-only"
+                              onChange={handlePetAvatarChange}
+                          />
+                        </label>
+                      </div>
+
                       <div>
                         <label className="mb-2 block text-sm font-semibold text-stone-700">
                           {t.auth?.petName || "Pet name"}
