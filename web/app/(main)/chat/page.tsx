@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Send, ChevronLeft } from "lucide-react"
+import { Send, ChevronLeft, Heart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -80,6 +80,15 @@ type SendMessageResponse = {
   }
 }
 
+type MatchLikeResponse = {
+  success: true
+  data: {
+    isMutualMatch?: boolean
+    isMatch?: boolean
+    matched?: boolean
+  }
+}
+
 export default function ChatPage() {
   const { t } = useLanguage()
   const { user, loading } = useAuth()
@@ -98,6 +107,9 @@ export default function ChatPage() {
   const [loadingConversations, setLoadingConversations] = useState(false)
   const [inlineNotice, setInlineNotice] = useState("")
   const [introLocked, setIntroLocked] = useState(false)
+  const [chatLikeLoading, setChatLikeLoading] = useState(false)
+  const [chatLiked, setChatLiked] = useState(false)
+  const [chatMatched, setChatMatched] = useState(false)
   const hasToken = Boolean(getAccessToken())
 
   const headerName = useMemo(() => {
@@ -152,6 +164,8 @@ export default function ChatPage() {
         setTargetUser(null)
         setMessages([])
         setIntroLocked(false)
+        setChatLiked(false)
+        setChatMatched(false)
 
         if (!targetUserId) {
           setLoadingConversations(true)
@@ -229,7 +243,7 @@ export default function ChatPage() {
             (msg) => msg.sender_id === user?.id
         )
 
-        if (hasMyMessage && !introLocked) {
+        if (hasMyMessage && !introLocked && !chatMatched) {
           setIntroLocked(true)
         }
       } catch {
@@ -238,7 +252,7 @@ export default function ChatPage() {
     }, 2000)
 
     return () => clearInterval(timer)
-  }, [conversationId, user?.id, introLocked])
+  }, [conversationId, user?.id, introLocked, chatMatched])
 
   useEffect(() => {
     if (targetUserId) return
@@ -250,6 +264,42 @@ export default function ChatPage() {
 
     return () => clearInterval(timer)
   }, [targetUserId, loading, hasToken])
+
+  const handleMessageLike = async () => {
+    if (!targetUserId || chatLikeLoading || chatLiked) return
+
+    try {
+      setChatLikeLoading(true)
+
+      const data = await apiRequest<MatchLikeResponse>("/match/like", {
+        method: "POST",
+        auth: true,
+        body: JSON.stringify({ targetUserId }),
+      })
+
+      setChatLiked(true)
+
+      const isMatched =
+          Boolean(data.data.isMutualMatch) ||
+          Boolean(data.data.isMatch) ||
+          Boolean(data.data.matched)
+
+      if (isMatched) {
+        setChatMatched(true)
+        setIntroLocked(false)
+        setInlineNotice("")
+
+        if (conversationId) {
+          await loadMessages(conversationId)
+        }
+      }
+    } catch (error) {
+      console.error("Failed to like from chat:", error)
+      alert("Failed to like this pet. Please try again.")
+    } finally {
+      setChatLikeLoading(false)
+    }
+  }
 
   const handleSend = async () => {
     if (!conversationId || !inputText.trim() || sending || introLocked) return
@@ -315,9 +365,11 @@ export default function ChatPage() {
   const formatTime = (time: string) => {
     const date = new Date(time)
     if (Number.isNaN(date.getTime())) return ""
-    return date.toLocaleTimeString([], {
+    return date.toLocaleTimeString("ko-KR", {
       hour: "2-digit",
       minute: "2-digit",
+      hour12: false,
+      timeZone: "Asia/Seoul",
     })
   }
 
@@ -447,11 +499,15 @@ export default function ChatPage() {
               ) : (
                   messages.map((msg) => {
                     const isMe = msg.sender_id === user?.id
+                    const showLikeButton =
+                        !isMe &&
+                        !chatMatched &&
+                        (introLocked || inlineNotice === "LIKE_REQUIRED")
 
                     return (
                         <div
                             key={msg.id}
-                            className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+                            className={`flex items-end gap-2 ${isMe ? "justify-end" : "justify-start"}`}
                         >
                           <div
                               className={`max-w-[75%] rounded-2xl px-4 py-2.5 shadow-sm ${
@@ -471,6 +527,21 @@ export default function ChatPage() {
                               {formatTime(msg.created_at)}
                             </div>
                           </div>
+                          {showLikeButton ? (
+                              <button
+                                  type="button"
+                                  aria-label={chatLiked ? "Liked this pet" : "Like this pet"}
+                                  disabled={chatLikeLoading || chatLiked}
+                                  onClick={handleMessageLike}
+                                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-70"
+                              >
+                                {chatLikeLoading ? (
+                                    <span className="text-xs font-bold">...</span>
+                                ) : (
+                                    <Heart className={`h-4 w-4 ${chatLiked ? "fill-white" : ""}`} />
+                                )}
+                              </button>
+                          ) : null}
                         </div>
                     )
                   })
