@@ -23,6 +23,7 @@ type MatchUser = {
   created_at?: string | null
   matchScore?: number
   matchReasons?: string[]
+  liked?: boolean
 }
 
 type MatchRecommendResponse = {
@@ -96,6 +97,7 @@ export default function MatchPage() {
   const [showMembershipModal, setShowMembershipModal] = useState(false)
   const [checkingOut, setCheckingOut] = useState(false)
   const [membershipError, setMembershipError] = useState("")
+  const [likedUserIds, setLikedUserIds] = useState<Set<string>>(new Set())
   const hasToken = Boolean(getAccessToken())
   const dragX = useMotionValue(0)
   const dragRotate = useTransform(dragX, [-200, 0, 200], [-10, 0, 10])
@@ -135,7 +137,11 @@ export default function MatchPage() {
 
         if (cancelled) return
 
-        const loadedUsers: MatchUser[] = Array.isArray(data.data.users) ? data.data.users : []
+        const loadedUsers: MatchUser[] = Array.isArray(data.data.users)
+          ? data.data.users.filter(
+              (item) => !item.liked && !likedUserIds.has(item.id)
+            )
+          : []
         setUsers(loadedUsers)
         setCurrentIndex(0)
 
@@ -256,6 +262,11 @@ export default function MatchPage() {
         setInlineNotice(t.match.notices.introOnly)
       }
 
+      setLikedUserIds((prev) => {
+        const next = new Set(prev)
+        next.add(currentPet.id)
+        return next
+      })
       await loadLikeQuota()
       handleSwipe(1)
     } catch (error: unknown) {

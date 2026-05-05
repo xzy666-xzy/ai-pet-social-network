@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { Fragment, useEffect, useRef, useState } from "react"
 import {
   ArrowLeft,
   Camera,
@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { useLanguage } from "@/lib/i18n/language-context"
 import { apiRequest } from "@/lib/api-client"
+import { useAuth } from "@/lib/auth-context"
 
 type ChatMessage = {
   role: "user" | "assistant"
@@ -214,6 +215,43 @@ function getCurrentTime() {
   return `${hh}:${mm}`
 }
 
+function getChatTimeMinutes(time: string) {
+  const [hour = "0", minute = "0"] = time.split(":")
+  return Number(hour) * 60 + Number(minute)
+}
+
+function shouldShowTimeDivider(prev: ChatMessage | undefined, current: ChatMessage) {
+  if (!prev) return true
+
+  const prevMinutes = getChatTimeMinutes(prev.time)
+  let currentMinutes = getChatTimeMinutes(current.time)
+
+  if (currentMinutes < prevMinutes) {
+    currentMinutes += 24 * 60
+  }
+
+  return currentMinutes - prevMinutes > 5
+}
+
+function formatChatDividerTime(time: string) {
+  const [hour = "0", minute = "0"] = time.split(":")
+  const kstDateParts = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "Asia/Seoul",
+  }).formatToParts(new Date())
+  const getPart = (type: string) => kstDateParts.find((part) => part.type === type)?.value || "01"
+  const date = new Date(`${getPart("year")}-${getPart("month")}-${getPart("day")}T${hour}:${minute}:00+09:00`)
+
+  return date.toLocaleTimeString("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Seoul",
+  })
+}
+
 function fileToBase64(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
@@ -237,6 +275,7 @@ function fileToBase64(file: File) {
 
 export default function DoctorPage() {
   const { locale } = useLanguage()
+  const { user } = useAuth()
   const c = copy[locale]
 
   const [mounted, setMounted] = useState(false)
@@ -305,8 +344,6 @@ export default function DoctorPage() {
       }
     }
   }, [imagePreview])
-
-  const todayLabel = useMemo(() => c.today, [c.today])
 
   const stopCamera = () => {
     if (streamRef.current) {
@@ -635,17 +672,28 @@ export default function DoctorPage() {
                 {activeTab === "chat" ? (
                     <>
                       <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4">
-                        <div className="mb-4 text-center text-sm text-stone-400">{todayLabel}</div>
-
                         <div className="space-y-4">
                           {messages.map((msg, index) => {
                             const isUser = msg.role === "user"
+                            const showTimeDivider = shouldShowTimeDivider(messages[index - 1], msg)
 
                             return (
+                              <Fragment key={index}>
+                                {showTimeDivider && (
+                                  <div className="text-center text-sm text-stone-400">
+                                    {formatChatDividerTime(msg.time)}
+                                  </div>
+                                )}
+
                                 <div
-                                    key={index}
-                                    className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+                                    className={`flex items-end gap-2 ${isUser ? "justify-end" : "justify-start"}`}
                                 >
+                                  {!isUser && (
+                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-500">
+                                      <Stethoscope className="h-4 w-4" />
+                                    </div>
+                                  )}
+
                                   <div
                                       className={`max-w-[72%] rounded-3xl px-4 py-3 shadow-sm ${
                                           isUser
@@ -656,20 +704,29 @@ export default function DoctorPage() {
                                     <p className="whitespace-pre-wrap break-words text-base leading-7">
                                       {msg.content}
                                     </p>
-                                    <p
-                                        className={`mt-2 text-xs ${
-                                            isUser ? "text-orange-100" : "text-stone-400"
-                                        }`}
-                                    >
-                                      {msg.time}
-                                    </p>
                                   </div>
+
+                                  {isUser && (
+                                    <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-stone-200">
+                                      {user?.avatar_url ? (
+                                        <img
+                                            src={user.avatar_url || "/placeholder.svg"}
+                                            alt={user.pet_name || user.username || "Me"}
+                                            className="h-full w-full object-cover"
+                                        />
+                                      ) : null}
+                                    </div>
+                                  )}
                                 </div>
+                              </Fragment>
                             )
                           })}
 
                           {loading && (
-                              <div className="flex justify-start">
+                              <div className="flex items-end gap-2 justify-start">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-500">
+                                  <Stethoscope className="h-4 w-4" />
+                                </div>
                                 <div className="max-w-[72%] rounded-3xl rounded-bl-xl border border-stone-100 bg-white px-4 py-3 text-stone-500 shadow-sm">
                                   <p className="text-sm">...</p>
                                 </div>

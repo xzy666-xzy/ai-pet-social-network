@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import {
   CalendarDays,
   ChevronRight,
@@ -15,6 +16,8 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useLanguage } from "@/lib/i18n/language-context"
 import NaverMap, { type MapPlace } from "@/components/naver-map"
+import { apiRequest } from "@/lib/api-client"
+import { useAuth } from "@/lib/auth-context"
 
 type EventItem = MapPlace & {
   image: string
@@ -30,6 +33,7 @@ type EventItem = MapPlace & {
   }
   time: string
   joined: number
+  organizer_id?: string | null
 }
 
 const eventData: EventItem[] = [
@@ -113,6 +117,7 @@ const copy = {
     mapLocate: "地图定位",
     join: "参加",
     joined: "已参加",
+    cancel: "取消",
     detail: "活动详情",
     joinedText: (n: number) => `已有 ${n} 人参加`,
     countSuffix: (n: number) => `${n} 个附近活动`,
@@ -133,6 +138,7 @@ const copy = {
     mapLocate: "지도 위치",
     join: "참가",
     joined: "참가 완료",
+    cancel: "취소",
     detail: "상세 정보",
     joinedText: (n: number) => `${n}명 참가 중`,
     countSuffix: (n: number) => `주변 활동 ${n}개`,
@@ -153,6 +159,7 @@ const copy = {
     mapLocate: "Map Locate",
     join: "Join",
     joined: "Joined",
+    cancel: "Cancel",
     detail: "Details",
     joinedText: (n: number) => `${n} joined`,
     countSuffix: (n: number) => `${n} nearby events`,
@@ -163,11 +170,14 @@ const copy = {
 
 export default function ExplorePage() {
   const { locale } = useLanguage()
+  const router = useRouter()
+  const { user } = useAuth()
   const c = copy[locale]
 
   const [query, setQuery] = useState("")
   const [selectedId, setSelectedId] = useState<number | null>(eventData[0].id)
   const [joinedMap, setJoinedMap] = useState<Record<number, boolean>>({})
+  const [joiningMap, setJoiningMap] = useState<Record<number, boolean>>({})
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [detailEventId, setDetailEventId] = useState<number | null>(null)
 
@@ -201,6 +211,27 @@ export default function ExplorePage() {
 
   const handleJoin = (id: number) => {
     setJoinedMap((prev) => ({ ...prev, [id]: true }))
+  }
+
+  const handleDetailJoinToggle = async (id: number) => {
+    if (joiningMap[id]) return
+
+    const joined = joinedMap[id]
+    setJoiningMap((prev) => ({ ...prev, [id]: true }))
+
+    try {
+      await apiRequest(`/events/${id}/join`, {
+        method: joined ? "DELETE" : "POST",
+        auth: true,
+      })
+
+      setJoinedMap((prev) => ({ ...prev, [id]: !joined }))
+    } catch (error) {
+      console.error(error)
+      alert(joined ? "取消失败" : "参加失败")
+    } finally {
+      setJoiningMap((prev) => ({ ...prev, [id]: false }))
+    }
   }
 
   const handleLocate = (id: number) => {
@@ -252,6 +283,7 @@ export default function ExplorePage() {
 
   if (detailEvent) {
     const joined = joinedMap[detailEvent.id]
+    const canEdit = user?.id && detailEvent.organizer_id === user.id
 
     return (
         <div className="p-4 max-w-md mx-auto space-y-4 pb-24">
@@ -291,10 +323,15 @@ export default function ExplorePage() {
 
               <div className="mt-5 flex gap-2">
                 <Button
-                    onClick={() => handleJoin(detailEvent.id)}
-                    className="rounded-xl bg-orange-500 hover:bg-orange-600"
+                    onClick={() => handleDetailJoinToggle(detailEvent.id)}
+                    disabled={joiningMap[detailEvent.id]}
+                    className={`rounded-xl ${
+                        joined
+                            ? "bg-stone-500 hover:bg-stone-600"
+                            : "bg-orange-500 hover:bg-orange-600"
+                    }`}
                 >
-                  {joined ? c.joined : c.join}
+                  {joined ? c.cancel : c.join}
                 </Button>
 
                 <Button
@@ -308,6 +345,16 @@ export default function ExplorePage() {
                   <MapPin className="h-4 w-4 mr-1" />
                   {c.mapLocate}
                 </Button>
+
+                {canEdit && (
+                  <Button
+                      variant="outline"
+                      className="rounded-xl"
+                      onClick={() => router.push(`/explore/${detailEvent.id}/edit`)}
+                  >
+                    编辑
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -318,9 +365,17 @@ export default function ExplorePage() {
   return (
       <div className="p-4 max-w-md mx-auto space-y-6 pb-28">
         <header className="space-y-4">
-          <div>
-            <h1 className="text-2xl font-bold text-stone-900">{c.title}</h1>
-            <p className="text-sm text-stone-500 mt-1">{c.subtitle}</p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-bold text-stone-900">{c.title}</h1>
+              <p className="text-sm text-stone-500 mt-1">{c.subtitle}</p>
+            </div>
+            <Button
+                onClick={() => router.push("/explore/create")}
+                className="shrink-0 bg-orange-500 text-white hover:bg-orange-600"
+            >
+              创建活动
+            </Button>
           </div>
 
           <div className="flex gap-2">

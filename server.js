@@ -1,5 +1,6 @@
 const fs = require("fs")
 const path = require("path")
+const { randomUUID } = require("crypto")
 const express = require("express")
 const cors = require("cors")
 const jwt = require("jsonwebtoken")
@@ -926,6 +927,199 @@ app.put("/profile", authMiddleware, async (req, res) => {
     return res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Failed to update profile",
+    })
+  }
+})
+
+app.post("/events", authMiddleware, async (req, res) => {
+  try {
+    const currentUser = await getCurrentUserById(req.user?.userId)
+
+    if (!currentUser) {
+      return sendUnauthorized(res)
+    }
+
+    const title = String(req.body?.title || "").trim()
+    const imageUrl = String(req.body?.image_url || "").trim()
+    const time = String(req.body?.time || "").trim()
+    const maxPeople = Number(req.body?.max_people)
+    const description = String(req.body?.description || "").trim()
+    const organizerId = String(req.body?.organizer_id || "").trim()
+    const lat = Number(req.body?.lat)
+    const lng = Number(req.body?.lng)
+
+    if (!title || !time || !organizerId || organizerId !== String(currentUser.id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid event data",
+      })
+    }
+
+    const { data: event, error } = await supabase
+      .from("events")
+      .insert({
+        id: randomUUID(),
+        title,
+        image_url: imageUrl || null,
+        time,
+        max_people: Number.isFinite(maxPeople) ? maxPeople : null,
+        current_people: 0,
+        description: description || null,
+        organizer_id: organizerId,
+        lat: Number.isFinite(lat) ? lat : null,
+        lng: Number.isFinite(lng) ? lng : null,
+      })
+      .select("*")
+      .single()
+
+    if (error) {
+      throw error
+    }
+
+    return res.json({
+      success: true,
+      event,
+    })
+  } catch (error) {
+    console.error("Create event error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to create event",
+    })
+  }
+})
+
+app.post("/events/join", authMiddleware, async (req, res) => {
+  try {
+    const currentUser = await getCurrentUserById(req.user?.userId)
+
+    if (!currentUser) {
+      return sendUnauthorized(res)
+    }
+
+    const eventId = String(req.body?.event_id || req.body?.eventId || "").trim()
+
+    if (!eventId) {
+      return res.status(400).json({
+        success: false,
+        error: "event_id is required",
+      })
+    }
+
+    const { data: event, error: eventError } = await supabase
+      .from("events")
+      .select("*")
+      .eq("id", eventId)
+      .maybeSingle()
+
+    if (eventError) {
+      throw eventError
+    }
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        error: "Event not found",
+      })
+    }
+
+    const currentPeople = Number(event.current_people || 0)
+    const maxPeople = Number(event.max_people)
+
+    if (Number.isFinite(maxPeople) && currentPeople >= maxPeople) {
+      return res.status(400).json({
+        success: false,
+        error: "Event is full",
+      })
+    }
+
+    const { data: updatedEvent, error: updateError } = await supabase
+      .from("events")
+      .update({
+        current_people: currentPeople + 1,
+      })
+      .eq("id", eventId)
+      .select("*")
+      .single()
+
+    if (updateError) {
+      throw updateError
+    }
+
+    return res.json({
+      success: true,
+      event: updatedEvent,
+    })
+  } catch (error) {
+    console.error("Join event error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to join event",
+    })
+  }
+})
+
+app.post("/events/leave", authMiddleware, async (req, res) => {
+  try {
+    const currentUser = await getCurrentUserById(req.user?.userId)
+
+    if (!currentUser) {
+      return sendUnauthorized(res)
+    }
+
+    const eventId = String(req.body?.event_id || req.body?.eventId || "").trim()
+
+    if (!eventId) {
+      return res.status(400).json({
+        success: false,
+        error: "event_id is required",
+      })
+    }
+
+    const { data: event, error: eventError } = await supabase
+      .from("events")
+      .select("*")
+      .eq("id", eventId)
+      .maybeSingle()
+
+    if (eventError) {
+      throw eventError
+    }
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        error: "Event not found",
+      })
+    }
+
+    const currentPeople = Number(event.current_people || 0)
+
+    const { data: updatedEvent, error: updateError } = await supabase
+      .from("events")
+      .update({
+        current_people: Math.max(0, currentPeople - 1),
+      })
+      .eq("id", eventId)
+      .select("*")
+      .single()
+
+    if (updateError) {
+      throw updateError
+    }
+
+    return res.json({
+      success: true,
+      event: updatedEvent,
+    })
+  } catch (error) {
+    console.error("Leave event error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to leave event",
     })
   }
 })
