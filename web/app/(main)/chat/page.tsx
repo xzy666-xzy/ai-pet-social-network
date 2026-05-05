@@ -148,6 +148,7 @@ export default function ChatPage() {
         : []
 
     setConversations(safeConversations)
+    return safeConversations
   }
 
   useEffect(() => {
@@ -203,13 +204,23 @@ export default function ChatPage() {
         setTargetUser(data.data.targetUser)
 
         const loadedMessages = await loadMessages(data.data.conversationId)
+        const latestConversations = await loadConversations()
+
+        if (cancelled) return
+
+        const currentConversation = latestConversations.find(
+            (item) => item.other_user_id === safeTargetUserId
+        )
+        const isMatched = Boolean(currentConversation?.is_match)
+
+        setChatMatched(isMatched)
 
         // 如果当前会话里已经有我发出的消息，并且还没 match，就锁住输入框
         const hasMyMessage = loadedMessages.some(
             (msg) => msg.sender_id === user?.id
         )
 
-        if (hasMyMessage) {
+        if (hasMyMessage && !isMatched) {
           setIntroLocked(true)
           setInlineNotice("当前还未双向匹配，你只能先发送 1 条消息。请等待对方也给你点红心后继续聊天。")
         }
@@ -292,6 +303,29 @@ export default function ChatPage() {
         if (conversationId) {
           await loadMessages(conversationId)
         }
+
+        return
+      }
+
+      const latestConversations = await apiRequest<ConversationsResponse>(
+          "/chat/conversations",
+          {
+            cache: "no-store",
+            auth: true,
+          }
+      )
+      const currentConversation = latestConversations.data.conversations.find(
+          (item) => item.other_user_id === targetUserId
+      )
+
+      if (currentConversation?.is_match) {
+        setChatMatched(true)
+        setIntroLocked(false)
+        setInlineNotice("")
+      }
+
+      if (conversationId) {
+        await loadMessages(conversationId)
       }
     } catch (error) {
       console.error("Failed to like from chat:", error)
@@ -371,6 +405,65 @@ export default function ChatPage() {
       hour12: false,
       timeZone: "Asia/Seoul",
     })
+  }
+
+  const shouldShowTimeDivider = (
+      prev: ChatMessage | undefined,
+      current: ChatMessage
+  ) => {
+    if (!prev) return true
+
+    const prevTime = new Date(prev.created_at).getTime()
+    const currentTime = new Date(current.created_at).getTime()
+
+    if (Number.isNaN(prevTime) || Number.isNaN(currentTime)) return false
+
+    return currentTime - prevTime > 5 * 60 * 1000
+  }
+
+  const getKstDateParts = (date: Date) => {
+    const parts = new Intl.DateTimeFormat("ko-KR", {
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(date)
+
+    return {
+      year: parts.find((part) => part.type === "year")?.value || "",
+      month: parts.find((part) => part.type === "month")?.value || "",
+      day: parts.find((part) => part.type === "day")?.value || "",
+    }
+  }
+
+  const formatChatDividerTime = (time: string) => {
+    const date = new Date(time)
+    if (Number.isNaN(date.getTime())) return ""
+
+    const messageDate = getKstDateParts(date)
+    const today = getKstDateParts(new Date())
+    const yesterdayDate = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    const yesterday = getKstDateParts(yesterdayDate)
+    const formattedTime = date.toLocaleTimeString("ko-KR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZone: "Asia/Seoul",
+    })
+
+    const messageDateKey = `${messageDate.year}/${messageDate.month}/${messageDate.day}`
+    const todayKey = `${today.year}/${today.month}/${today.day}`
+    const yesterdayKey = `${yesterday.year}/${yesterday.month}/${yesterday.day}`
+
+    if (messageDateKey === todayKey) {
+      return formattedTime
+    }
+
+    if (messageDateKey === yesterdayKey) {
+      return `昨天 ${formattedTime}`
+    }
+
+    return `${messageDateKey} ${formattedTime}`
   }
 
   const getConversationStatusText = (item: ConversationSummary) => {
@@ -497,51 +590,77 @@ export default function ChatPage() {
                     暂无消息
                   </div>
               ) : (
-                  messages.map((msg) => {
+                  messages.map((msg, index) => {
                     const isMe = msg.sender_id === user?.id
+                    const showTimeDivider = shouldShowTimeDivider(
+                        messages[index - 1],
+                        msg
+                    )
                     const showLikeButton =
                         !isMe &&
                         !chatMatched &&
                         (introLocked || inlineNotice === "LIKE_REQUIRED")
 
                     return (
-                        <div
-                            key={msg.id}
-                            className={`flex items-end gap-2 ${isMe ? "justify-end" : "justify-start"}`}
-                        >
+                        <div key={msg.id}>
+                          {showTimeDivider ? (
+                              <div className="my-4 text-center text-xs text-stone-400">
+                                {formatChatDividerTime(msg.created_at)}
+                              </div>
+                          ) : null}
+
                           <div
-                              className={`max-w-[75%] rounded-2xl px-4 py-2.5 shadow-sm ${
-                                  isMe
-                                      ? "rounded-br-md bg-orange-500 text-white"
-                                      : "rounded-bl-md border border-stone-200 bg-white text-stone-800"
-                              }`}
+                              className={`flex items-end gap-2 ${isMe ? "justify-end" : "justify-start"}`}
                           >
-                            <div className="break-words whitespace-pre-wrap text-sm">
-                              {msg.content}
-                            </div>
+                            {!isMe ? (
+                                <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-stone-200">
+                                  {targetUser?.avatar_url ? (
+                                      <img
+                                          src={targetUser.avatar_url || "/placeholder.svg"}
+                                          alt={headerName}
+                                          className="h-full w-full object-cover"
+                                      />
+                                  ) : null}
+                                </div>
+                            ) : null}
                             <div
-                                className={`mt-1 text-[11px] ${
-                                    isMe ? "text-orange-100" : "text-stone-400"
+                                className={`max-w-[75%] rounded-2xl px-4 py-2.5 shadow-sm ${
+                                    isMe
+                                        ? "rounded-br-md bg-orange-500 text-white"
+                                        : "rounded-bl-md border border-stone-200 bg-white text-stone-800"
                                 }`}
                             >
-                              {formatTime(msg.created_at)}
+                              <div className="break-words whitespace-pre-wrap text-sm">
+                                {msg.content}
+                              </div>
                             </div>
+                            {showLikeButton ? (
+                                <button
+                                    type="button"
+                                    aria-label={chatLiked ? "Liked this pet" : "Like this pet"}
+                                    disabled={chatLikeLoading || chatLiked}
+                                    onClick={handleMessageLike}
+                                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-70"
+                                >
+                                  {chatLikeLoading ? (
+                                      <span className="text-xs font-bold">...</span>
+                                  ) : (
+                                      <Heart className={`h-4 w-4 ${chatLiked ? "fill-white" : ""}`} />
+                                  )}
+                                </button>
+                            ) : null}
+                            {isMe ? (
+                                <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-stone-200">
+                                  {user?.avatar_url ? (
+                                      <img
+                                          src={user.avatar_url || "/placeholder.svg"}
+                                          alt={user.pet_name || user.username || "Me"}
+                                          className="h-full w-full object-cover"
+                                      />
+                                  ) : null}
+                                </div>
+                            ) : null}
                           </div>
-                          {showLikeButton ? (
-                              <button
-                                  type="button"
-                                  aria-label={chatLiked ? "Liked this pet" : "Like this pet"}
-                                  disabled={chatLikeLoading || chatLiked}
-                                  onClick={handleMessageLike}
-                                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-70"
-                              >
-                                {chatLikeLoading ? (
-                                    <span className="text-xs font-bold">...</span>
-                                ) : (
-                                    <Heart className={`h-4 w-4 ${chatLiked ? "fill-white" : ""}`} />
-                                )}
-                              </button>
-                          ) : null}
                         </div>
                     )
                   })
