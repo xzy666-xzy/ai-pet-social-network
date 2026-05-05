@@ -648,6 +648,17 @@ app.get("/match/recommend", authMiddleware, async (req, res) => {
       return sendUnauthorized(res)
     }
 
+    const { data: likedRows, error: likedError } = await supabase
+      .from("likes")
+      .select("to_user_id")
+      .eq("from_user_id", currentUser.id)
+
+    if (likedError) {
+      throw likedError
+    }
+
+    const likedUserIds = new Set((likedRows || []).map((item) => String(item.to_user_id)))
+
     const { data: users, error } = await supabase
       .from("users")
       .select("*")
@@ -659,6 +670,7 @@ app.get("/match/recommend", authMiddleware, async (req, res) => {
     }
 
     const recommendations = (users || [])
+      .filter((candidate) => !likedUserIds.has(String(candidate.id)))
       .map((candidate) => ({
         ...toSafeUser(candidate),
         matchScore: buildMatchScore(currentUser, candidate),

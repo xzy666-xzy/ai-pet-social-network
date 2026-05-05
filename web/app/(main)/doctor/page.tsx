@@ -37,6 +37,8 @@ type QuickNotice = {
 
 type DoctorTab = "chat" | "image"
 
+const AI_DOCTOR_AVATAR = "/pet-doctor-avatar.png"
+
 const notices: QuickNotice[] = [
   {
     id: "vomit",
@@ -621,7 +623,7 @@ export default function DoctorPage() {
 
                     <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border border-stone-100 bg-stone-200">
                       <img
-                          src="/pet-doctor-avatar.png"
+                          src={AI_DOCTOR_AVATAR}
                           alt="Pet Doctor"
                           className="h-full w-full object-cover"
                           onError={(e) => {
@@ -689,8 +691,15 @@ export default function DoctorPage() {
                                     className={`flex items-end gap-2 ${isUser ? "justify-end" : "justify-start"}`}
                                 >
                                   {!isUser && (
-                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-500">
-                                      <Stethoscope className="h-4 w-4" />
+                                    <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-stone-200">
+                                      <img
+                                          src={AI_DOCTOR_AVATAR}
+                                          alt="Pet Doctor"
+                                          className="h-full w-full object-cover"
+                                          onError={(e) => {
+                                            e.currentTarget.src = "/placeholder.svg"
+                                          }}
+                                      />
                                     </div>
                                   )}
 
@@ -724,8 +733,15 @@ export default function DoctorPage() {
 
                           {loading && (
                               <div className="flex items-end gap-2 justify-start">
-                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-500">
-                                  <Stethoscope className="h-4 w-4" />
+                                <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-stone-200">
+                                  <img
+                                      src={AI_DOCTOR_AVATAR}
+                                      alt="Pet Doctor"
+                                      className="h-full w-full object-cover"
+                                      onError={(e) => {
+                                        e.currentTarget.src = "/placeholder.svg"
+                                      }}
+                                  />
                                 </div>
                                 <div className="max-w-[72%] rounded-3xl rounded-bl-xl border border-stone-100 bg-white px-4 py-3 text-stone-500 shadow-sm">
                                   <p className="text-sm">...</p>

@@ -186,6 +186,15 @@ export default function MatchPage() {
     }, 300)
   }
 
+  const handleLikedSwipe = (likedUserId: string) => {
+    setDirection(1)
+
+    setTimeout(() => {
+      setUsers((prev) => prev.filter((item) => item.id !== likedUserId))
+      setDirection(0)
+    }, 300)
+  }
+
   const handleDislike = () => {
     if (!currentPet) return
     setInlineNotice("")
@@ -223,6 +232,7 @@ export default function MatchPage() {
 
   const handleLike = async () => {
     if (!currentPet?.id || liking) return
+    const likedUserId = currentPet.id
 
     if (!isMember && remainingLikes <= 0) {
       setMembershipError("")
@@ -239,7 +249,7 @@ export default function MatchPage() {
         method: "POST",
         auth: true,
         body: JSON.stringify({
-          targetUserId: currentPet.id,
+          targetUserId: likedUserId,
         }),
       })
 
@@ -264,11 +274,11 @@ export default function MatchPage() {
 
       setLikedUserIds((prev) => {
         const next = new Set(prev)
-        next.add(currentPet.id)
+        next.add(likedUserId)
         return next
       })
       await loadLikeQuota()
-      handleSwipe(1)
+      handleLikedSwipe(likedUserId)
     } catch (error: unknown) {
       if (error instanceof ApiError && error.code === "MEMBERSHIP_REQUIRED") {
         setMembershipError("")

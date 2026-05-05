@@ -365,17 +365,9 @@ export default function ExplorePage() {
   return (
       <div className="p-4 max-w-md mx-auto space-y-6 pb-28">
         <header className="space-y-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-bold text-stone-900">{c.title}</h1>
-              <p className="text-sm text-stone-500 mt-1">{c.subtitle}</p>
-            </div>
-            <Button
-                onClick={() => router.push("/explore/create")}
-                className="shrink-0 bg-orange-500 text-white hover:bg-orange-600"
-            >
-              创建活动
-            </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-stone-900">{c.title}</h1>
+            <p className="text-sm text-stone-500 mt-1">{c.subtitle}</p>
           </div>
 
           <div className="flex gap-2">
@@ -450,7 +442,15 @@ export default function ExplorePage() {
         </section>
 
         <section className="space-y-4">
-          <h2 className="text-lg font-bold text-stone-800">{c.sectionTitle}</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-bold text-stone-800">{c.sectionTitle}</h2>
+            <Button
+                onClick={() => router.push("/explore/create")}
+                className="shrink-0 bg-orange-500 text-white hover:bg-orange-600"
+            >
+              创建活动
+            </Button>
+          </div>
 
           {filteredEvents.map((item) => {
             const selected = selectedId === item.id
