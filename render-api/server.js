@@ -1,5 +1,5 @@
 import { createServer } from "node:http"
-import { createHmac, timingSafeEqual } from "node:crypto"
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto"
 import bcrypt from "bcryptjs"
 import { createClient } from "@supabase/supabase-js"
 
@@ -439,6 +439,78 @@ async function handleUpdateProfile(req, res) {
   }
 }
 
+async function handleCreateEvent(req, res) {
+  try {
+    const accessToken = getBearerToken(req)
+
+    if (!accessToken) {
+      return sendJson(res, 401, {
+        success: false,
+        error: "Missing access token",
+      })
+    }
+
+    const payload = verifyToken(accessToken)
+    const userId = String(payload.sub || "").trim()
+
+    if (!userId) {
+      return sendJson(res, 401, {
+        success: false,
+        error: "Invalid access token",
+      })
+    }
+
+    const body = await parseJsonBody(req)
+    const title = String(body.title || "").trim()
+    const imageUrl = String(body.image_url || "").trim()
+    const time = String(body.time || "").trim()
+    const maxPeople = Number(body.max_people)
+    const description = String(body.description || "").trim()
+    const organizerId = String(body.organizer_id || "").trim()
+    const lat = Number(body.lat)
+    const lng = Number(body.lng)
+
+    if (!title || !time || !organizerId || organizerId !== userId) {
+      return sendJson(res, 400, {
+        success: false,
+        error: "Invalid event data",
+      })
+    }
+
+    const { data: event, error } = await supabaseAdmin
+      .from("events")
+      .insert({
+        id: randomUUID(),
+        title,
+        image_url: imageUrl || null,
+        time,
+        max_people: Number.isFinite(maxPeople) ? maxPeople : null,
+        current_people: 0,
+        description: description || null,
+        organizer_id: organizerId,
+        lat: Number.isFinite(lat) ? lat : null,
+        lng: Number.isFinite(lng) ? lng : null,
+      })
+      .select("*")
+      .single()
+
+    if (error) {
+      throw error
+    }
+
+    return sendJson(res, 200, {
+      success: true,
+      data: event,
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to create event"
+    return sendJson(res, 500, {
+      success: false,
+      error: message,
+    })
+  }
+}
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`)
 
@@ -466,6 +538,11 @@ const server = createServer(async (req, res) => {
 
   if (req.method === "PUT" && url.pathname === "/profile") {
     await handleUpdateProfile(req, res)
+    return
+  }
+
+  if (req.method === "POST" && url.pathname === "/events") {
+    await handleCreateEvent(req, res)
     return
   }
 

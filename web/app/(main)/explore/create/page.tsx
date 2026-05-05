@@ -76,7 +76,7 @@ export default function CreateExploreEventPage() {
       router.push("/explore")
     } catch (error) {
       console.error(error)
-      alert("活动提交失败")
+      alert(error instanceof Error ? error.message : "活动提交失败")
     } finally {
       setSubmitting(false)
     }

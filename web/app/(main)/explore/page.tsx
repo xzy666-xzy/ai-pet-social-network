@@ -178,6 +178,7 @@ export default function ExplorePage() {
   const [selectedId, setSelectedId] = useState<number | null>(eventData[0].id)
   const [joinedMap, setJoinedMap] = useState<Record<number, boolean>>({})
   const [joiningMap, setJoiningMap] = useState<Record<number, boolean>>({})
+  const [peopleMap, setPeopleMap] = useState<Record<number, number>>({})
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [detailEventId, setDetailEventId] = useState<number | null>(null)
 
@@ -209,23 +210,29 @@ export default function ExplorePage() {
       ? { lat: selectedEvent.lat, lng: selectedEvent.lng }
       : { lat: 37.3212, lng: 126.8309 }
 
-  const handleJoin = (id: number) => {
-    setJoinedMap((prev) => ({ ...prev, [id]: true }))
-  }
-
-  const handleDetailJoinToggle = async (id: number) => {
+  const handleJoinToggle = async (id: number, fallbackPeople: number) => {
     if (joiningMap[id]) return
 
     const joined = joinedMap[id]
     setJoiningMap((prev) => ({ ...prev, [id]: true }))
 
     try {
-      await apiRequest(`/events/${id}/join`, {
-        method: joined ? "DELETE" : "POST",
+      await apiRequest(joined ? "/events/leave" : "/events/join", {
+        method: "POST",
         auth: true,
+        body: JSON.stringify({
+          event_id: id,
+        }),
       })
 
       setJoinedMap((prev) => ({ ...prev, [id]: !joined }))
+      setPeopleMap((prev) => {
+        const currentPeople = prev[id] ?? fallbackPeople
+        return {
+          ...prev,
+          [id]: joined ? Math.max(0, currentPeople - 1) : currentPeople + 1,
+        }
+      })
     } catch (error) {
       console.error(error)
       alert(joined ? "取消失败" : "参加失败")
@@ -283,6 +290,7 @@ export default function ExplorePage() {
 
   if (detailEvent) {
     const joined = joinedMap[detailEvent.id]
+    const joinedCount = peopleMap[detailEvent.id] ?? detailEvent.joined
     const canEdit = user?.id && detailEvent.organizer_id === user.id
 
     return (
@@ -318,12 +326,12 @@ export default function ExplorePage() {
               </div>
 
               <div className="mt-5 rounded-2xl bg-stone-50 border border-stone-100 p-4">
-                <p className="text-sm text-stone-600">{c.joinedText(detailEvent.joined)}</p>
+                <p className="text-sm text-stone-600">{c.joinedText(joinedCount)}</p>
               </div>
 
               <div className="mt-5 flex gap-2">
                 <Button
-                    onClick={() => handleDetailJoinToggle(detailEvent.id)}
+                    onClick={() => handleJoinToggle(detailEvent.id, joinedCount)}
                     disabled={joiningMap[detailEvent.id]}
                     className={`rounded-xl ${
                         joined
@@ -455,6 +463,7 @@ export default function ExplorePage() {
           {filteredEvents.map((item) => {
             const selected = selectedId === item.id
             const joined = joinedMap[item.id]
+            const joinedCount = peopleMap[item.id] ?? item.joined
 
             return (
                 <div
@@ -494,16 +503,17 @@ export default function ExplorePage() {
                     <div className="flex items-center gap-4 text-xs text-stone-500 mt-4">
                   <span className="flex items-center gap-1">
                     <Users className="h-3.5 w-3.5" />
-                    {joined ? c.joined : c.joinedText(item.joined)}
+                    {joined ? c.joined : c.joinedText(joinedCount)}
                   </span>
                     </div>
 
                     <div className="mt-4 flex gap-2">
                       <Button
-                          onClick={() => handleJoin(item.id)}
+                          onClick={() => handleJoinToggle(item.id, joinedCount)}
+                          disabled={joiningMap[item.id]}
                           className="rounded-xl bg-orange-500 hover:bg-orange-600"
                       >
-                        {joined ? c.joined : c.join}
+                        {joined ? c.cancel : c.join}
                       </Button>
 
                       <Button
