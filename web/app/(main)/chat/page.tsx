@@ -568,26 +568,17 @@ export default function ChatPage() {
 
             <div className="min-w-0">
               <div className="font-semibold text-stone-900">{headerName}</div>
-              <div className="text-xs text-stone-500">
-                {targetUserId ? t.chat.activeNow : t.chat.historyTitle}
+              <div className="mt-0.5 flex items-center gap-1.5 text-xs text-stone-500">
+                <span
+                    className={`h-2 w-2 rounded-full animate-pulse ${
+                        targetUserId ? "bg-emerald-500" : "bg-red-500"
+                    }`}
+                />
+                <span>{targetUserId ? "在线中" : "离线中"}</span>
               </div>
             </div>
           </div>
 
-          <button
-              type="button"
-              disabled={!targetUserId || !targetUser}
-              onClick={() => setProfileOpen(true)}
-              className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-stone-200 disabled:cursor-default"
-          >
-            {targetUserId && targetUser?.avatar_url ? (
-                <img
-                    src={targetUser.avatar_url || "/placeholder.svg"}
-                    alt={headerName}
-                    className="h-full w-full object-cover"
-                />
-            ) : null}
-          </button>
         </div>
 
         {profileOpen && targetUser ? (
@@ -760,7 +751,11 @@ export default function ChatPage() {
                               className={`flex items-end gap-2 ${isMe ? "justify-end" : "justify-start"}`}
                           >
                             {!isMe ? (
-                                <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-stone-200">
+                                <button
+                                    type="button"
+                                    onClick={() => setProfileOpen(true)}
+                                    className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-stone-200"
+                                >
                                   {targetUser?.avatar_url ? (
                                       <img
                                           src={targetUser.avatar_url || "/placeholder.svg"}
@@ -768,7 +763,7 @@ export default function ChatPage() {
                                           className="h-full w-full object-cover"
                                       />
                                   ) : null}
-                                </div>
+                                </button>
                             ) : null}
                             <div
                                 className={`max-w-[75%] px-4 py-2.5 ${
