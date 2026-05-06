@@ -284,19 +284,14 @@ export default function ProfilePage() {
                   className="absolute inset-0 h-full w-full object-cover"
               />
           ) : null}
-          <div className="absolute right-4 top-4 flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-stone-700 shadow-sm backdrop-blur">
-              <LanguageSwitcher />
-            </div>
-            <button
-                type="button"
-                onClick={() => (window.location.href = "/settings")}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-stone-700 shadow-sm backdrop-blur"
-                aria-label="Settings"
-            >
-              <Settings className="h-5 w-5" />
-            </button>
-          </div>
+          <button
+              type="button"
+              onClick={() => (window.location.href = "/settings")}
+              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-stone-700 shadow-sm backdrop-blur"
+              aria-label="Settings"
+          >
+            <Settings className="h-5 w-5" />
+          </button>
           <input
               ref={coverInputRef}
               type="file"
@@ -359,6 +354,9 @@ export default function ProfilePage() {
                     className="hidden"
                     onChange={handleAvatarFileChange}
                 />
+              </div>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-50 text-stone-700 shadow-sm">
+                <LanguageSwitcher />
               </div>
 
               <div className="min-w-0 flex-1">

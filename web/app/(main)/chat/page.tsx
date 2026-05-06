@@ -158,11 +158,11 @@ export default function ChatPage() {
   const profilePetName = targetUser?.petName || targetUser?.pet_name || targetUser?.username || "-"
   const profilePetAge = targetUser?.petAge ?? targetUser?.pet_age ?? "Age not set"
   const profilePetType = targetUser?.petType || targetUser?.pet_type || "Type not set"
+  const hasProfileDescription = Boolean(
+      targetUser?.description || targetUser?.petBio || targetUser?.pet_bio
+  )
   const profileDescription =
       targetUser?.description || targetUser?.petBio || targetUser?.pet_bio || "No bio yet"
-  const profileAgeLabel = t.auth?.petAge || "Age"
-  const profileTypeLabel = t.auth?.petBreed || "Type"
-  const profileBioLabel = t.auth?.petBio || "Bio"
   const targetOnline = isUserOnline(targetUser?.last_seen)
 
   const loadMessages = async (convId: string) => {
@@ -615,29 +615,8 @@ export default function ChatPage() {
 
         {profileOpen && targetUser ? (
             <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-4 sm:items-center sm:pb-0">
-              <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-stone-200">
-                      {targetUser.avatar_url ? (
-                          <img
-                              src={targetUser.avatar_url || "/placeholder.svg"}
-                              alt={headerName}
-                              className="h-full w-full object-cover"
-                          />
-                      ) : null}
-                    </div>
-
-                    <div>
-                      <div className="text-lg font-bold text-stone-900">
-                        {profilePetName}
-                      </div>
-                      <div className="text-sm text-stone-500">
-                        {targetUser.username || "-"}
-                      </div>
-                    </div>
-                  </div>
-
+              <div className="w-full max-w-sm rounded-3xl bg-white p-4 shadow-xl">
+                <div className="mb-3 flex justify-end">
                   <button
                       type="button"
                       onClick={() => setProfileOpen(false)}
@@ -647,29 +626,65 @@ export default function ChatPage() {
                   </button>
                 </div>
 
-                <div className="mt-5 space-y-3 text-sm text-stone-700">
-                  <div className="flex justify-between gap-4">
-                    <span className="text-stone-500">{profileAgeLabel}</span>
-                    <span className="font-medium">{profilePetAge}</span>
-                  </div>
+                <div className="space-y-4">
+                  <div className="rounded-3xl border border-orange-100 bg-white p-4 shadow-sm">
+                    <div className="flex items-center gap-4">
+                      <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border-4 border-white bg-orange-100 shadow-md">
+                        {targetUser.avatar_url ? (
+                            <img
+                                src={targetUser.avatar_url || "/placeholder.svg"}
+                                alt={headerName}
+                                className="h-full w-full object-cover"
+                            />
+                        ) : (
+                            <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-orange-600">
+                              {profilePetName.charAt(0).toUpperCase()}
+                            </div>
+                        )}
+                      </div>
 
-                  <div className="flex justify-between gap-4">
-                    <span className="text-stone-500">{profileTypeLabel}</span>
-                    <span className="font-medium">{profilePetType}</span>
-                  </div>
-
-                  <div>
-                    <div className="mb-1 text-stone-500">{profileBioLabel}</div>
-                    <div className="rounded-xl bg-stone-50 p-3 leading-6">
-                      {profileDescription}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-xl font-bold text-stone-900">
+                          {profilePetName}
+                        </div>
+                        <div className="mt-1 truncate text-xs text-stone-500">
+                          {targetUser.username || "-"}
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700 shadow-sm">
+                            {profilePetAge}
+                          </span>
+                          <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700 shadow-sm">
+                            {profilePetType}
+                          </span>
+                          <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-600">
+                            {hasProfileDescription ? t.profile.profileReady : t.profile.noDescriptionYet}
+                          </span>
+                          {targetUser.is_ai ? (
+                              <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-600">
+                                AI
+                              </span>
+                          ) : null}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  {targetUser.is_ai ? (
-                      <div className="inline-flex rounded-full bg-orange-50 px-3 py-1 text-xs font-medium text-orange-600">
-                        AI
-                      </div>
-                  ) : null}
+                  <div className="rounded-3xl border border-orange-100 bg-white p-4 shadow-sm">
+                    <h2 className="mb-4 text-lg font-bold text-stone-900">🐾 {t.profile.myPet}</h2>
+                    <div className="space-y-2 rounded-2xl bg-stone-50 p-4 text-sm">
+                      <p className="font-medium text-stone-900">{t.profile.nameLabel}: {profilePetName}</p>
+                      <p className="font-medium text-stone-900">{t.profile.typeLabel}: {profilePetType}</p>
+                      <p className="font-medium text-stone-900">{t.profile.ageLabel}: {profilePetAge}</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-3xl border border-orange-100 bg-white p-4 shadow-sm">
+                    <p className="mb-2 font-bold text-stone-900">✨ {t.profile.aboutPet}:</p>
+                    <p className="rounded-2xl bg-stone-50 p-4 text-sm leading-6 text-stone-700">
+                      {profileDescription}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
