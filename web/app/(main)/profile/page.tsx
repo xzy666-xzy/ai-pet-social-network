@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { apiRequest } from "@/lib/api-client"
+import { LanguageSwitcher } from "@/components/language-switcher"
+import { useLanguage } from "@/lib/i18n/language-context"
 
 type ProfileStatsResponse = {
   success: true
@@ -28,6 +30,7 @@ const COLLAPSED_COVER_HEIGHT = 220
 const EXPANDED_COVER_HEIGHT = 420
 
 export default function ProfilePage() {
+  const { t } = useLanguage()
   const { user, loading } = useAuth()
   const [mounted, setMounted] = useState(false)
   const [stats, setStats] = useState({
@@ -214,7 +217,7 @@ export default function ProfilePage() {
     return (
         <div className="min-h-screen bg-gradient-to-b from-[#fff8ef] via-orange-50 to-white p-4">
           <div className="mx-auto max-w-md pt-10 text-center text-stone-500">
-            Loading profile...
+            {t.profile.loadingProfile}
           </div>
         </div>
     )
@@ -224,9 +227,9 @@ export default function ProfilePage() {
     return (
         <div className="min-h-screen bg-gradient-to-b from-[#fff8ef] via-orange-50 to-white p-4">
           <div className="mx-auto max-w-md pt-10 text-center">
-            <p className="text-stone-600 mb-4">Please log in first.</p>
+            <p className="text-stone-600 mb-4">{t.profile.pleaseLoginFirst}</p>
             <Button onClick={() => (window.location.href = "/login")}>
-              Go to Login
+              {t.profile.goToLogin}
             </Button>
           </div>
         </div>
@@ -245,15 +248,15 @@ export default function ProfilePage() {
       user.email?.trim()?.charAt(0)?.toUpperCase() ||
       "U"
 
-  const petName = user.pet_name || "No pet name yet"
-  const petType = user.pet_type || "No pet type yet"
+  const petName = user.pet_name || t.profile.noPetNameYet
+  const petType = user.pet_type || t.profile.noPetTypeYet
   const petAge =
       user.pet_age !== null && user.pet_age !== undefined
-          ? `${user.pet_age} yrs`
-          : "Age not set"
+          ? `${user.pet_age} ${t.profile.yearsSuffix}`
+          : t.profile.ageNotSet
 
   const bio =
-      user.description || "No description yet. Add your pet profile info."
+      user.description || t.profile.noDescriptionYet
   const savedCoverUrl = (user as { cover_url?: string | null }).cover_url || ""
   const displayCoverImageUrl = coverImageUrl || savedCoverUrl
   const displayAvatarUrl = avatarPreviewUrl || user.avatar_url
@@ -281,14 +284,19 @@ export default function ProfilePage() {
                   className="absolute inset-0 h-full w-full object-cover"
               />
           ) : null}
-          <button
-              type="button"
-              onClick={() => (window.location.href = "/settings")}
-              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-stone-700 shadow-sm backdrop-blur"
-              aria-label="Settings"
-          >
-            <Settings className="h-5 w-5" />
-          </button>
+          <div className="absolute right-4 top-4 flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-stone-700 shadow-sm backdrop-blur">
+              <LanguageSwitcher />
+            </div>
+            <button
+                type="button"
+                onClick={() => (window.location.href = "/settings")}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-stone-700 shadow-sm backdrop-blur"
+                aria-label="Settings"
+            >
+              <Settings className="h-5 w-5" />
+            </button>
+          </div>
           <input
               ref={coverInputRef}
               type="file"
@@ -316,7 +324,7 @@ export default function ProfilePage() {
                     onClick={() => coverInputRef.current?.click()}
                     className="rounded-full bg-white/80 px-4 py-2 text-sm font-semibold text-stone-700 shadow-sm backdrop-blur"
                 >
-                  换封面
+                  {t.profile.changeCover}
                 </button>
             ) : null}
           </div>
@@ -355,7 +363,7 @@ export default function ProfilePage() {
 
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xl font-bold text-stone-900">
-                  {petAge !== "Age not set" ? petAge : "Age not set"}
+                  {petAge}
                 </p>
                 <p className="mt-1 truncate text-xs text-stone-500">{user.email}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -367,7 +375,7 @@ export default function ProfilePage() {
                   </span>
                   {user.description ? (
                       <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700 shadow-sm">
-                        Profile ready
+                        {t.profile.profileReady}
                       </span>
                   ) : null}
                 </div>
@@ -376,42 +384,42 @@ export default function ProfilePage() {
           </Card>
 
           <Card className="rounded-3xl border-orange-100 bg-white p-4 shadow-sm">
-            <h2 className="mb-4 text-lg font-bold text-stone-900">🐾 我的宠物</h2>
+            <h2 className="mb-4 text-lg font-bold text-stone-900">🐾 {t.profile.myPet}</h2>
 
             <div className="space-y-4 text-sm">
               <div className="space-y-2 rounded-2xl bg-stone-50 p-4">
-                <p className="font-medium text-stone-900">名字：{petName}</p>
-                <p className="font-medium text-stone-900">类型：{petType}</p>
-                <p className="font-medium text-stone-900">年龄：{petAge}</p>
+                <p className="font-medium text-stone-900">{t.profile.nameLabel}: {petName}</p>
+                <p className="font-medium text-stone-900">{t.profile.typeLabel}: {petType}</p>
+                <p className="font-medium text-stone-900">{t.profile.ageLabel}: {petAge}</p>
               </div>
 
               <div>
-                <p className="mb-2 font-bold text-stone-900">✨ 关于它：</p>
+                <p className="mb-2 font-bold text-stone-900">✨ {t.profile.aboutPet}:</p>
                 <p className="leading-6 text-stone-700">{bio}</p>
               </div>
             </div>
           </Card>
 
           <Card className="rounded-3xl border-orange-100 bg-white p-4 shadow-sm">
-            <h2 className="text-lg font-bold text-stone-900 mb-3">Activity Stats</h2>
+            <h2 className="text-lg font-bold text-stone-900 mb-3">{t.profile.activityStats}</h2>
 
             {statsError ? (
               <p className="text-sm text-red-600">{statsError}</p>
             ) : (
-              <div className="space-y-3 text-sm">
-                <div>
-                  <p className="text-stone-500">Likes Sent</p>
-                  <p className="font-medium text-stone-900">{stats.likesSent}</p>
+              <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                <div className="rounded-2xl border border-orange-100 bg-orange-50/70 px-2 py-3 shadow-sm">
+                  <p className="min-h-[2rem] text-xs font-medium leading-4 text-stone-500">{t.profile.likesSent}</p>
+                  <p className="mt-2 text-lg font-bold text-orange-600">{stats.likesSent}</p>
                 </div>
 
-                <div>
-                  <p className="text-stone-500">Likes Received</p>
-                  <p className="font-medium text-stone-900">{stats.likesReceived}</p>
+                <div className="rounded-2xl border border-rose-100 bg-rose-50/70 px-2 py-3 shadow-sm">
+                  <p className="min-h-[2rem] text-xs font-medium leading-4 text-stone-500">{t.profile.likesReceived}</p>
+                  <p className="mt-2 text-lg font-bold text-rose-500">{stats.likesReceived}</p>
                 </div>
 
-                <div>
-                  <p className="text-stone-500">Conversations</p>
-                  <p className="font-medium text-stone-900">{stats.conversations}</p>
+                <div className="rounded-2xl border border-amber-100 bg-amber-50/70 px-2 py-3 shadow-sm">
+                  <p className="min-h-[2rem] text-xs font-medium leading-4 text-stone-500">{t.profile.conversations}</p>
+                  <p className="mt-2 text-lg font-bold text-amber-600">{stats.conversations}</p>
                 </div>
               </div>
             )}
@@ -420,17 +428,17 @@ export default function ProfilePage() {
           <Card className="rounded-3xl border-orange-100 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <h2 className="text-lg font-bold text-stone-900">🌟 月度会员</h2>
+                <h2 className="text-lg font-bold text-stone-900">🌟 {t.profile.monthlyMembership}</h2>
                 <p className="mt-2 text-sm text-stone-500">
-                  到期：
+                  {t.profile.expiresPrefix}: 
                   {membership.expiresAt
                     ? new Date(membership.expiresAt).toLocaleDateString()
-                    : "暂无"}
+                    : t.profile.none}
                 </p>
               </div>
 
               <Button className="shrink-0 rounded-full bg-orange-500 px-4 text-white hover:bg-orange-600">
-                升级会员
+                {t.profile.upgradeMembership}
               </Button>
             </div>
           </Card>
@@ -450,7 +458,7 @@ export default function ProfilePage() {
                 >
                   <ChevronLeft className="h-6 w-6" />
                 </button>
-                <h2 className="text-base font-semibold">个人头像</h2>
+                <h2 className="text-base font-semibold">{t.profile.avatarTitle}</h2>
                 <button
                     type="button"
                     onClick={() => setIsAvatarActionsOpen(true)}
@@ -483,21 +491,21 @@ export default function ProfilePage() {
                           onClick={() => alert("暂未支持拍照")}
                           className="block w-full border-b border-stone-100 px-4 py-4"
                       >
-                        拍照
+                        {t.profile.takePhoto}
                       </button>
                       <button
                           type="button"
                           onClick={() => avatarInputRef.current?.click()}
                           className="block w-full border-b border-stone-100 px-4 py-4"
                       >
-                        从手机相册选择
+                        {t.profile.chooseFromAlbum}
                       </button>
                       <button
                           type="button"
                           onClick={() => alert("暂未支持保存图片")}
                           className="block w-full px-4 py-4"
                       >
-                        保存图片
+                        {t.profile.saveImage}
                       </button>
                     </div>
 
@@ -506,7 +514,7 @@ export default function ProfilePage() {
                         onClick={() => setIsAvatarActionsOpen(false)}
                         className="mt-2 block w-full rounded-2xl bg-white px-4 py-4 text-center text-base font-semibold text-stone-900"
                     >
-                      取消
+                      {t.profile.cancel}
                     </button>
                   </div>
               ) : null}

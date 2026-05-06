@@ -34,6 +34,7 @@ type TargetUser = {
   petBio?: string | null
   pet_bio?: string | null
   description?: string | null
+  last_seen?: string | null
   is_ai?: boolean | number | null
 }
 
@@ -44,6 +45,7 @@ type ConversationSummary = {
   other_pet_name: string
   other_avatar_url: string
   other_user_is_ai?: number
+  other_last_seen?: string | null
   last_message: string | null
   last_message_time: string | null
   liked_by_me?: number
@@ -107,6 +109,19 @@ type MatchLikeResponse = {
   }
 }
 
+function isUserOnline(lastSeen?: string | null) {
+  if (!lastSeen) {
+    return false
+  }
+
+  const lastSeenTime = new Date(lastSeen).getTime()
+  if (Number.isNaN(lastSeenTime)) {
+    return false
+  }
+
+  return Date.now() - lastSeenTime <= 3 * 60 * 1000
+}
+
 export default function ChatPage() {
   const { t } = useLanguage()
   const { user, loading } = useAuth()
@@ -148,6 +163,7 @@ export default function ChatPage() {
   const profileAgeLabel = t.auth?.petAge || "Age"
   const profileTypeLabel = t.auth?.petBreed || "Type"
   const profileBioLabel = t.auth?.petBio || "Bio"
+  const targetOnline = isUserOnline(targetUser?.last_seen)
 
   const loadMessages = async (convId: string) => {
     const data = await apiRequest<MessagesResponse>(`/chat/messages/${convId}`, {
@@ -584,8 +600,12 @@ export default function ChatPage() {
               <div className="font-semibold text-stone-900">{headerName}</div>
               {targetUserId ? (
                   <div className="mt-0.5 flex items-center gap-1.5 text-xs text-stone-500">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>在线中</span>
+                    <span
+                        className={`h-2 w-2 rounded-full animate-pulse ${
+                            targetOnline ? "bg-emerald-500" : "bg-red-500"
+                        }`}
+                    />
+                    <span>{targetOnline ? "在线中" : "离线中"}</span>
                   </div>
               ) : null}
             </div>
