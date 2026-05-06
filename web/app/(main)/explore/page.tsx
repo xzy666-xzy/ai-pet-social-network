@@ -83,6 +83,30 @@ function getEventTimeValue(value?: string | null) {
   return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time
 }
 
+function formatListEventTime(value?: string | null) {
+  if (!value) {
+    return ""
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date)
+
+  const partMap = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  return `${partMap.year}/${partMap.month}/${partMap.day} ${partMap.hour}:${partMap.minute}`
+}
+
 function sortApiEventsByTime(events: ApiEvent[]) {
   return [...events].sort((a, b) => {
     return getEventTimeValue(a.event_time || a.time) - getEventTimeValue(b.event_time || b.time)
@@ -525,14 +549,14 @@ export default function ExplorePage() {
               </h1>
 
               <p className="text-sm text-stone-500 mt-2">{detailEvent.address}</p>
-              <p className="text-sm text-stone-500 mt-1">{detailTime}</p>
+              <p className="text-sm text-stone-500 mt-1">活动时间：{formatListEventTime(detailTime)}</p>
               <p className="text-sm text-stone-500 mt-1">
-                {detailPeople} / {maxPeople ?? "∞"}
+                人数限制：{detailPeople} / {maxPeople ?? "∞"}
               </p>
-              <p className="text-sm text-stone-500 mt-1">{detailOrganizer}</p>
+              <p className="text-sm text-stone-500 mt-1">活动组织者：{detailOrganizer}</p>
 
               <div className="mt-4 text-sm text-stone-700 leading-7">
-                {detailDescription}
+                活动介绍：{detailDescription}
               </div>
 
               <div className="mt-5 rounded-2xl bg-stone-50 border border-stone-100 p-4">
@@ -727,7 +751,7 @@ export default function ExplorePage() {
                         </div>
 
                         <h3 className="mt-3 font-bold text-stone-900">{item.title[locale]}</h3>
-                        <p className="mt-1 text-sm text-stone-500">{item.time}</p>
+                        <p className="mt-1 text-sm text-stone-500">{formatListEventTime(item.time)}</p>
 
                         <div className="flex items-center gap-4 text-xs text-stone-500 mt-4">
                           <span className="flex items-center gap-1">
