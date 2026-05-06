@@ -202,7 +202,7 @@ export default function MatchPage() {
     handleSwipe(-1)
   }
 
-  const handleCheckoutMembership = async () => {
+  const handleCheckoutMembership = async (plan: "monthly" | "annual" = "monthly") => {
     try {
       setCheckingOut(true)
       setMembershipError("")
@@ -211,7 +211,7 @@ export default function MatchPage() {
         method: "POST",
         auth: true,
         body: JSON.stringify({
-          plan: "monthly",
+          plan,
         }),
       })
 
@@ -508,18 +508,79 @@ export default function MatchPage() {
                   </button>
                 </div>
 
-                <div className="rounded-2xl border border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 p-4">
-                  <div className="text-sm text-stone-600">{t.match.membership.monthlyPlan}</div>
-                  <div className="mt-2 text-3xl font-bold text-stone-900">
-                    ¥19.9
-                    <span className="ml-1 text-sm font-normal text-stone-500">
-                  {t.match.membership.duration}
-                </span>
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-yellow-200 bg-yellow-50/70 p-4 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-yellow-100 text-yellow-600">
+                        <Sparkles className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-base font-bold text-stone-900">{t.match.membership.monthlyVipTitle}</div>
+                        <div className="mt-1 text-sm text-stone-600">{t.match.membership.monthlyVipName}</div>
+                      </div>
+                    </div>
+                    <div className="mt-3 text-3xl font-bold text-stone-900">
+                      ¥19.9
+                      <span className="ml-1 text-sm font-normal text-stone-500">
+                        {t.match.membership.monthlyVipDuration}
+                      </span>
+                    </div>
+                    <div className="mt-3 space-y-2 text-sm text-stone-700">
+                      <div>• {t.match.membership.monthlyVipBenefit1}</div>
+                      <div>• {t.match.membership.monthlyVipBenefit2}</div>
+                      <div>• {t.match.membership.monthlyVipBenefit3}</div>
+                      <div>• {t.match.membership.monthlyVipBenefit4}</div>
+                    </div>
+                    <Button
+                        onClick={() => handleCheckoutMembership("monthly")}
+                        disabled={checkingOut}
+                        className="mt-4 w-full rounded-full bg-yellow-500 text-white hover:bg-yellow-600"
+                    >
+                      {checkingOut
+                          ? t.match.membership.processing
+                          : t.match.membership.activateMonthly}
+                    </Button>
                   </div>
-                  <div className="mt-3 space-y-2 text-sm text-stone-700">
-                    <div>• {t.match.membership.benefit1}</div>
-                    <div>• {t.match.membership.benefit2}</div>
-                    <div>• {t.match.membership.benefit3}</div>
+
+                  <div className="rounded-2xl border border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 p-4 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                        <Sparkles className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-base font-bold text-stone-900">{t.match.membership.annualVipTitle}</span>
+                          <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                            {t.match.membership.bestValue}
+                          </span>
+                        </div>
+                        <div className="mt-1 text-sm text-stone-600">{t.match.membership.annualVipName}</div>
+                      </div>
+                    </div>
+                    <div className="mt-3 text-3xl font-bold text-stone-900">
+                      ¥99.9
+                      <span className="ml-1 text-sm font-normal text-stone-500">
+                        {t.match.membership.annualVipDuration}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-sm font-semibold text-amber-600">
+                      {t.match.membership.annualSave}
+                    </div>
+                    <div className="mt-3 space-y-2 text-sm text-stone-700">
+                      <div>• {t.match.membership.annualVipBenefit1}</div>
+                      <div>• {t.match.membership.annualVipBenefit2}</div>
+                      <div>• {t.match.membership.annualVipBenefit3}</div>
+                      <div>• {t.match.membership.annualVipBenefit4}</div>
+                    </div>
+                    <Button
+                        onClick={() => handleCheckoutMembership("annual")}
+                        disabled={checkingOut}
+                        className="mt-4 w-full rounded-full bg-amber-500 text-white hover:bg-amber-600"
+                    >
+                      {checkingOut
+                          ? t.match.membership.processing
+                          : t.match.membership.activateAnnual}
+                    </Button>
                   </div>
                 </div>
 
@@ -529,25 +590,16 @@ export default function MatchPage() {
                     </div>
                 ) : null}
 
-                <div className="mt-5 grid grid-cols-2 gap-3">
+                <div className="mt-5">
                   <Button
                       variant="outline"
                       onClick={() => {
                         setShowMembershipModal(false)
                         setMembershipError("")
                       }}
-                      className="rounded-full"
+                      className="w-full rounded-full"
                   >
                     {t.match.membership.later}
-                  </Button>
-                  <Button
-                      onClick={handleCheckoutMembership}
-                      disabled={checkingOut}
-                      className="rounded-full bg-orange-500 text-white hover:bg-orange-600"
-                  >
-                    {checkingOut
-                        ? t.match.membership.processing
-                        : t.match.membership.checkout}
                   </Button>
                 </div>
               </div>

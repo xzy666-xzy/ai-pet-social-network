@@ -1471,8 +1471,9 @@ app.post("/membership/checkout", authMiddleware, async (req, res) => {
       return sendUnauthorized(res)
     }
 
-    const plan = req.body?.plan === "yearly" ? "yearly" : "monthly"
-    const days = plan === "yearly" ? 365 : 30
+    const requestedPlan = req.body?.plan
+    const plan = requestedPlan === "annual" || requestedPlan === "yearly" ? "annual" : "monthly"
+    const days = plan === "annual" ? 365 : 30
 
     const membership = await activateMembership(String(currentUser.id), days, plan)
     const quota = await getLikeQuota(String(currentUser.id))

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { ChevronLeft, MoreHorizontal, Settings } from "lucide-react"
+import { ChevronLeft, MoreHorizontal, Settings, Sparkles, X } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
@@ -26,6 +26,21 @@ type ProfileStatsResponse = {
   }
 }
 
+type MembershipCheckoutResponse = {
+  success: true
+  data: {
+    membership: {
+      id: string
+      user_id: string
+      plan_type: string | null
+      status: string | null
+      start_at: string | null
+      end_at: string | null
+    }
+    quota?: unknown
+  }
+}
+
 const COLLAPSED_COVER_HEIGHT = 220
 const EXPANDED_COVER_HEIGHT = 420
 
@@ -45,6 +60,9 @@ export default function ProfilePage() {
     startedAt: null as string | null,
   })
   const [statsError, setStatsError] = useState("")
+  const [showMembershipModal, setShowMembershipModal] = useState(false)
+  const [checkingOut, setCheckingOut] = useState(false)
+  const [membershipError, setMembershipError] = useState("")
   const [coverLiked, setCoverLiked] = useState(false)
   const [isCoverExpanded, setIsCoverExpanded] = useState(false)
   const [coverImageUrl, setCoverImageUrl] = useState("")
@@ -157,6 +175,41 @@ export default function ProfilePage() {
     event.target.value = ""
   }
 
+  async function fetchProfileStats() {
+    const response = await apiRequest<ProfileStatsResponse>("/profile/stats", {
+      cache: "no-store",
+      auth: true,
+    })
+
+    return response.data
+  }
+
+  async function handleCheckoutMembership(plan: "monthly" | "annual") {
+    try {
+      setCheckingOut(true)
+      setMembershipError("")
+
+      await apiRequest<MembershipCheckoutResponse>("/membership/checkout", {
+        method: "POST",
+        auth: true,
+        body: JSON.stringify({
+          plan,
+        }),
+      })
+
+      const profileData = await fetchProfileStats()
+      setStats(profileData.stats)
+      setMembership(profileData.membership)
+      setShowMembershipModal(false)
+    } catch (error: unknown) {
+      setMembershipError(
+          error instanceof Error ? error.message : t.match.membership.quotaExceeded
+      )
+    } finally {
+      setCheckingOut(false)
+    }
+  }
+
   useEffect(() => {
     return () => {
       if (coverImageUrl) {
@@ -184,17 +237,14 @@ export default function ProfilePage() {
       try {
         setStatsError("")
 
-        const response = await apiRequest<ProfileStatsResponse>("/profile/stats", {
-          cache: "no-store",
-          auth: true,
-        })
+        const profileData = await fetchProfileStats()
 
         if (cancelled) {
           return
         }
 
-        setStats(response.data.stats)
-        setMembership(response.data.membership)
+        setStats(profileData.stats)
+        setMembership(profileData.membership)
       } catch (error: unknown) {
         if (cancelled) {
           return
@@ -284,6 +334,9 @@ export default function ProfilePage() {
                   className="absolute inset-0 h-full w-full object-cover"
               />
           ) : null}
+          <div className="absolute right-16 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-stone-700 shadow-sm backdrop-blur">
+            <LanguageSwitcher />
+          </div>
           <button
               type="button"
               onClick={() => (window.location.href = "/settings")}
@@ -354,9 +407,6 @@ export default function ProfilePage() {
                     className="hidden"
                     onChange={handleAvatarFileChange}
                 />
-              </div>
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-50 text-stone-700 shadow-sm">
-                <LanguageSwitcher />
               </div>
 
               <div className="min-w-0 flex-1">
@@ -435,12 +485,135 @@ export default function ProfilePage() {
                 </p>
               </div>
 
-              <Button className="shrink-0 rounded-full bg-orange-500 px-4 text-white hover:bg-orange-600">
+              <Button
+                  onClick={() => {
+                    setMembershipError("")
+                    setShowMembershipModal(true)
+                  }}
+                  className="shrink-0 rounded-full bg-orange-500 px-4 text-white hover:bg-orange-600"
+              >
                 {t.profile.upgradeMembership}
               </Button>
             </div>
           </Card>
         </div>
+
+        {showMembershipModal ? (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+              <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-stone-900">
+                    {t.match.membership.title}
+                  </h2>
+                  <button
+                      type="button"
+                      onClick={() => {
+                        setShowMembershipModal(false)
+                        setMembershipError("")
+                      }}
+                      className="rounded-full p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-600"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-yellow-200 bg-yellow-50/70 p-4 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-yellow-100 text-yellow-600">
+                        <Sparkles className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-base font-bold text-stone-900">{t.match.membership.monthlyVipTitle}</div>
+                        <div className="mt-1 text-sm text-stone-600">{t.match.membership.monthlyVipName}</div>
+                      </div>
+                    </div>
+                    <div className="mt-3 text-3xl font-bold text-stone-900">
+                      ¥19.9
+                      <span className="ml-1 text-sm font-normal text-stone-500">
+                        {t.match.membership.monthlyVipDuration}
+                      </span>
+                    </div>
+                    <div className="mt-3 space-y-2 text-sm text-stone-700">
+                      <div>• {t.match.membership.monthlyVipBenefit1}</div>
+                      <div>• {t.match.membership.monthlyVipBenefit2}</div>
+                      <div>• {t.match.membership.monthlyVipBenefit3}</div>
+                      <div>• {t.match.membership.monthlyVipBenefit4}</div>
+                    </div>
+                    <Button
+                        onClick={() => handleCheckoutMembership("monthly")}
+                        disabled={checkingOut}
+                        className="mt-4 w-full rounded-full bg-yellow-500 text-white hover:bg-yellow-600"
+                    >
+                      {checkingOut
+                          ? t.match.membership.processing
+                          : t.match.membership.activateMonthly}
+                    </Button>
+                  </div>
+
+                  <div className="rounded-2xl border border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 p-4 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                        <Sparkles className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-base font-bold text-stone-900">{t.match.membership.annualVipTitle}</span>
+                          <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                            {t.match.membership.bestValue}
+                          </span>
+                        </div>
+                        <div className="mt-1 text-sm text-stone-600">{t.match.membership.annualVipName}</div>
+                      </div>
+                    </div>
+                    <div className="mt-3 text-3xl font-bold text-stone-900">
+                      ¥99.9
+                      <span className="ml-1 text-sm font-normal text-stone-500">
+                        {t.match.membership.annualVipDuration}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-sm font-semibold text-amber-600">
+                      {t.match.membership.annualSave}
+                    </div>
+                    <div className="mt-3 space-y-2 text-sm text-stone-700">
+                      <div>• {t.match.membership.annualVipBenefit1}</div>
+                      <div>• {t.match.membership.annualVipBenefit2}</div>
+                      <div>• {t.match.membership.annualVipBenefit3}</div>
+                      <div>• {t.match.membership.annualVipBenefit4}</div>
+                    </div>
+                    <Button
+                        onClick={() => handleCheckoutMembership("annual")}
+                        disabled={checkingOut}
+                        className="mt-4 w-full rounded-full bg-amber-500 text-white hover:bg-amber-600"
+                    >
+                      {checkingOut
+                          ? t.match.membership.processing
+                          : t.match.membership.activateAnnual}
+                    </Button>
+                  </div>
+                </div>
+
+                {membershipError ? (
+                    <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+                      {membershipError}
+                    </div>
+                ) : null}
+
+                <div className="mt-5">
+                  <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowMembershipModal(false)
+                        setMembershipError("")
+                      }}
+                      className="w-full rounded-full"
+                  >
+                    {t.match.membership.later}
+                  </Button>
+                </div>
+              </div>
+            </div>
+        ) : null}
 
         {isAvatarPreviewOpen ? (
             <div className="fixed inset-0 z-50 bg-black text-white">
