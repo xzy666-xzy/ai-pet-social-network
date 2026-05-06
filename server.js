@@ -1088,6 +1088,122 @@ app.get("/events/:id", async (req, res) => {
   }
 })
 
+app.put("/events/:id", authMiddleware, async (req, res) => {
+  try {
+    const currentUser = await getCurrentUserById(req.user?.userId)
+
+    if (!currentUser) {
+      return sendUnauthorized(res)
+    }
+
+    const eventId = String(req.params.id || "").trim()
+
+    if (!eventId) {
+      return res.status(400).json({
+        success: false,
+        error: "Event id is required",
+      })
+    }
+
+    const existingEvent = await getEventWithOrganizer(eventId)
+
+    if (!existingEvent) {
+      return res.status(404).json({
+        success: false,
+        error: "Event not found",
+      })
+    }
+
+    if (String(existingEvent.organizer_id) !== String(currentUser.id)) {
+      return res.status(403).json({
+        success: false,
+        error: "Only the event organizer can update this event",
+      })
+    }
+
+    const updates = {}
+
+    if (req.body?.title !== undefined) {
+      const title = String(req.body.title || "").trim()
+
+      if (!title) {
+        return res.status(400).json({
+          success: false,
+          error: "title is required",
+        })
+      }
+
+      updates.title = title
+    }
+
+    if (req.body?.image_url !== undefined) {
+      const imageUrl = String(req.body.image_url || "").trim()
+      updates.image_url = imageUrl || null
+    }
+
+    if (req.body?.time !== undefined) {
+      const time = String(req.body.time || "").trim()
+
+      if (!time) {
+        return res.status(400).json({
+          success: false,
+          error: "time is required",
+        })
+      }
+
+      updates.time = time
+    }
+
+    if (req.body?.max_people !== undefined) {
+      const maxPeople = Number(req.body.max_people)
+      updates.max_people = Number.isFinite(maxPeople) ? maxPeople : null
+    }
+
+    if (req.body?.description !== undefined) {
+      const description = String(req.body.description || "").trim()
+      updates.description = description || null
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "No event fields to update",
+      })
+    }
+
+    const { error } = await supabase
+      .from("events")
+      .update(updates)
+      .eq("id", eventId)
+
+    if (error) {
+      console.error("Update event Supabase error:", error)
+
+      return res.status(500).json({
+        success: false,
+        error: error.message || "Failed to update event",
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      })
+    }
+
+    const updatedEvent = await getEventWithOrganizer(eventId)
+
+    return toDataResponse(res, updatedEvent)
+  } catch (error) {
+    console.error("Update event error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update event",
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
+    })
+  }
+})
+
 app.post("/events", authMiddleware, async (req, res) => {
   try {
     const currentUser = await getCurrentUserById(req.user?.userId)

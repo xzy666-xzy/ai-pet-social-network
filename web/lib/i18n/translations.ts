@@ -143,6 +143,20 @@ export const translations = {
       upcomingEvents: "Upcoming Events",
       viewAll: "View all",
       popularSpots: "Popular Spots",
+      editEvent: {
+        back: "Back",
+        title: "Edit Event",
+        loading: "Loading event...",
+        noImage: "No image",
+        imageAlt: "Event image",
+        eventTitle: "Event Title",
+        imageUrl: "Event Image",
+        eventTime: "Event Time",
+        maxPeople: "People Limit",
+        description: "Event Description",
+        organizer: "Event Organizer",
+        save: "Save",
+      },
       events: [
         {
           title: "Golden Retriever Meetup",
@@ -464,6 +478,20 @@ export const translations = {
       upcomingEvents: "다가오는 이벤트",
       viewAll: "전체 보기",
       popularSpots: "인기 장소",
+      editEvent: {
+        back: "뒤로",
+        title: "활동 편집",
+        loading: "활동을 불러오는 중...",
+        noImage: "이미지 없음",
+        imageAlt: "활동 이미지",
+        eventTitle: "활동 제목",
+        imageUrl: "활동 이미지",
+        eventTime: "활동 시간",
+        maxPeople: "인원 제한",
+        description: "활동 소개",
+        organizer: "활동 주최자",
+        save: "저장",
+      },
       events: [
         {
           title: "골든 리트리버 모임",
@@ -784,6 +812,20 @@ export const translations = {
       upcomingEvents: "即将举行的活动",
       viewAll: "查看全部",
       popularSpots: "热门地点",
+      editEvent: {
+        back: "返回",
+        title: "编辑活动",
+        loading: "正在加载活动...",
+        noImage: "暂无图片",
+        imageAlt: "活动图片",
+        eventTitle: "活动标题",
+        imageUrl: "活动图片",
+        eventTime: "活动时间",
+        maxPeople: "人数限制",
+        description: "活动介绍",
+        organizer: "活动组织者",
+        save: "保存",
+      },
       events: [
         {
           title: "金毛寻回犬聚会",
