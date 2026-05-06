@@ -319,6 +319,10 @@ export default function ProfilePage() {
           onTouchEnd={handleCoverTouchEnd}
           className="min-h-screen overflow-x-hidden bg-gradient-to-b from-[#fff8ef] via-orange-50 to-white p-4"
       >
+        <div className="fixed right-[calc(50%-150px)] top-[72px] z-50">
+          <LanguageSwitcher />
+        </div>
+
         <div
             className="sticky top-0 z-0 -mx-4 -mt-4 overflow-hidden bg-gradient-to-br from-orange-200 via-amber-100 to-rose-100 transition-all duration-300 ease-out"
             style={{
@@ -334,9 +338,6 @@ export default function ProfilePage() {
                   className="absolute inset-0 h-full w-full object-cover"
               />
           ) : null}
-          <div className="absolute right-16 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-stone-700 shadow-sm backdrop-blur">
-            <LanguageSwitcher />
-          </div>
           <button
               type="button"
               onClick={() => (window.location.href = "/settings")}
@@ -410,9 +411,16 @@ export default function ProfilePage() {
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xl font-bold text-stone-900">
-                  {petAge}
-                </p>
+                <div className="flex min-w-0 items-center gap-2">
+                  <p className="truncate text-xl font-bold text-stone-900">
+                    {petAge}
+                  </p>
+                  {membership.isActive ? (
+                      <span className="shrink-0 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                        VIP
+                      </span>
+                  ) : null}
+                </div>
                 <p className="mt-1 truncate text-xs text-stone-500">{user.email}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700 shadow-sm">

@@ -685,14 +685,6 @@ export default function ExplorePage() {
             </div>
           </div>
 
-          <div className="relative rounded-2xl bg-emerald-50 border border-emerald-100 p-4 overflow-hidden">
-            <div className="relative z-10 bg-white/90 backdrop-blur px-4 py-2 rounded-full shadow-sm inline-flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-emerald-600" />
-              <span className="text-sm font-bold text-emerald-800">
-              {c.countSuffix(filteredEvents.length)}
-            </span>
-            </div>
-          </div>
         </section>
 
         <section className="space-y-4">

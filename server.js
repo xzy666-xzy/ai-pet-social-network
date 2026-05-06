@@ -1520,7 +1520,13 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
           return null
         }
 
-        const [{ data: lastMessage }, likedByMe, likedMe, { count: sentCount }] = await Promise.all([
+        const [
+          { data: lastMessage },
+          likedByMe,
+          likedMe,
+          { count: sentCount },
+          otherMembership,
+        ] = await Promise.all([
           supabase
             .from("messages")
             .select("content, created_at")
@@ -1535,6 +1541,7 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
             .select("*", { count: "exact", head: true })
             .eq("conversation_id", conversation.id)
             .eq("sender_id", currentUserId),
+          getActiveMembership(String(otherUserId)),
         ])
 
         return {
@@ -1545,6 +1552,7 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
           other_avatar_url: otherUser.avatar_url ?? "",
           other_user_is_ai: otherUser.is_ai ? 1 : 0,
           other_last_seen: otherUser.last_seen ?? null,
+          other_membership_active: Boolean(otherMembership),
           last_message: lastMessage?.content ?? null,
           last_message_time: lastMessage?.created_at ?? null,
           liked_by_me: likedByMe ? 1 : 0,
@@ -1601,12 +1609,18 @@ app.post("/chat/conversations", authMiddleware, async (req, res) => {
       })
     }
 
-    const conversation = await getOrCreateConversation(String(currentUser.id), targetUserId)
+    const [conversation, targetMembership] = await Promise.all([
+      getOrCreateConversation(String(currentUser.id), targetUserId),
+      getActiveMembership(targetUserId),
+    ])
 
     return toDataResponse(res, {
       conversationId: conversation.id,
       conversation,
-      targetUser: toSafeUser(targetUser),
+      targetUser: {
+        ...toSafeUser(targetUser),
+        membership_active: Boolean(targetMembership),
+      },
     })
   } catch (error) {
     console.error("Chat create conversation error:", error)
