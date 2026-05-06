@@ -120,6 +120,77 @@ function isMissingEventsTableError(error) {
   )
 }
 
+async function listEventsWithOrganizers() {
+  const { data: events, error } = await supabase
+    .from("events")
+    .select("*")
+    .order("time", { ascending: true })
+
+  if (error) {
+    throw error
+  }
+
+  const organizerIds = [...new Set((events || []).map((event) => event.organizer_id).filter(Boolean))]
+  const organizerNames = new Map()
+
+  if (organizerIds.length > 0) {
+    const { data: users, error: usersError } = await supabase
+      .from("users")
+      .select("id, pet_name, username, email")
+      .in("id", organizerIds)
+
+    if (usersError) {
+      throw usersError
+    }
+
+    ;(users || []).forEach((user) => {
+      organizerNames.set(user.id, user.pet_name || user.username || user.email || null)
+    })
+  }
+
+  return (events || []).map((event) => ({
+    ...event,
+    organizer_name: organizerNames.get(event.organizer_id) || null,
+  }))
+}
+
+async function getEventWithOrganizer(eventId) {
+  const { data: event, error } = await supabase
+    .from("events")
+    .select("*")
+    .eq("id", eventId)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  if (!event) {
+    return null
+  }
+
+  let organizerName = null
+
+  if (event.organizer_id) {
+    const { data: organizer, error: organizerError } = await supabase
+      .from("users")
+      .select("pet_name, username, email")
+      .eq("id", event.organizer_id)
+      .maybeSingle()
+
+    if (organizerError) {
+      throw organizerError
+    }
+
+    organizerName = organizer?.pet_name || organizer?.username || organizer?.email || null
+  }
+
+  return {
+    ...event,
+    organizer_name: organizerName,
+  }
+}
+
 function getOpenAIClient() {
   if (!OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY is missing")
@@ -966,6 +1037,53 @@ app.put("/profile", authMiddleware, async (req, res) => {
     return res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Failed to update profile",
+    })
+  }
+})
+
+app.get("/events", async (req, res) => {
+  try {
+    const events = await listEventsWithOrganizers()
+
+    return toDataResponse(res, events)
+  } catch (error) {
+    console.error("List events error:", error)
+
+    if (isMissingEventsTableError(error)) {
+      return toDataResponse(res, [])
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to list events",
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
+    })
+  }
+})
+
+app.get("/events/:id", async (req, res) => {
+  try {
+    const event = await getEventWithOrganizer(String(req.params.id || "").trim())
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        error: "Event not found",
+      })
+    }
+
+    return toDataResponse(res, event)
+  } catch (error) {
+    console.error("Get event error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to get event",
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
     })
   }
 })

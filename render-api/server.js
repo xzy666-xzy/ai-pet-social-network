@@ -52,6 +52,77 @@ function isMissingEventsTableError(error) {
   )
 }
 
+async function listEventsWithOrganizers() {
+  const { data: events, error } = await supabaseAdmin
+    .from("events")
+    .select("*")
+    .order("time", { ascending: true })
+
+  if (error) {
+    throw error
+  }
+
+  const organizerIds = [...new Set((events || []).map((event) => event.organizer_id).filter(Boolean))]
+  const organizerNames = new Map()
+
+  if (organizerIds.length > 0) {
+    const { data: users, error: usersError } = await supabaseAdmin
+      .from("users")
+      .select("id, pet_name, username, email")
+      .in("id", organizerIds)
+
+    if (usersError) {
+      throw usersError
+    }
+
+    ;(users || []).forEach((user) => {
+      organizerNames.set(user.id, user.pet_name || user.username || user.email || null)
+    })
+  }
+
+  return (events || []).map((event) => ({
+    ...event,
+    organizer_name: organizerNames.get(event.organizer_id) || null,
+  }))
+}
+
+async function getEventWithOrganizer(eventId) {
+  const { data: event, error } = await supabaseAdmin
+    .from("events")
+    .select("*")
+    .eq("id", eventId)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  if (!event) {
+    return null
+  }
+
+  let organizerName = null
+
+  if (event.organizer_id) {
+    const { data: organizer, error: organizerError } = await supabaseAdmin
+      .from("users")
+      .select("pet_name, username, email")
+      .eq("id", event.organizer_id)
+      .maybeSingle()
+
+    if (organizerError) {
+      throw organizerError
+    }
+
+    organizerName = organizer?.pet_name || organizer?.username || organizer?.email || null
+  }
+
+  return {
+    ...event,
+    organizer_name: organizerName,
+  }
+}
+
 function setCorsHeaders(res) {
   res.setHeader("Access-Control-Allow-Origin", CORS_ORIGIN)
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization")
@@ -538,6 +609,60 @@ async function handleCreateEvent(req, res) {
   }
 }
 
+async function handleListEvents(req, res) {
+  try {
+    const events = await listEventsWithOrganizers()
+
+    return sendJson(res, 200, {
+      success: true,
+      data: events,
+    })
+  } catch (error) {
+    if (isMissingEventsTableError(error)) {
+      return sendJson(res, 200, {
+        success: true,
+        data: [],
+      })
+    }
+
+    const message = error instanceof Error ? error.message : "Failed to list events"
+    return sendJson(res, 500, {
+      success: false,
+      error: message,
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
+    })
+  }
+}
+
+async function handleGetEvent(req, res, eventId) {
+  try {
+    const event = await getEventWithOrganizer(eventId)
+
+    if (!event) {
+      return sendJson(res, 404, {
+        success: false,
+        error: "Event not found",
+      })
+    }
+
+    return sendJson(res, 200, {
+      success: true,
+      data: event,
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to get event"
+    return sendJson(res, 500, {
+      success: false,
+      error: message,
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
+    })
+  }
+}
+
 async function handleEventParticipation(req, res, action) {
   try {
     const accessToken = getBearerToken(req)
@@ -730,6 +855,16 @@ const server = createServer(async (req, res) => {
 
   if (req.method === "PUT" && url.pathname === "/profile") {
     await handleUpdateProfile(req, res)
+    return
+  }
+
+  if (req.method === "GET" && url.pathname === "/events") {
+    await handleListEvents(req, res)
+    return
+  }
+
+  if (req.method === "GET" && url.pathname.startsWith("/events/")) {
+    await handleGetEvent(req, res, decodeURIComponent(url.pathname.slice("/events/".length)))
     return
   }
 

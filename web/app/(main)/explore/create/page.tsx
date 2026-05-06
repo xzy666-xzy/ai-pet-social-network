@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type ChangeEvent, type FormEvent } from "react"
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { CalendarDays, ImagePlus, MapPin, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -25,6 +25,27 @@ export default function CreateExploreEventPage() {
   const [showLocationPicker, setShowLocationPicker] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const organizerName = user?.pet_name || user?.username || user?.email || ""
+
+  useEffect(() => {
+    const savedLocation = sessionStorage.getItem("create_event_location")
+    if (!savedLocation) return
+
+    try {
+      const parsed = JSON.parse(savedLocation)
+      const lat = Number(parsed?.lat)
+      const lng = Number(parsed?.lng)
+
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        setLocation({
+          lat: String(lat),
+          lng: String(lng),
+        })
+        setShowLocationPicker(true)
+      }
+    } catch {
+      sessionStorage.removeItem("create_event_location")
+    }
+  }, [])
 
   const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -58,6 +79,9 @@ export default function CreateExploreEventPage() {
     setSubmitting(true)
 
     try {
+      const selectedLat = location.lat.trim() ? Number(location.lat) : null
+      const selectedLng = location.lng.trim() ? Number(location.lng) : null
+
       await apiRequest("/events", {
         method: "POST",
         auth: true,
@@ -68,8 +92,8 @@ export default function CreateExploreEventPage() {
           max_people: Number(maxPeople),
           description,
           organizer_id: user.id,
-          lat: Number(location.lat),
-          lng: Number(location.lng),
+          lat: Number.isFinite(selectedLat) ? selectedLat : null,
+          lng: Number.isFinite(selectedLng) ? selectedLng : null,
         }),
       })
 
@@ -93,6 +117,13 @@ export default function CreateExploreEventPage() {
   return (
     <div className="mx-auto max-w-md space-y-5 p-4 pb-28">
       <header>
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="mb-3 text-sm text-stone-500"
+        >
+          ← 返回
+        </button>
         <h1 className="text-2xl font-bold text-stone-900">创建活动</h1>
         <p className="mt-1 text-sm text-stone-500">填写活动信息，邀请附近的宠物朋友参加。</p>
       </header>
@@ -180,7 +211,7 @@ export default function CreateExploreEventPage() {
             type="button"
             variant="outline"
             className="w-full justify-center gap-2 border-orange-200 text-orange-500"
-            onClick={() => setShowLocationPicker((prev) => !prev)}
+            onClick={() => router.push("/explore/create/location")}
           >
             <MapPin className="h-4 w-4" />
             地图定位

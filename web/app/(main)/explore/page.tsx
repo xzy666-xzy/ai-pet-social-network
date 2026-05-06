@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   CalendarDays,
@@ -20,6 +20,7 @@ import { ApiError, apiRequest } from "@/lib/api-client"
 import { useAuth } from "@/lib/auth-context"
 
 type EventItem = MapPlace & {
+  event_id?: string
   image: string
   title: {
     zh: string
@@ -33,7 +34,10 @@ type EventItem = MapPlace & {
   }
   time: string
   joined: number
+  max_people?: number | null
+  current_people?: number | null
   organizer_id?: string | null
+  organizer_name?: string | null
 }
 
 type EventParticipationResponse = {
@@ -42,6 +46,50 @@ type EventParticipationResponse = {
     current_people?: number | null
     joined?: boolean
   }
+}
+
+type ApiEvent = {
+  id: string
+  title: string | null
+  image_url: string | null
+  time: string | null
+  event_time?: string | null
+  max_people: number | null
+  current_people: number | null
+  description: string | null
+  organizer_id: string | null
+  organizer_name: string | null
+  lat: number | null
+  lng: number | null
+}
+
+type EventsResponse = {
+  success: true
+  data?: ApiEvent[]
+}
+
+type EventDetailResponse = {
+  success: true
+  data?: ApiEvent
+}
+
+function getEventTimeValue(value?: string | null) {
+  if (!value) {
+    return Number.POSITIVE_INFINITY
+  }
+
+  const time = Date.parse(value)
+  return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time
+}
+
+function sortApiEventsByTime(events: ApiEvent[]) {
+  return [...events].sort((a, b) => {
+    return getEventTimeValue(a.event_time || a.time) - getEventTimeValue(b.event_time || b.time)
+  })
+}
+
+function sortEventItemsByTime(events: EventItem[]) {
+  return [...events].sort((a, b) => getEventTimeValue(a.time) - getEventTimeValue(b.time))
 }
 
 const eventData: EventItem[] = [
@@ -109,6 +157,40 @@ const eventData: EventItem[] = [
     joined: 6,
   },
 ]
+
+function toEventItem(event: ApiEvent, index: number): EventItem {
+  const title = event.title || "Untitled event"
+  const description = event.description || ""
+  const lat = Number(event.lat)
+  const lng = Number(event.lng)
+
+  return {
+    id: index + 1000,
+    event_id: event.id,
+    name: `event-${event.id}`,
+    category: "event",
+    address: event.organizer_name || "Event location",
+    lat: Number.isFinite(lat) ? lat : 37.3212,
+    lng: Number.isFinite(lng) ? lng : 126.8309,
+    image: event.image_url || "/event-dog-park.jpg",
+    title: {
+      zh: title,
+      ko: title,
+      en: title,
+    },
+    desc: {
+      zh: description,
+      ko: description,
+      en: description,
+    },
+    time: event.time || "",
+    joined: Number(event.current_people || 0),
+    max_people: event.max_people,
+    current_people: event.current_people,
+    organizer_id: event.organizer_id,
+    organizer_name: event.organizer_name,
+  }
+}
 
 const copy = {
   zh: {
@@ -182,6 +264,7 @@ export default function ExplorePage() {
   const { user } = useAuth()
   const c = copy[locale]
 
+  const [events, setEvents] = useState<EventItem[]>(sortEventItemsByTime(eventData))
   const [query, setQuery] = useState("")
   const [selectedId, setSelectedId] = useState<number | null>(eventData[0].id)
   const [joinedMap, setJoinedMap] = useState<Record<number, boolean>>({})
@@ -189,13 +272,39 @@ export default function ExplorePage() {
   const [peopleMap, setPeopleMap] = useState<Record<number, number>>({})
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [detailEventId, setDetailEventId] = useState<number | null>(null)
+  const [detailApiEvent, setDetailApiEvent] = useState<ApiEvent | null>(null)
 
   const cardRefs = useRef<Record<number, HTMLDivElement | null>>({})
+  const carouselRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadEvents() {
+      try {
+        const response = await apiRequest<EventsResponse>("/events")
+        const items = sortApiEventsByTime(response.data || []).map(toEventItem)
+
+        if (!cancelled && items.length > 0) {
+          setEvents(items)
+          setSelectedId(items[0].id)
+        }
+      } catch (error) {
+        console.error("Failed to load events", error)
+      }
+    }
+
+    loadEvents()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const filteredEvents = useMemo(() => {
     const keyword = query.trim().toLowerCase()
 
-    return eventData.filter((item) => {
+    return sortEventItemsByTime(events).filter((item) => {
       const title = item.title[locale].toLowerCase()
       const desc = item.desc[locale].toLowerCase()
 
@@ -207,9 +316,39 @@ export default function ExplorePage() {
           item.time.toLowerCase().includes(keyword)
       )
     })
-  }, [locale, query])
+  }, [events, locale, query])
 
   const detailEvent = filteredEvents.find((item) => item.id === detailEventId) || null
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadEventDetail(eventId: string) {
+      try {
+        const response = await apiRequest<EventDetailResponse>(`/events/${encodeURIComponent(eventId)}`)
+
+        if (!cancelled) {
+          setDetailApiEvent(response.data || null)
+        }
+      } catch (error) {
+        console.error("Failed to load event detail", error)
+
+        if (!cancelled) {
+          setDetailApiEvent(null)
+        }
+      }
+    }
+
+    setDetailApiEvent(null)
+
+    if (detailEvent?.event_id) {
+      loadEventDetail(detailEvent.event_id)
+    }
+
+    return () => {
+      cancelled = true
+    }
+  }, [detailEvent?.event_id])
 
   const selectedEvent =
       filteredEvents.find((item) => item.id === selectedId) ?? filteredEvents[0]
@@ -269,6 +408,18 @@ export default function ExplorePage() {
     cardRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" })
   }
 
+  const handleCarouselScroll = () => {
+    const carousel = carouselRef.current
+    if (!carousel || filteredEvents.length === 0) return
+
+    const index = Math.round(carousel.scrollLeft / carousel.clientWidth)
+    const event = filteredEvents[Math.max(0, Math.min(index, filteredEvents.length - 1))]
+
+    if (event && event.id !== selectedId) {
+      setSelectedId(event.id)
+    }
+  }
+
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) return
 
@@ -295,7 +446,7 @@ export default function ExplorePage() {
     const keyword = query.trim().toLowerCase()
     if (!keyword) return
 
-    const found = eventData.find((item) => {
+    const found = events.find((item) => {
       return (
           item.title[locale].toLowerCase().includes(keyword) ||
           item.address.toLowerCase().includes(keyword)
@@ -315,6 +466,13 @@ export default function ExplorePage() {
     const joined = joinedMap[detailEvent.id]
     const joinedCount = peopleMap[detailEvent.id] ?? detailEvent.joined
     const canEdit = user?.id && detailEvent.organizer_id === user.id
+    const detailTitle = detailApiEvent?.title || detailEvent.title[locale]
+    const detailImage = detailApiEvent?.image_url || detailEvent.image
+    const detailTime = detailApiEvent?.time || detailEvent.time
+    const detailDescription = detailApiEvent?.description || detailEvent.desc[locale]
+    const detailOrganizer = detailApiEvent?.organizer_name || detailEvent.organizer_name || detailEvent.address
+    const maxPeople = detailApiEvent?.max_people ?? detailEvent.max_people
+    const detailPeople = detailApiEvent?.current_people ?? joinedCount
 
     return (
         <div className="p-4 max-w-md mx-auto space-y-4 pb-24">
@@ -327,8 +485,8 @@ export default function ExplorePage() {
 
           <div className="rounded-3xl overflow-hidden bg-white border border-stone-100 shadow-sm">
             <img
-                src={detailEvent.image}
-                alt={detailEvent.title[locale]}
+                src={detailImage}
+                alt={detailTitle}
                 className="w-full h-52 object-cover"
             />
 
@@ -338,18 +496,22 @@ export default function ExplorePage() {
             </span>
 
               <h1 className="text-2xl font-bold text-stone-900 mt-3">
-                {detailEvent.title[locale]}
+                {detailTitle}
               </h1>
 
               <p className="text-sm text-stone-500 mt-2">{detailEvent.address}</p>
-              <p className="text-sm text-stone-500 mt-1">{detailEvent.time}</p>
+              <p className="text-sm text-stone-500 mt-1">{detailTime}</p>
+              <p className="text-sm text-stone-500 mt-1">
+                {detailPeople} / {maxPeople ?? "∞"}
+              </p>
+              <p className="text-sm text-stone-500 mt-1">{detailOrganizer}</p>
 
               <div className="mt-4 text-sm text-stone-700 leading-7">
-                {detailEvent.desc[locale]}
+                {detailDescription}
               </div>
 
               <div className="mt-5 rounded-2xl bg-stone-50 border border-stone-100 p-4">
-                <p className="text-sm text-stone-600">{c.joinedText(joinedCount)}</p>
+                <p className="text-sm text-stone-600">{c.joinedText(detailPeople)}</p>
               </div>
 
               <div className="mt-5 flex gap-2">
@@ -483,75 +645,93 @@ export default function ExplorePage() {
             </Button>
           </div>
 
-          {filteredEvents.map((item) => {
-            const selected = selectedId === item.id
-            const joined = joinedMap[item.id]
-            const joinedCount = peopleMap[item.id] ?? item.joined
+          <div
+              ref={carouselRef}
+              onScroll={handleCarouselScroll}
+              className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-2"
+          >
+            {filteredEvents.map((item) => {
+              const selected = selectedId === item.id
+              const joined = joinedMap[item.id]
+              const joinedCount = peopleMap[item.id] ?? item.joined
 
-            return (
-                <div
-                    key={item.id}
-                    ref={(el) => {
-                      cardRefs.current[item.id] = el
-                    }}
-                >
-                  <Card
-                      className={`p-4 rounded-2xl border transition-all ${
-                          selected
-                              ? "border-orange-300 shadow-md bg-orange-50/40"
-                              : "border-stone-100 shadow-sm bg-white"
-                      }`}
+              return (
+                  <div
+                      key={item.id}
+                      ref={(el) => {
+                        cardRefs.current[item.id] = el
+                      }}
+                      className="w-full shrink-0 snap-center"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                    <span className="text-[11px] font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded-full uppercase tracking-wide">
-                      EVENT
-                    </span>
-                        <h3 className="font-bold text-stone-900 mt-3">{item.title[locale]}</h3>
-                        <p className="text-sm text-stone-500 mt-1">{item.address}</p>
-                        <p className="text-sm text-stone-500 mt-1">{item.time}</p>
+                    <Card
+                        className={`p-4 rounded-2xl border transition-all ${
+                            selected
+                                ? "border-orange-300 shadow-md bg-orange-50/40"
+                                : "border-stone-100 shadow-sm bg-white"
+                        }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                      <span className="text-[11px] font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded-full uppercase tracking-wide">
+                        EVENT
+                      </span>
+                          <h3 className="font-bold text-stone-900 mt-3">{item.title[locale]}</h3>
+                          <p className="text-sm text-stone-500 mt-1">{item.address}</p>
+                          <p className="text-sm text-stone-500 mt-1">{item.time}</p>
+                        </div>
+
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-full shrink-0"
+                            onClick={() => handleLocate(item.id)}
+                        >
+                          <MapPin className="h-4 w-4 mr-1" />
+                          {c.locate}
+                        </Button>
                       </div>
 
-                      <Button
-                          variant="outline"
-                          size="sm"
-                          className="rounded-full shrink-0"
-                          onClick={() => handleLocate(item.id)}
-                      >
-                        <MapPin className="h-4 w-4 mr-1" />
-                        {c.locate}
-                      </Button>
-                    </div>
+                      <div className="flex items-center gap-4 text-xs text-stone-500 mt-4">
+                    <span className="flex items-center gap-1">
+                      <Users className="h-3.5 w-3.5" />
+                      {joined ? c.joined : c.joinedText(joinedCount)}
+                    </span>
+                      </div>
 
-                    <div className="flex items-center gap-4 text-xs text-stone-500 mt-4">
-                  <span className="flex items-center gap-1">
-                    <Users className="h-3.5 w-3.5" />
-                    {joined ? c.joined : c.joinedText(joinedCount)}
-                  </span>
-                    </div>
+                      <div className="mt-4 flex gap-2">
+                        <Button
+                            onClick={() => handleJoinToggle(item.id, joinedCount)}
+                            disabled={joiningMap[item.id]}
+                            className="rounded-xl bg-orange-500 hover:bg-orange-600"
+                        >
+                          {joined ? c.cancel : c.join}
+                        </Button>
 
-                    <div className="mt-4 flex gap-2">
-                      <Button
-                          onClick={() => handleJoinToggle(item.id, joinedCount)}
-                          disabled={joiningMap[item.id]}
-                          className="rounded-xl bg-orange-500 hover:bg-orange-600"
-                      >
-                        {joined ? c.cancel : c.join}
-                      </Button>
+                        <Button
+                            variant="outline"
+                            className="rounded-xl"
+                            onClick={() => setDetailEventId(item.id)}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                          <span className="ml-1">{c.detail}</span>
+                        </Button>
+                      </div>
+                    </Card>
+                  </div>
+              )
+            })}
+          </div>
 
-                      <Button
-                          variant="outline"
-                          className="rounded-xl"
-                          onClick={() => setDetailEventId(item.id)}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                        <span className="ml-1">{c.detail}</span>
-                      </Button>
-                    </div>
-                  </Card>
-                </div>
-            )
-          })}
+          <div className="flex justify-center gap-2">
+            {filteredEvents.map((item) => (
+                <span
+                    key={item.id}
+                    className={`h-2 rounded-full transition-all ${
+                        selectedId === item.id ? "w-5 bg-orange-500" : "w-2 bg-stone-300"
+                    }`}
+                />
+            ))}
+          </div>
         </section>
       </div>
   )
