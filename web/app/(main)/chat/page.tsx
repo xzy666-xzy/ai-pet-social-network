@@ -24,10 +24,15 @@ type ChatMessage = {
 type TargetUser = {
   id: string
   username: string | null
+  petName?: string | null
   pet_name: string | null
+  petAge?: number | string | null
   avatar_url: string | null
   pet_age?: number | null
+  petType?: string | null
   pet_type?: string | null
+  petBio?: string | null
+  pet_bio?: string | null
   description?: string | null
   is_ai?: boolean | number | null
 }
@@ -132,8 +137,17 @@ export default function ChatPage() {
   const headerName = useMemo(() => {
     if (!targetUserId) return t.chat.title
     if (!targetUser) return t.chat.title
-    return targetUser.pet_name?.trim() || targetUser.username || t.chat.title
+    return targetUser.petName?.trim() || targetUser.pet_name?.trim() || targetUser.username || t.chat.title
   }, [targetUser, targetUserId, t.chat.title])
+
+  const profilePetName = targetUser?.petName || targetUser?.pet_name || targetUser?.username || "-"
+  const profilePetAge = targetUser?.petAge ?? targetUser?.pet_age ?? "Age not set"
+  const profilePetType = targetUser?.petType || targetUser?.pet_type || "Type not set"
+  const profileDescription =
+      targetUser?.description || targetUser?.petBio || targetUser?.pet_bio || "No bio yet"
+  const profileAgeLabel = t.auth?.petAge || "Age"
+  const profileTypeLabel = t.auth?.petBreed || "Type"
+  const profileBioLabel = t.auth?.petBio || "Bio"
 
   const loadMessages = async (convId: string) => {
     const data = await apiRequest<MessagesResponse>(`/chat/messages/${convId}`, {
@@ -568,14 +582,12 @@ export default function ChatPage() {
 
             <div className="min-w-0">
               <div className="font-semibold text-stone-900">{headerName}</div>
-              <div className="mt-0.5 flex items-center gap-1.5 text-xs text-stone-500">
-                <span
-                    className={`h-2 w-2 rounded-full animate-pulse ${
-                        targetUserId ? "bg-emerald-500" : "bg-red-500"
-                    }`}
-                />
-                <span>{targetUserId ? "在线中" : "离线中"}</span>
-              </div>
+              {targetUserId ? (
+                  <div className="mt-0.5 flex items-center gap-1.5 text-xs text-stone-500">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>在线中</span>
+                  </div>
+              ) : null}
             </div>
           </div>
 
@@ -598,7 +610,7 @@ export default function ChatPage() {
 
                     <div>
                       <div className="text-lg font-bold text-stone-900">
-                        {targetUser.pet_name || targetUser.username || "-"}
+                        {profilePetName}
                       </div>
                       <div className="text-sm text-stone-500">
                         {targetUser.username || "-"}
@@ -617,19 +629,19 @@ export default function ChatPage() {
 
                 <div className="mt-5 space-y-3 text-sm text-stone-700">
                   <div className="flex justify-between gap-4">
-                    <span className="text-stone-500">{t.register.petAge}</span>
-                    <span className="font-medium">{targetUser.pet_age ?? "-"}</span>
+                    <span className="text-stone-500">{profileAgeLabel}</span>
+                    <span className="font-medium">{profilePetAge}</span>
                   </div>
 
                   <div className="flex justify-between gap-4">
-                    <span className="text-stone-500">{t.register.petBreed}</span>
-                    <span className="font-medium">{targetUser.pet_type || "-"}</span>
+                    <span className="text-stone-500">{profileTypeLabel}</span>
+                    <span className="font-medium">{profilePetType}</span>
                   </div>
 
                   <div>
-                    <div className="mb-1 text-stone-500">{t.register.petBio}</div>
+                    <div className="mb-1 text-stone-500">{profileBioLabel}</div>
                     <div className="rounded-xl bg-stone-50 p-3 leading-6">
-                      {targetUser.description || "-"}
+                      {profileDescription}
                     </div>
                   </div>
 

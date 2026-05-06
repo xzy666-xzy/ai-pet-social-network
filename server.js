@@ -73,6 +73,7 @@ function toSafeUser(user) {
     description: user.description ?? null,
     avatar_url: user.avatar_url ?? null,
     cover_url: user.cover_url ?? null,
+    last_seen: user.last_seen ?? null,
     created_at: user.created_at ?? null,
     updated_at: user.updated_at ?? null,
     is_ai: user.is_ai ?? false,
@@ -620,11 +621,15 @@ app.get("/auth/me", authMiddleware, async (req, res) => {
       })
     }
 
+    const now = new Date().toISOString()
     const { data: user, error } = await supabase
         .from("users")
-        .select("*")
+        .update({
+          last_seen: now,
+        })
         .eq("id", userId)
-        .maybeSingle()
+        .select("*")
+        .single()
 
     if (error) throw error
 
@@ -1538,6 +1543,7 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
           other_pet_name: otherUser.pet_name ?? "",
           other_avatar_url: otherUser.avatar_url ?? "",
           other_user_is_ai: otherUser.is_ai ? 1 : 0,
+          other_last_seen: otherUser.last_seen ?? null,
           last_message: lastMessage?.content ?? null,
           last_message_time: lastMessage?.created_at ?? null,
           liked_by_me: likedByMe ? 1 : 0,
