@@ -226,6 +226,7 @@ const copy = {
     useMyLocation: "使用我的位置",
     mapHint: "点击活动卡片或定位按钮，可联动查看位置",
     sectionTitle: "活动聚会",
+    createEvent: "创建活动",
     all: "全部",
     event: "活动",
     locate: "定位",
@@ -234,6 +235,7 @@ const copy = {
     joined: "已参加",
     cancel: "取消",
     detail: "活动详情",
+    edit: "编辑",
     joinedText: (n: number) => `已有 ${n} 人参加`,
     countSuffix: (n: number) => `${n} 个附近活动`,
     back: "返回",
@@ -247,6 +249,7 @@ const copy = {
     useMyLocation: "내 위치 사용",
     mapHint: "카드나 위치 버튼을 누르면 위 지도와 연동됩니다",
     sectionTitle: "활동 모임",
+    createEvent: "활동 만들기",
     all: "전체",
     event: "이벤트",
     locate: "위치",
@@ -255,6 +258,7 @@ const copy = {
     joined: "참가 완료",
     cancel: "취소",
     detail: "상세 정보",
+    edit: "편집",
     joinedText: (n: number) => `${n}명 참가 중`,
     countSuffix: (n: number) => `주변 활동 ${n}개`,
     back: "뒤로",
@@ -268,6 +272,7 @@ const copy = {
     useMyLocation: "Use my location",
     mapHint: "Tap event cards or locate buttons to sync the map",
     sectionTitle: "Events & Meetups",
+    createEvent: "Create Event",
     all: "All",
     event: "Events",
     locate: "Locate",
@@ -276,6 +281,7 @@ const copy = {
     joined: "Joined",
     cancel: "Cancel",
     detail: "Details",
+    edit: "Edit",
     joinedText: (n: number) => `${n} joined`,
     countSuffix: (n: number) => `${n} nearby events`,
     back: "Back",
@@ -592,9 +598,15 @@ export default function ExplorePage() {
                   <Button
                       variant="outline"
                       className="rounded-xl"
-                      onClick={() => router.push(`/explore/${detailEvent.id}/edit`)}
+                      onClick={() => {
+                        if (!detailEvent.event_id) {
+                          console.warn("Missing event_id for edit route, falling back to local id", detailEvent)
+                        }
+
+                        router.push(`/explore/${detailEvent.event_id || detailEvent.id}/edit`)
+                      }}
                   >
-                    编辑
+                    {c.edit}
                   </Button>
                 )}
               </div>
@@ -690,7 +702,7 @@ export default function ExplorePage() {
                 onClick={() => router.push("/explore/create")}
                 className="shrink-0 bg-orange-500 text-white hover:bg-orange-600"
             >
-              创建活动
+              {c.createEvent}
             </Button>
           </div>
 
