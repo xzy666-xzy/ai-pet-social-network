@@ -12,6 +12,9 @@ import { ApiError, apiRequest } from "@/lib/api-client"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 
+const CREATE_EVENT_DRAFT_KEY = "create_event_draft"
+const CREATE_EVENT_LOCATION_KEY = "create_event_location"
+
 export default function CreateExploreEventPage() {
   const router = useRouter()
   const { user } = useAuth()
@@ -27,7 +30,27 @@ export default function CreateExploreEventPage() {
   const organizerName = user?.pet_name || user?.username || user?.email || ""
 
   useEffect(() => {
-    const savedLocation = sessionStorage.getItem("create_event_location")
+    const savedDraft = sessionStorage.getItem(CREATE_EVENT_DRAFT_KEY)
+    if (savedDraft) {
+      try {
+        const parsed = JSON.parse(savedDraft)
+
+        setTitle(String(parsed?.title || ""))
+        setEventImageUrl(String(parsed?.image_url || ""))
+        setImagePreview(String(parsed?.image_preview_url || ""))
+        setTime(String(parsed?.time || ""))
+        setMaxPeople(String(parsed?.max_people || ""))
+        setDescription(String(parsed?.description || ""))
+        setLocation({
+          lat: String(parsed?.lat || ""),
+          lng: String(parsed?.lng || ""),
+        })
+      } catch {
+        sessionStorage.removeItem(CREATE_EVENT_DRAFT_KEY)
+      }
+    }
+
+    const savedLocation = sessionStorage.getItem(CREATE_EVENT_LOCATION_KEY)
     if (!savedLocation) return
 
     try {
@@ -43,9 +66,26 @@ export default function CreateExploreEventPage() {
         setShowLocationPicker(true)
       }
     } catch {
-      sessionStorage.removeItem("create_event_location")
+      sessionStorage.removeItem(CREATE_EVENT_LOCATION_KEY)
     }
   }, [])
+
+  const saveDraft = () => {
+    sessionStorage.setItem(
+      CREATE_EVENT_DRAFT_KEY,
+      JSON.stringify({
+        title,
+        image_url: eventImageUrl,
+        image_preview_url: imagePreview,
+        time,
+        max_people: maxPeople,
+        description,
+        organizer_name: organizerName,
+        lat: location.lat,
+        lng: location.lng,
+      })
+    )
+  }
 
   const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -211,7 +251,10 @@ export default function CreateExploreEventPage() {
             type="button"
             variant="outline"
             className="w-full justify-center gap-2 border-orange-200 text-orange-500"
-            onClick={() => router.push("/explore/create/location")}
+            onClick={() => {
+              saveDraft()
+              router.push("/explore/create/location")
+            }}
           >
             <MapPin className="h-4 w-4" />
             地图定位

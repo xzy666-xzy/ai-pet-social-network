@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 const defaultCenter = { lat: 37.3212, lng: 126.8309 }
+const CREATE_EVENT_LOCATION_KEY = "create_event_location"
 
 export default function CreateEventLocationPage() {
   const router = useRouter()
@@ -145,7 +146,7 @@ export default function CreateEventLocationPage() {
     }
 
     sessionStorage.setItem(
-      "create_event_location",
+      CREATE_EVENT_LOCATION_KEY,
       JSON.stringify({
         lat: selectedLat,
         lng: selectedLng,

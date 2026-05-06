@@ -45,6 +45,7 @@ type EventParticipationResponse = {
   data?: {
     current_people?: number | null
     joined?: boolean
+    is_joined?: boolean
   }
 }
 
@@ -172,7 +173,7 @@ function toEventItem(event: ApiEvent, index: number): EventItem {
     address: event.organizer_name || "Event location",
     lat: Number.isFinite(lat) ? lat : 37.3212,
     lng: Number.isFinite(lng) ? lng : 126.8309,
-    image: event.image_url || "/event-dog-park.jpg",
+    image: event.image_url || "",
     title: {
       zh: title,
       ko: title,
@@ -357,10 +358,12 @@ export default function ExplorePage() {
       ? { lat: selectedEvent.lat, lng: selectedEvent.lng }
       : { lat: 37.3212, lng: 126.8309 }
 
-  const handleJoinToggle = async (id: number, fallbackPeople: number) => {
+  const handleJoinToggle = async (eventItem: EventItem, fallbackPeople: number) => {
+    const id = eventItem.id
     if (joiningMap[id]) return
 
     const joined = joinedMap[id]
+    const eventId = eventItem.event_id || String(eventItem.id)
     setJoiningMap((prev) => ({ ...prev, [id]: true }))
 
     try {
@@ -368,25 +371,47 @@ export default function ExplorePage() {
         method: "POST",
         auth: true,
         body: JSON.stringify({
-          event_id: id,
+          event_id: eventId,
         }),
       })
 
-      const nextJoined = response.data?.joined ?? !joined
+      const nextJoined = response.data?.joined ?? response.data?.is_joined ?? !joined
       const nextPeople = response.data?.current_people
+      const currentPeople = peopleMap[id] ?? fallbackPeople
+      const maxPeople = eventItem.max_people
+      const nextCount = typeof nextPeople === "number"
+        ? Math.max(0, nextPeople)
+        : nextJoined
+          ? Math.min(
+              Number.isFinite(maxPeople) ? Number(maxPeople) : Number.POSITIVE_INFINITY,
+              currentPeople + 1
+            )
+          : Math.max(0, currentPeople - 1)
 
       setJoinedMap((prev) => ({ ...prev, [id]: nextJoined }))
-      setPeopleMap((prev) => {
-        const currentPeople = prev[id] ?? fallbackPeople
-        return {
-          ...prev,
-          [id]: typeof nextPeople === "number"
-            ? Math.max(0, nextPeople)
-            : nextJoined
-              ? currentPeople + 1
-              : Math.max(0, currentPeople - 1),
-        }
-      })
+      setPeopleMap((prev) => ({
+        ...prev,
+        [id]: nextCount,
+      }))
+      setEvents((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                joined: nextCount,
+                current_people: nextCount,
+              }
+            : item
+        )
+      )
+      setDetailApiEvent((prev) =>
+        prev && prev.id === eventId
+          ? {
+              ...prev,
+              current_people: nextCount,
+            }
+          : prev
+      )
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
 
@@ -516,7 +541,7 @@ export default function ExplorePage() {
 
               <div className="mt-5 flex gap-2">
                 <Button
-                    onClick={() => handleJoinToggle(detailEvent.id, joinedCount)}
+                    onClick={() => handleJoinToggle(detailEvent, joinedCount)}
                     disabled={joiningMap[detailEvent.id]}
                     className={`rounded-xl ${
                         joined
@@ -664,57 +689,71 @@ export default function ExplorePage() {
                       className="w-full shrink-0 snap-center"
                   >
                     <Card
-                        className={`p-4 rounded-2xl border transition-all ${
+                        className={`overflow-hidden rounded-2xl border transition-all ${
                             selected
                                 ? "border-orange-300 shadow-md bg-orange-50/40"
                                 : "border-stone-100 shadow-sm bg-white"
                         }`}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
-                      <span className="text-[11px] font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded-full uppercase tracking-wide">
-                        EVENT
-                      </span>
-                          <h3 className="font-bold text-stone-900 mt-3">{item.title[locale]}</h3>
-                          <p className="text-sm text-stone-500 mt-1">{item.address}</p>
-                          <p className="text-sm text-stone-500 mt-1">{item.time}</p>
+                      <div className="aspect-[16/9] w-full bg-stone-100">
+                        {item.image ? (
+                            <img
+                                src={item.image}
+                                alt={item.title[locale]}
+                                className="h-full w-full object-cover"
+                            />
+                        ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-stone-100 text-sm text-stone-400">
+                              No image
+                            </div>
+                        )}
+                      </div>
+
+                      <div className="p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[11px] font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded-full uppercase tracking-wide">
+                            EVENT
+                          </span>
+
+                          <Button
+                              variant="outline"
+                              size="sm"
+                              className="rounded-full shrink-0"
+                              onClick={() => handleLocate(item.id)}
+                          >
+                            <MapPin className="h-4 w-4 mr-1" />
+                            {c.locate}
+                          </Button>
                         </div>
 
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-full shrink-0"
-                            onClick={() => handleLocate(item.id)}
-                        >
-                          <MapPin className="h-4 w-4 mr-1" />
-                          {c.locate}
-                        </Button>
-                      </div>
+                        <h3 className="mt-3 font-bold text-stone-900">{item.title[locale]}</h3>
+                        <p className="mt-1 text-sm text-stone-500">{item.time}</p>
 
-                      <div className="flex items-center gap-4 text-xs text-stone-500 mt-4">
-                    <span className="flex items-center gap-1">
-                      <Users className="h-3.5 w-3.5" />
-                      {joined ? c.joined : c.joinedText(joinedCount)}
-                    </span>
-                      </div>
+                        <div className="flex items-center gap-4 text-xs text-stone-500 mt-4">
+                          <span className="flex items-center gap-1">
+                            <Users className="h-3.5 w-3.5" />
+                            {joined ? c.joined : c.joinedText(joinedCount)}
+                          </span>
+                        </div>
 
-                      <div className="mt-4 flex gap-2">
-                        <Button
-                            onClick={() => handleJoinToggle(item.id, joinedCount)}
-                            disabled={joiningMap[item.id]}
-                            className="rounded-xl bg-orange-500 hover:bg-orange-600"
-                        >
-                          {joined ? c.cancel : c.join}
-                        </Button>
+                        <div className="mt-4 flex gap-2">
+                          <Button
+                              onClick={() => handleJoinToggle(item, joinedCount)}
+                              disabled={joiningMap[item.id]}
+                              className="rounded-xl bg-orange-500 hover:bg-orange-600"
+                          >
+                            {joined ? c.cancel : c.join}
+                          </Button>
 
-                        <Button
-                            variant="outline"
-                            className="rounded-xl"
-                            onClick={() => setDetailEventId(item.id)}
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                          <span className="ml-1">{c.detail}</span>
-                        </Button>
+                          <Button
+                              variant="outline"
+                              className="rounded-xl"
+                              onClick={() => setDetailEventId(item.id)}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                            <span className="ml-1">{c.detail}</span>
+                          </Button>
+                        </div>
                       </div>
                     </Card>
                   </div>
