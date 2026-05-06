@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Send, ChevronLeft, Heart } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -14,16 +14,22 @@ type ChatMessage = {
   id: string
   conversation_id: string
   sender_id: string
-  content: string
+  content: string | null
   is_read?: number
+  is_deleted?: boolean | number
+  deleted_at?: string | null
   created_at: string
 }
 
 type TargetUser = {
   id: string
-  username: string
-  pet_name: string
-  avatar_url: string
+  username: string | null
+  pet_name: string | null
+  avatar_url: string | null
+  pet_age?: number | null
+  pet_type?: string | null
+  description?: string | null
+  is_ai?: boolean | number | null
 }
 
 type ConversationSummary = {
@@ -80,6 +86,13 @@ type SendMessageResponse = {
   }
 }
 
+type DeleteMessageResponse = {
+  success: true
+  data: {
+    message: ChatMessage
+  }
+}
+
 type MatchLikeResponse = {
   success: true
   data: {
@@ -110,12 +123,16 @@ export default function ChatPage() {
   const [chatLikeLoading, setChatLikeLoading] = useState(false)
   const [chatLiked, setChatLiked] = useState(false)
   const [chatMatched, setChatMatched] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [messageMenu, setMessageMenu] = useState<ChatMessage | null>(null)
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null)
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasToken = Boolean(getAccessToken())
 
   const headerName = useMemo(() => {
     if (!targetUserId) return t.chat.title
     if (!targetUser) return t.chat.title
-    return targetUser.pet_name?.trim() || targetUser.username
+    return targetUser.pet_name?.trim() || targetUser.username || t.chat.title
   }, [targetUser, targetUserId, t.chat.title])
 
   const loadMessages = async (convId: string) => {
@@ -167,6 +184,9 @@ export default function ChatPage() {
         setIntroLocked(false)
         setChatLiked(false)
         setChatMatched(false)
+        setProfileOpen(false)
+        setMessageMenu(null)
+        setDeletingMessageId(null)
 
         if (!targetUserId) {
           setLoadingConversations(true)
@@ -407,6 +427,64 @@ export default function ChatPage() {
     })
   }
 
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
+
+  const handleMessageContextMenu = (
+      event: MouseEvent,
+      message: ChatMessage
+  ) => {
+    event.preventDefault()
+    setMessageMenu(message)
+  }
+
+  const handleMessageTouchStart = (message: ChatMessage) => {
+    clearLongPressTimer()
+    longPressTimerRef.current = setTimeout(() => {
+      setMessageMenu(message)
+      longPressTimerRef.current = null
+    }, 550)
+  }
+
+  const handleDeleteMessage = async () => {
+    if (!messageMenu || deletingMessageId) return
+
+    try {
+      setDeletingMessageId(messageMenu.id)
+
+      const data = await apiRequest<DeleteMessageResponse>(
+          `/chat/messages/${messageMenu.id}`,
+          {
+            method: "DELETE",
+            auth: true,
+          }
+      )
+      const updatedMessage = data.data.message
+
+      setMessages((prev) =>
+          prev.map((message) =>
+              message.id === updatedMessage.id
+                  ? {
+                    ...message,
+                    ...updatedMessage,
+                    is_deleted: true,
+                  }
+                  : message
+          )
+      )
+      setMessageMenu(null)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      alert(message)
+    } finally {
+      setDeletingMessageId(null)
+    }
+  }
+
   const shouldShowTimeDivider = (
       prev: ChatMessage | undefined,
       current: ChatMessage
@@ -475,8 +553,8 @@ export default function ChatPage() {
 
   return (
       <div className="flex h-full min-h-0 flex-col overflow-hidden bg-stone-50">
-        <div className="flex items-center border-b bg-white px-4 py-3">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-3 border-b bg-white px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3">
             {targetUserId ? (
                 <Button
                     variant="ghost"
@@ -488,24 +566,91 @@ export default function ChatPage() {
                 </Button>
             ) : null}
 
-            <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-stone-200">
-              {targetUserId && targetUser?.avatar_url ? (
-                  <img
-                      src={targetUser.avatar_url || "/placeholder.svg"}
-                      alt={headerName}
-                      className="h-full w-full object-cover"
-                  />
-              ) : null}
-            </div>
-
-            <div>
+            <div className="min-w-0">
               <div className="font-semibold text-stone-900">{headerName}</div>
               <div className="text-xs text-stone-500">
                 {targetUserId ? t.chat.activeNow : t.chat.historyTitle}
               </div>
             </div>
           </div>
+
+          <button
+              type="button"
+              disabled={!targetUserId || !targetUser}
+              onClick={() => setProfileOpen(true)}
+              className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-stone-200 disabled:cursor-default"
+          >
+            {targetUserId && targetUser?.avatar_url ? (
+                <img
+                    src={targetUser.avatar_url || "/placeholder.svg"}
+                    alt={headerName}
+                    className="h-full w-full object-cover"
+                />
+            ) : null}
+          </button>
         </div>
+
+        {profileOpen && targetUser ? (
+            <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-4 sm:items-center sm:pb-0">
+              <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-stone-200">
+                      {targetUser.avatar_url ? (
+                          <img
+                              src={targetUser.avatar_url || "/placeholder.svg"}
+                              alt={headerName}
+                              className="h-full w-full object-cover"
+                          />
+                      ) : null}
+                    </div>
+
+                    <div>
+                      <div className="text-lg font-bold text-stone-900">
+                        {targetUser.pet_name || targetUser.username || "-"}
+                      </div>
+                      <div className="text-sm text-stone-500">
+                        {targetUser.username || "-"}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                      type="button"
+                      onClick={() => setProfileOpen(false)}
+                      className="rounded-full px-2 py-1 text-sm text-stone-500 hover:bg-stone-100"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="mt-5 space-y-3 text-sm text-stone-700">
+                  <div className="flex justify-between gap-4">
+                    <span className="text-stone-500">{t.register.petAge}</span>
+                    <span className="font-medium">{targetUser.pet_age ?? "-"}</span>
+                  </div>
+
+                  <div className="flex justify-between gap-4">
+                    <span className="text-stone-500">{t.register.petBreed}</span>
+                    <span className="font-medium">{targetUser.pet_type || "-"}</span>
+                  </div>
+
+                  <div>
+                    <div className="mb-1 text-stone-500">{t.register.petBio}</div>
+                    <div className="rounded-xl bg-stone-50 p-3 leading-6">
+                      {targetUser.description || "-"}
+                    </div>
+                  </div>
+
+                  {targetUser.is_ai ? (
+                      <div className="inline-flex rounded-full bg-orange-50 px-3 py-1 text-xs font-medium text-orange-600">
+                        AI
+                      </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+        ) : null}
 
         <ScrollArea className="min-h-0 flex-1 px-4 py-4">
           <div className="mx-auto max-w-2xl">
@@ -592,11 +737,13 @@ export default function ChatPage() {
               ) : (
                   messages.map((msg, index) => {
                     const isMe = msg.sender_id === user?.id
+                    const isDeleted = Boolean(msg.is_deleted)
                     const showTimeDivider = shouldShowTimeDivider(
                         messages[index - 1],
                         msg
                     )
                     const showLikeButton =
+                        !isDeleted &&
                         !isMe &&
                         !chatMatched &&
                         (introLocked || inlineNotice === "LIKE_REQUIRED")
@@ -624,14 +771,22 @@ export default function ChatPage() {
                                 </div>
                             ) : null}
                             <div
-                                className={`max-w-[75%] rounded-2xl px-4 py-2.5 shadow-sm ${
-                                    isMe
-                                        ? "rounded-br-md bg-orange-500 text-white"
-                                        : "rounded-bl-md border border-stone-200 bg-white text-stone-800"
+                                className={`max-w-[75%] px-4 py-2.5 ${
+                                    isDeleted
+                                        ? "rounded-full bg-stone-100 text-xs text-stone-500"
+                                        : isMe
+                                        ? "rounded-2xl rounded-br-md bg-orange-500 text-white shadow-sm"
+                                        : "rounded-2xl rounded-bl-md border border-stone-200 bg-white text-stone-800 shadow-sm"
                                 }`}
+                                onContextMenu={
+                                  isDeleted ? undefined : (event) => handleMessageContextMenu(event, msg)
+                                }
+                                onTouchStart={isDeleted ? undefined : () => handleMessageTouchStart(msg)}
+                                onTouchEnd={isDeleted ? undefined : clearLongPressTimer}
+                                onTouchMove={isDeleted ? undefined : clearLongPressTimer}
                             >
-                              <div className="break-words whitespace-pre-wrap text-sm">
-                                {msg.content}
+                              <div className={`break-words whitespace-pre-wrap ${isDeleted ? "text-xs" : "text-sm"}`}>
+                                {isDeleted ? "删除了一条消息" : msg.content}
                               </div>
                             </div>
                             {showLikeButton ? (
@@ -668,6 +823,28 @@ export default function ChatPage() {
             </div>
           </div>
         </ScrollArea>
+
+        {messageMenu ? (
+            <div className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-md px-4 pb-4">
+              <div className="rounded-2xl bg-white p-2 shadow-xl ring-1 ring-black/5">
+                <button
+                    type="button"
+                    onClick={handleDeleteMessage}
+                    disabled={deletingMessageId === messageMenu.id}
+                    className="w-full rounded-xl px-4 py-3 text-left text-sm font-medium text-red-600 hover:bg-red-50"
+                >
+                  {deletingMessageId === messageMenu.id ? "删除中..." : "删除"}
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setMessageMenu(null)}
+                    className="mt-1 w-full rounded-xl px-4 py-3 text-left text-sm font-medium text-stone-700 hover:bg-stone-50"
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+        ) : null}
 
         <div className="shrink-0 border-t bg-white px-4 py-3">
           <div className="mx-auto max-w-2xl">

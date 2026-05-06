@@ -1654,6 +1654,89 @@ app.get("/chat/messages/:conversationId", authMiddleware, async (req, res) => {
   }
 })
 
+app.delete("/chat/messages/:messageId", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = req.user?.userId
+    const messageId = String(req.params?.messageId || "").trim()
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    if (!messageId) {
+      return res.status(400).json({
+        success: false,
+        error: "messageId is required",
+      })
+    }
+
+    const { data: message, error: messageError } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("id", messageId)
+      .maybeSingle()
+
+    if (messageError) {
+      throw messageError
+    }
+
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        error: "Message not found",
+      })
+    }
+
+    const conversation = await getConversationById(message.conversation_id)
+
+    if (
+      !conversation ||
+      (conversation.user1_id !== currentUserId && conversation.user2_id !== currentUserId)
+    ) {
+      return res.status(404).json({
+        success: false,
+        error: "Conversation not found",
+      })
+    }
+
+    if (String(message.sender_id) !== String(currentUserId)) {
+      return res.status(403).json({
+        success: false,
+        error: "You can only delete your own messages",
+      })
+    }
+
+    const deletedAt = new Date().toISOString()
+    const { data: updatedMessage, error: updateError } = await supabase
+      .from("messages")
+      .update({
+        is_deleted: true,
+        deleted_at: deletedAt,
+      })
+      .eq("id", messageId)
+      .select("*")
+      .single()
+
+    if (updateError) {
+      throw updateError
+    }
+
+    return toDataResponse(res, {
+      message: updatedMessage,
+    })
+  } catch (error) {
+    console.error("Chat delete message error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete message",
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
+    })
+  }
+})
+
 app.post("/chat/messages", authMiddleware, async (req, res) => {
   try {
     const currentUser = await getCurrentUserById(req.user?.userId)
