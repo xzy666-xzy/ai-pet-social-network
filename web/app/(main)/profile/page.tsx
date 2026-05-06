@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { apiRequest } from "@/lib/api-client"
-import { LanguageSwitcher } from "@/components/language-switcher"
 import { useLanguage } from "@/lib/i18n/language-context"
 
 type ProfileStatsResponse = {
@@ -319,10 +318,6 @@ export default function ProfilePage() {
           onTouchEnd={handleCoverTouchEnd}
           className="min-h-screen overflow-x-hidden bg-gradient-to-b from-[#fff8ef] via-orange-50 to-white p-4"
       >
-        <div className="fixed right-[calc(50%-118px)] top-[62px] z-50 flex items-center gap-3 text-stone-900">
-          <LanguageSwitcher />
-        </div>
-
         <div
             className="sticky top-0 z-0 -mx-4 -mt-4 overflow-hidden bg-gradient-to-br from-orange-200 via-amber-100 to-rose-100 transition-all duration-300 ease-out"
             style={{

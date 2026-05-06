@@ -66,7 +66,7 @@ export default function ClientLayout({
   const avatarLetter = useMemo(() => {
     return displayName.charAt(0).toUpperCase()
   }, [displayName])
-  const showLanguageSwitcher = !pathname.startsWith("/profile")
+  const showLanguageSwitcher = true
 
   if (loading) {
     return (
