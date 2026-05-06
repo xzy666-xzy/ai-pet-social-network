@@ -319,7 +319,7 @@ export default function ProfilePage() {
           onTouchEnd={handleCoverTouchEnd}
           className="min-h-screen overflow-x-hidden bg-gradient-to-b from-[#fff8ef] via-orange-50 to-white p-4"
       >
-        <div className="fixed right-[calc(50%-150px)] top-[72px] z-50">
+        <div className="fixed right-[calc(50%-103px)] top-[48px] z-50 text-white">
           <LanguageSwitcher />
         </div>
 

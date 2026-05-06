@@ -772,10 +772,30 @@ app.get("/match/recommend", authMiddleware, async (req, res) => {
       throw error
     }
 
+    const candidateIds = (users || []).map((candidate) => String(candidate.id))
+    const now = new Date().toISOString()
+    let activeMembershipUserIds = new Set()
+
+    if (candidateIds.length > 0) {
+      const { data: memberships, error: membershipError } = await supabase
+        .from("memberships")
+        .select("user_id")
+        .in("user_id", candidateIds)
+        .eq("status", "active")
+        .or(`end_at.is.null,end_at.gt.${now}`)
+
+      if (membershipError) {
+        throw membershipError
+      }
+
+      activeMembershipUserIds = new Set((memberships || []).map((item) => String(item.user_id)))
+    }
+
     const recommendations = (users || [])
       .filter((candidate) => !likedUserIds.has(String(candidate.id)))
       .map((candidate) => ({
         ...toSafeUser(candidate),
+        membership_active: activeMembershipUserIds.has(String(candidate.id)),
         matchScore: buildMatchScore(currentUser, candidate),
         matchReasons: buildMatchReasons(currentUser, candidate),
       }))

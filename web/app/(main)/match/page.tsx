@@ -21,6 +21,7 @@ type MatchUser = {
   avatar_url: string | null
   is_ai?: boolean | null
   created_at?: string | null
+  membership_active?: boolean
   matchScore?: number
   matchReasons?: string[]
   liked?: boolean
@@ -411,10 +412,17 @@ export default function MatchPage() {
 
                         <div className="p-5 space-y-4">
                           <div>
-                            <h2 className="text-2xl font-bold text-stone-800">
-                              {displayName}
-                              {displayAge ? `, ${displayAge}` : ""}
-                            </h2>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h2 className="text-2xl font-bold text-stone-800">
+                                {displayName}
+                                {displayAge ? `, ${displayAge}` : ""}
+                              </h2>
+                              {currentPet.membership_active ? (
+                                  <span className="rounded-full bg-gradient-to-r from-rose-500 to-amber-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                                    VIP
+                                  </span>
+                              ) : null}
+                            </div>
 
                             <p className="text-stone-500 mt-1">
                               {displayType} • {distance}

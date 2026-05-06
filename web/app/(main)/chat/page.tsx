@@ -46,6 +46,7 @@ type ConversationSummary = {
   other_avatar_url: string
   other_user_is_ai?: number
   other_last_seen?: string | null
+  other_membership_active?: boolean
   last_message: string | null
   last_message_time: string | null
   liked_by_me?: number
@@ -746,8 +747,15 @@ export default function ChatPage() {
 
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center justify-between gap-3">
-                                  <div className="truncate font-semibold text-stone-900">
-                                    {item.other_pet_name || item.other_username}
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <div className="truncate font-semibold text-stone-900">
+                                      {item.other_pet_name || item.other_username}
+                                    </div>
+                                    {item.other_membership_active ? (
+                                        <span className="shrink-0 rounded-full bg-gradient-to-r from-rose-500 to-amber-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                                          VIP
+                                        </span>
+                                    ) : null}
                                   </div>
                                   <div className="shrink-0 text-xs text-stone-400">
                                     {item.last_message_time

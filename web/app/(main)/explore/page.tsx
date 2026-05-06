@@ -183,6 +183,8 @@ const eventData: EventItem[] = [
   },
 ]
 
+const DEFAULT_MAP_CENTER = { lat: 37.3219, lng: 126.8353 }
+
 function toEventItem(event: ApiEvent, index: number): EventItem {
   const title = event.title || "Untitled event"
   const description = event.description || ""
@@ -297,7 +299,7 @@ export default function ExplorePage() {
 
   const [events, setEvents] = useState<EventItem[]>(sortEventItemsByTime(eventData))
   const [query, setQuery] = useState("")
-  const [selectedId, setSelectedId] = useState<number | null>(eventData[0].id)
+  const [selectedId, setSelectedId] = useState<number | null>(null)
   const [joinedMap, setJoinedMap] = useState<Record<number, boolean>>({})
   const [joiningMap, setJoiningMap] = useState<Record<number, boolean>>({})
   const [peopleMap, setPeopleMap] = useState<Record<number, number>>({})
@@ -318,7 +320,7 @@ export default function ExplorePage() {
 
         if (!cancelled && items.length > 0) {
           setEvents(items)
-          setSelectedId(items[0].id)
+          setSelectedId(null)
         }
       } catch (error) {
         console.error("Failed to load events", error)
@@ -382,11 +384,11 @@ export default function ExplorePage() {
   }, [detailEvent?.event_id])
 
   const selectedEvent =
-      filteredEvents.find((item) => item.id === selectedId) ?? filteredEvents[0]
+      filteredEvents.find((item) => item.id === selectedId) ?? null
 
-  const center = selectedEvent
+  const center = userLocation || (selectedEvent
       ? { lat: selectedEvent.lat, lng: selectedEvent.lng }
-      : { lat: 37.3212, lng: 126.8309 }
+      : DEFAULT_MAP_CENTER)
 
   const handleJoinToggle = async (eventItem: EventItem, fallbackPeople: number) => {
     const id = eventItem.id

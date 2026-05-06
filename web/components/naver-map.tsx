@@ -61,6 +61,7 @@ export default function NaverMap({
       mapRef.current = new window.google.maps.Map(mapElementRef.current, {
         center,
         zoom: 14,
+        mapTypeId: window.google.maps.MapTypeId.ROADMAP,
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
