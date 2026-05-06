@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { apiRequest } from "@/lib/api-client"
+import { ApiError, apiRequest } from "@/lib/api-client"
 import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 
@@ -75,8 +75,16 @@ export default function CreateExploreEventPage() {
 
       router.push("/explore")
     } catch (error) {
-      console.error(error)
-      alert(error instanceof Error ? error.message : "活动提交失败")
+      const message = error instanceof Error ? error.message : String(error)
+
+      console.error("Failed to create event", {
+        error,
+        status: error instanceof ApiError ? error.status : undefined,
+        message,
+        code: error instanceof ApiError ? error.code : undefined,
+        data: error instanceof ApiError ? error.data : undefined,
+      })
+      alert(message)
     } finally {
       setSubmitting(false)
     }

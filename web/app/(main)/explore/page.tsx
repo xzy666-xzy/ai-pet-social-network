@@ -16,7 +16,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useLanguage } from "@/lib/i18n/language-context"
 import NaverMap, { type MapPlace } from "@/components/naver-map"
-import { apiRequest } from "@/lib/api-client"
+import { ApiError, apiRequest } from "@/lib/api-client"
 import { useAuth } from "@/lib/auth-context"
 
 type EventItem = MapPlace & {
@@ -34,6 +34,14 @@ type EventItem = MapPlace & {
   time: string
   joined: number
   organizer_id?: string | null
+}
+
+type EventParticipationResponse = {
+  success: true
+  data?: {
+    current_people?: number | null
+    joined?: boolean
+  }
 }
 
 const eventData: EventItem[] = [
@@ -217,7 +225,7 @@ export default function ExplorePage() {
     setJoiningMap((prev) => ({ ...prev, [id]: true }))
 
     try {
-      await apiRequest(joined ? "/events/leave" : "/events/join", {
+      const response = await apiRequest<EventParticipationResponse>(joined ? "/events/leave" : "/events/join", {
         method: "POST",
         auth: true,
         body: JSON.stringify({
@@ -225,17 +233,32 @@ export default function ExplorePage() {
         }),
       })
 
-      setJoinedMap((prev) => ({ ...prev, [id]: !joined }))
+      const nextJoined = response.data?.joined ?? !joined
+      const nextPeople = response.data?.current_people
+
+      setJoinedMap((prev) => ({ ...prev, [id]: nextJoined }))
       setPeopleMap((prev) => {
         const currentPeople = prev[id] ?? fallbackPeople
         return {
           ...prev,
-          [id]: joined ? Math.max(0, currentPeople - 1) : currentPeople + 1,
+          [id]: typeof nextPeople === "number"
+            ? Math.max(0, nextPeople)
+            : nextJoined
+              ? currentPeople + 1
+              : Math.max(0, currentPeople - 1),
         }
       })
     } catch (error) {
-      console.error(error)
-      alert(joined ? "取消失败" : "参加失败")
+      const message = error instanceof Error ? error.message : String(error)
+
+      console.error("Failed to toggle event participation", {
+        error,
+        status: error instanceof ApiError ? error.status : undefined,
+        message,
+        code: error instanceof ApiError ? error.code : undefined,
+        data: error instanceof ApiError ? error.data : undefined,
+      })
+      alert(message)
     } finally {
       setJoiningMap((prev) => ({ ...prev, [id]: false }))
     }

@@ -25,6 +25,33 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 })
 const supabaseAdmin = supabase
 
+const STATIC_EVENT_PEOPLE = {
+  "1": 12,
+  "2": 8,
+  "3": 6,
+}
+
+const eventParticipationState = new Map()
+
+function getEventParticipationState(eventId, currentPeople = 0, maxPeople = null) {
+  if (!eventParticipationState.has(eventId)) {
+    eventParticipationState.set(eventId, {
+      currentPeople,
+      maxPeople,
+      participants: new Set(),
+    })
+  }
+
+  return eventParticipationState.get(eventId)
+}
+
+function isMissingEventsTableError(error) {
+  return (
+    error?.code === "PGRST205" ||
+    error?.message?.includes("Could not find the table 'public.events'")
+  )
+}
+
 function setCorsHeaders(res) {
   res.setHeader("Access-Control-Allow-Origin", CORS_ORIGIN)
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization")
@@ -511,6 +538,171 @@ async function handleCreateEvent(req, res) {
   }
 }
 
+async function handleEventParticipation(req, res, action) {
+  try {
+    const accessToken = getBearerToken(req)
+
+    if (!accessToken) {
+      return sendJson(res, 401, {
+        success: false,
+        error: "Missing access token",
+      })
+    }
+
+    const payload = verifyToken(accessToken)
+    const userId = String(payload.sub || "").trim()
+
+    if (!userId) {
+      return sendJson(res, 401, {
+        success: false,
+        error: "Invalid access token",
+      })
+    }
+
+    const body = await parseJsonBody(req)
+    const eventId = String(body.event_id || body.eventId || "").trim()
+
+    if (!eventId) {
+      return sendJson(res, 400, {
+        success: false,
+        error: "event_id is required",
+      })
+    }
+
+    const { data: event, error: eventError } = await supabaseAdmin
+      .from("events")
+      .select("*")
+      .eq("id", eventId)
+      .maybeSingle()
+
+    if (eventError && !isMissingEventsTableError(eventError)) {
+      throw eventError
+    }
+
+    if (!event && STATIC_EVENT_PEOPLE[eventId] === undefined) {
+      return sendJson(res, 404, {
+        success: false,
+        error: "Event not found",
+      })
+    }
+
+    const currentPeople = event ? Number(event.current_people || 0) : STATIC_EVENT_PEOPLE[eventId]
+    const maxPeople = event?.max_people == null ? null : Number(event.max_people)
+    const state = getEventParticipationState(eventId, currentPeople, maxPeople)
+
+    if (action === "join") {
+      if (state.participants.has(userId)) {
+        return sendJson(res, 200, {
+          success: true,
+          data: {
+            ...(event || { id: eventId }),
+            current_people: state.currentPeople,
+            joined: true,
+          },
+        })
+      }
+
+      if (Number.isFinite(state.maxPeople) && state.currentPeople >= state.maxPeople) {
+        return sendJson(res, 400, {
+          success: false,
+          error: "Event is full",
+        })
+      }
+
+      const nextPeople = state.currentPeople + 1
+
+      if (!event) {
+        state.participants.add(userId)
+        state.currentPeople = nextPeople
+
+        return sendJson(res, 200, {
+          success: true,
+          data: {
+            id: eventId,
+            current_people: state.currentPeople,
+            joined: true,
+          },
+        })
+      }
+
+      const { data: updatedEvent, error: updateError } = await supabaseAdmin
+        .from("events")
+        .update({
+          current_people: nextPeople,
+        })
+        .eq("id", eventId)
+        .select("*")
+        .single()
+
+      if (updateError) {
+        throw updateError
+      }
+
+      state.participants.add(userId)
+      state.currentPeople = Number(updatedEvent.current_people || nextPeople)
+
+      return sendJson(res, 200, {
+        success: true,
+        data: {
+          ...updatedEvent,
+          joined: true,
+        },
+      })
+    }
+
+    const nextPeople = state.participants.has(userId)
+      ? Math.max(0, state.currentPeople - 1)
+      : Math.max(0, state.currentPeople)
+
+    if (!event) {
+      state.participants.delete(userId)
+      state.currentPeople = nextPeople
+
+      return sendJson(res, 200, {
+        success: true,
+        data: {
+          id: eventId,
+          current_people: state.currentPeople,
+          joined: false,
+        },
+      })
+    }
+
+    const { data: updatedEvent, error: updateError } = await supabaseAdmin
+      .from("events")
+      .update({
+        current_people: nextPeople,
+      })
+      .eq("id", eventId)
+      .select("*")
+      .single()
+
+    if (updateError) {
+      throw updateError
+    }
+
+    state.participants.delete(userId)
+    state.currentPeople = Number(updatedEvent.current_people || nextPeople)
+
+    return sendJson(res, 200, {
+      success: true,
+      data: {
+        ...updatedEvent,
+        joined: false,
+      },
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : `Failed to ${action} event`
+    return sendJson(res, 500, {
+      success: false,
+      error: message,
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
+    })
+  }
+}
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`)
 
@@ -543,6 +735,16 @@ const server = createServer(async (req, res) => {
 
   if (req.method === "POST" && url.pathname === "/events") {
     await handleCreateEvent(req, res)
+    return
+  }
+
+  if (req.method === "POST" && url.pathname === "/events/join") {
+    await handleEventParticipation(req, res, "join")
+    return
+  }
+
+  if (req.method === "POST" && url.pathname === "/events/leave") {
+    await handleEventParticipation(req, res, "leave")
     return
   }
 

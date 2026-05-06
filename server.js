@@ -93,6 +93,33 @@ function toDataResponse(res, data) {
   })
 }
 
+const STATIC_EVENT_PEOPLE = {
+  "1": 12,
+  "2": 8,
+  "3": 6,
+}
+
+const eventParticipationState = new Map()
+
+function getEventParticipationState(eventId, currentPeople = 0, maxPeople = null) {
+  if (!eventParticipationState.has(eventId)) {
+    eventParticipationState.set(eventId, {
+      currentPeople,
+      maxPeople,
+      participants: new Set(),
+    })
+  }
+
+  return eventParticipationState.get(eventId)
+}
+
+function isMissingEventsTableError(error) {
+  return (
+    error?.code === "PGRST205" ||
+    error?.message?.includes("Could not find the table 'public.events'")
+  )
+}
+
 function getOpenAIClient() {
   if (!OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY is missing")
@@ -985,19 +1012,24 @@ app.post("/events", authMiddleware, async (req, res) => {
       .single()
 
     if (error) {
-      throw error
+      console.error("Create event Supabase error:", error)
+
+      return res.status(500).json({
+        success: false,
+        error: error.message || "Failed to create event",
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      })
     }
 
-    return res.json({
-      success: true,
-      event,
-    })
+    return toDataResponse(res, event)
   } catch (error) {
     console.error("Create event error:", error)
 
     return res.status(500).json({
       success: false,
-      error: "Failed to create event",
+      error: error instanceof Error ? error.message : "Failed to create event",
     })
   }
 })
@@ -1019,6 +1051,7 @@ app.post("/events/join", authMiddleware, async (req, res) => {
       })
     }
 
+    const userId = String(currentUser.id)
     const { data: event, error: eventError } = await supabase
       .from("events")
       .select("*")
@@ -1026,30 +1059,54 @@ app.post("/events/join", authMiddleware, async (req, res) => {
       .maybeSingle()
 
     if (eventError) {
-      throw eventError
+      if (!isMissingEventsTableError(eventError)) {
+        throw eventError
+      }
     }
 
-    if (!event) {
+    if (!event && STATIC_EVENT_PEOPLE[eventId] === undefined) {
       return res.status(404).json({
         success: false,
         error: "Event not found",
       })
     }
 
-    const currentPeople = Number(event.current_people || 0)
-    const maxPeople = Number(event.max_people)
+    const currentPeople = event ? Number(event.current_people || 0) : STATIC_EVENT_PEOPLE[eventId]
+    const maxPeople = event?.max_people == null ? null : Number(event.max_people)
+    const state = getEventParticipationState(eventId, currentPeople, maxPeople)
 
-    if (Number.isFinite(maxPeople) && currentPeople >= maxPeople) {
+    if (state.participants.has(userId)) {
+      return toDataResponse(res, {
+        ...(event || { id: eventId }),
+        current_people: state.currentPeople,
+        joined: true,
+      })
+    }
+
+    if (Number.isFinite(state.maxPeople) && state.currentPeople >= state.maxPeople) {
       return res.status(400).json({
         success: false,
         error: "Event is full",
       })
     }
 
+    const nextPeople = state.currentPeople + 1
+
+    if (!event) {
+      state.participants.add(userId)
+      state.currentPeople = nextPeople
+
+      return toDataResponse(res, {
+        id: eventId,
+        current_people: state.currentPeople,
+        joined: true,
+      })
+    }
+
     const { data: updatedEvent, error: updateError } = await supabase
       .from("events")
       .update({
-        current_people: currentPeople + 1,
+        current_people: nextPeople,
       })
       .eq("id", eventId)
       .select("*")
@@ -1059,16 +1116,22 @@ app.post("/events/join", authMiddleware, async (req, res) => {
       throw updateError
     }
 
-    return res.json({
-      success: true,
-      event: updatedEvent,
+    state.participants.add(userId)
+    state.currentPeople = Number(updatedEvent.current_people || nextPeople)
+
+    return toDataResponse(res, {
+      ...updatedEvent,
+      joined: true,
     })
   } catch (error) {
     console.error("Join event error:", error)
 
     return res.status(500).json({
       success: false,
-      error: "Failed to join event",
+      error: error instanceof Error ? error.message : "Failed to join event",
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
     })
   }
 })
@@ -1090,6 +1153,7 @@ app.post("/events/leave", authMiddleware, async (req, res) => {
       })
     }
 
+    const userId = String(currentUser.id)
     const { data: event, error: eventError } = await supabase
       .from("events")
       .select("*")
@@ -1097,22 +1161,40 @@ app.post("/events/leave", authMiddleware, async (req, res) => {
       .maybeSingle()
 
     if (eventError) {
-      throw eventError
+      if (!isMissingEventsTableError(eventError)) {
+        throw eventError
+      }
     }
 
-    if (!event) {
+    if (!event && STATIC_EVENT_PEOPLE[eventId] === undefined) {
       return res.status(404).json({
         success: false,
         error: "Event not found",
       })
     }
 
-    const currentPeople = Number(event.current_people || 0)
+    const currentPeople = event ? Number(event.current_people || 0) : STATIC_EVENT_PEOPLE[eventId]
+    const maxPeople = event?.max_people == null ? null : Number(event.max_people)
+    const state = getEventParticipationState(eventId, currentPeople, maxPeople)
+    const nextPeople = state.participants.has(userId)
+      ? Math.max(0, state.currentPeople - 1)
+      : Math.max(0, state.currentPeople)
+
+    if (!event) {
+      state.participants.delete(userId)
+      state.currentPeople = nextPeople
+
+      return toDataResponse(res, {
+        id: eventId,
+        current_people: state.currentPeople,
+        joined: false,
+      })
+    }
 
     const { data: updatedEvent, error: updateError } = await supabase
       .from("events")
       .update({
-        current_people: Math.max(0, currentPeople - 1),
+        current_people: nextPeople,
       })
       .eq("id", eventId)
       .select("*")
@@ -1122,16 +1204,22 @@ app.post("/events/leave", authMiddleware, async (req, res) => {
       throw updateError
     }
 
-    return res.json({
-      success: true,
-      event: updatedEvent,
+    state.participants.delete(userId)
+    state.currentPeople = Number(updatedEvent.current_people || nextPeople)
+
+    return toDataResponse(res, {
+      ...updatedEvent,
+      joined: false,
     })
   } catch (error) {
     console.error("Leave event error:", error)
 
     return res.status(500).json({
       success: false,
-      error: "Failed to leave event",
+      error: error instanceof Error ? error.message : "Failed to leave event",
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
     })
   }
 })

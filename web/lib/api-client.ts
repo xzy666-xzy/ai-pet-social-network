@@ -12,12 +12,14 @@ type ApiRequestOptions = RequestInit & {
 export class ApiError extends Error {
   status: number
   code?: string
+  data: unknown
 
-  constructor(message: string, status: number, code?: string) {
+  constructor(message: string, status: number, code?: string, data?: unknown) {
     super(message)
     this.name = "ApiError"
     this.status = status
     this.code = code
+    this.data = data
   }
 }
 
@@ -68,9 +70,10 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
 
   if (!response.ok) {
     throw new ApiError(
-      data?.error || `Request failed with status ${response.status}`,
+      data?.error || data?.message || `Request failed with status ${response.status}`,
       response.status,
-      data?.code
+      data?.code,
+      data
     )
   }
 
