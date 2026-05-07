@@ -317,7 +317,7 @@ const copy = {
   zh: {
     title: "探索",
     subtitle: "附近活动 + 地图交互",
-    searchPlaceholder: "搜索宠物公园、宠物咖啡厅、动物医院...",
+    searchPlaceholder: "搜索宠物公园、医院...",
     searchButton: "查询",
     useMyLocation: "使用我的位置",
     mapHint: "点击活动卡片或定位按钮，可联动查看位置",
@@ -340,7 +340,7 @@ const copy = {
   ko: {
     title: "탐색",
     subtitle: "근처 활동 + 지도 인터랙션",
-    searchPlaceholder: "반려동물 공원, 펫카페, 동물병원 검색...",
+    searchPlaceholder: "반려동물 공원, 병원 검색...",
     searchButton: "검색",
     useMyLocation: "내 위치 사용",
     mapHint: "카드나 위치 버튼을 누르면 위 지도와 연동됩니다",
@@ -363,7 +363,7 @@ const copy = {
   en: {
     title: "Explore",
     subtitle: "Nearby events + map interaction",
-    searchPlaceholder: "Search pet parks, pet cafes, vet clinics...",
+    searchPlaceholder: "Search pet parks or vets...",
     searchButton: "Search",
     useMyLocation: "Use my location",
     mapHint: "Tap event cards or locate buttons to sync the map",
@@ -665,23 +665,11 @@ export default function ExplorePage() {
   }
 
   const handleSearchLocation = () => {
-    const keyword = query.trim().toLowerCase()
-    if (!keyword) return
+    const searchQuery = query.trim()
+    if (!searchQuery) return
 
-    const found = events.find((item) => {
-      return (
-          item.title[locale].toLowerCase().includes(keyword) ||
-          item.address.toLowerCase().includes(keyword)
-      )
-    })
-
-    if (found) {
-      setSelectedId(found.id)
-      setDetailEventId(null)
-      cardRefs.current[found.id]?.scrollIntoView({ behavior: "smooth", block: "center" })
-    } else {
-      alert(c.searchNotFound)
-    }
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(searchQuery)}`
+    window.open(url, "_blank", "noopener,noreferrer")
   }
 
   if (detailEvent) {

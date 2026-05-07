@@ -424,11 +424,6 @@ export default function ProfilePage() {
                   <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700 shadow-sm">
                     {displayName}
                   </span>
-                  {user.description ? (
-                      <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700 shadow-sm">
-                        {t.profile.profileReady}
-                      </span>
-                  ) : null}
                 </div>
               </div>
             </div>
@@ -452,7 +447,7 @@ export default function ProfilePage() {
           </Card>
 
           <Card className="rounded-3xl border-orange-100 bg-white p-4 shadow-sm">
-            <h2 className="text-lg font-bold text-stone-900 mb-3">{t.profile.activityStats}</h2>
+            <h2 className="text-lg font-bold text-stone-900 mb-3">📊 {t.profile.activityStats}</h2>
 
             {statsError ? (
               <p className="text-sm text-red-600">{statsError}</p>

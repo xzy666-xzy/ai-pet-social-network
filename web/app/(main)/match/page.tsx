@@ -361,7 +361,6 @@ export default function MatchPage() {
             </Button>
             <div>
               <h1 className="text-lg font-bold text-stone-900">{displayName}</h1>
-              <p className="text-xs text-stone-500">{matchScore}% {t.match.matchPercent}</p>
             </div>
           </div>
 
