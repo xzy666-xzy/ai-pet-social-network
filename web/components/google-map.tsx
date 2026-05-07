@@ -25,7 +25,15 @@ type Props = {
   userLocation?: { lat: number; lng: number } | null
 }
 
-export default function NaverMap({
+function isValidPosition(position?: { lat: number; lng: number } | null) {
+  return (
+    Boolean(position) &&
+    Number.isFinite(position?.lat) &&
+    Number.isFinite(position?.lng)
+  )
+}
+
+export default function GoogleMap({
   center,
   places,
   selectedPlaceId,
@@ -58,16 +66,28 @@ export default function NaverMap({
     const initMap = () => {
       if (!mapElementRef.current || !window.google?.maps || mapRef.current) return
 
-      mapRef.current = new window.google.maps.Map(mapElementRef.current, {
-        center,
+      const mapOptions: any = {
+        center: isValidPosition(center) ? center : { lat: 37.3219, lng: 126.8353 },
         zoom: 14,
-        mapTypeId: window.google.maps.MapTypeId.ROADMAP,
+        mapTypeId: "roadmap",
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
-      })
+      }
+
+      if (window.google.maps.RenderingType?.RASTER) {
+        mapOptions.renderingType = window.google.maps.RenderingType.RASTER
+      }
+
+      mapRef.current = new window.google.maps.Map(mapElementRef.current, mapOptions)
       infoWindowRef.current = new window.google.maps.InfoWindow()
       setLoadState("ready")
+
+      window.requestAnimationFrame(() => {
+        if (!mapRef.current || !window.google?.maps) return
+        window.google.maps.event.trigger(mapRef.current, "resize")
+        mapRef.current.setCenter(mapOptions.center)
+      })
     }
 
     if (window.google?.maps) {
@@ -96,6 +116,7 @@ export default function NaverMap({
 
   useEffect(() => {
     if (loadState !== "ready" || !mapRef.current) return
+    if (!isValidPosition(center)) return
 
     mapRef.current.setCenter(center)
   }, [center, loadState])
@@ -106,7 +127,7 @@ export default function NaverMap({
     markersRef.current.forEach((marker) => marker.setMap(null))
     markersRef.current = []
 
-    places.forEach((place) => {
+    places.filter(isValidPosition).forEach((place) => {
       const isSelected = place.id === selectedPlaceId
       const marker = new window.google.maps.Marker({
         position: { lat: place.lat, lng: place.lng },
@@ -144,7 +165,7 @@ export default function NaverMap({
       userMarkerRef.current = null
     }
 
-    if (!userLocation) return
+    if (!isValidPosition(userLocation)) return
 
     userMarkerRef.current = new window.google.maps.Marker({
       position: userLocation,
@@ -174,7 +195,8 @@ export default function NaverMap({
 
   return (
     <div className="relative h-72 w-full overflow-hidden rounded-2xl border border-stone-200 bg-stone-50">
-      <div ref={mapElementRef} className="absolute inset-0" />
+      <div ref={mapElementRef} className="google-map-surface absolute inset-0" />
+      <style>{`.google-map-surface img { max-width: none !important; }`}</style>
 
       {loadState === "loading" ? (
         <div className="absolute inset-0 flex items-center justify-center bg-stone-50 text-sm text-stone-500">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ChevronLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -48,12 +48,23 @@ const cityOptions: CityOption[] = [
 export default function CitySettingsPage() {
   const router = useRouter()
   const { t } = useLanguage()
-  const { refreshUser } = useAuth()
+  const { user, refreshUser } = useAuth()
   const [selectedCity, setSelectedCity] = useState(cityOptions[0].city)
   const [saving, setSaving] = useState(false)
 
+  useEffect(() => {
+    if (!user?.city) return
+
+    const savedCity = cityOptions.find((option) => option.city === user.city)
+    if (savedCity) {
+      setSelectedCity(savedCity.city)
+    }
+  }, [user?.city])
+
   const currentCity =
     cityOptions.find((option) => option.city === selectedCity) ?? cityOptions[0]
+  const cityNames = t.profile.cityNames || {}
+  const getCityLabel = (city: string) => cityNames[city as keyof typeof cityNames] || city
 
   const handleSave = async () => {
     if (saving) return
@@ -110,23 +121,11 @@ export default function CitySettingsPage() {
                 <SelectContent>
                   {cityOptions.map((option) => (
                     <SelectItem key={option.city} value={option.city}>
-                      {option.city}
+                      {getCityLabel(option.city)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            <div className="rounded-2xl bg-orange-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-orange-600">
-                {t.profile.currentSelectedCity}
-              </p>
-              <p className="mt-2 text-lg font-bold text-stone-900">
-                {currentCity.city}
-              </p>
-              <p className="mt-1 text-sm text-stone-500">
-                {currentCity.city_lat.toFixed(4)}, {currentCity.city_lng.toFixed(4)}
-              </p>
             </div>
 
             <Button

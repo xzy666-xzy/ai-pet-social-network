@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import { Capacitor } from "@capacitor/core"
+import { Geolocation } from "@capacitor/geolocation"
 import {
   CalendarDays,
   ChevronRight,
@@ -15,7 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useLanguage } from "@/lib/i18n/language-context"
-import NaverMap, { type MapPlace } from "@/components/naver-map"
+import GoogleMap, { type MapPlace } from "@/components/google-map"
 import { ApiError, apiRequest } from "@/lib/api-client"
 import { useAuth } from "@/lib/auth-context"
 
@@ -517,26 +519,52 @@ export default function ExplorePage() {
     }
   }
 
-  const handleUseMyLocation = () => {
-    if (!navigator.geolocation) return
+  const handleUseMyLocation = async () => {
+    const applyPosition = (lat: number, lng: number) => {
+      setUserLocation({ lat, lng })
+    }
 
-    navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          })
-        },
-        () => {
-          alert(
-              locale === "zh"
-                  ? "无法获取当前位置"
-                  : locale === "ko"
-                      ? "현재 위치를 가져올 수 없습니다"
-                      : "Unable to get current location",
-          )
-        },
-    )
+    const getBrowserPosition = () =>
+      new Promise<GeolocationPosition>((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error("Browser geolocation is unavailable"))
+          return
+        }
+
+        navigator.geolocation.getCurrentPosition(resolve, reject)
+      })
+
+    try {
+      if (Capacitor.isNativePlatform()) {
+        const permission = await Geolocation.requestPermissions()
+        const granted = permission.location === "granted" || permission.coarseLocation === "granted"
+
+        if (!granted) {
+          throw new Error("Location permission denied")
+        }
+
+        const position = await Geolocation.getCurrentPosition()
+        applyPosition(position.coords.latitude, position.coords.longitude)
+        return
+      }
+
+      const position = await getBrowserPosition()
+      applyPosition(position.coords.latitude, position.coords.longitude)
+    } catch (error) {
+      try {
+        const position = await getBrowserPosition()
+        applyPosition(position.coords.latitude, position.coords.longitude)
+      } catch (fallbackError) {
+        console.error("Failed to get current location", { error, fallbackError })
+        alert(
+            locale === "zh"
+                ? "无法获取当前位置"
+                : locale === "ko"
+                    ? "현재 위치를 가져올 수 없습니다"
+                    : "Unable to get current location",
+        )
+      }
+    }
   }
 
   const handleSearchLocation = () => {
@@ -702,7 +730,7 @@ export default function ExplorePage() {
 
         <section className="space-y-3">
           <div className="rounded-2xl border border-stone-100 bg-white p-3 shadow-sm">
-            <NaverMap
+            <GoogleMap
                 center={center}
                 places={filteredEvents}
                 selectedPlaceId={selectedId}

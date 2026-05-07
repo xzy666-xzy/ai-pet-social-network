@@ -217,48 +217,7 @@ export default function RegisterPage() {
         </header>
 
         <main className="mx-auto flex min-h-[calc(100vh-64px)] max-w-6xl items-center justify-center px-4 py-8 sm:px-6">
-          <div className="grid w-full max-w-5xl overflow-hidden rounded-[32px] bg-white shadow-[0_20px_80px_rgba(0,0,0,0.08)] lg:grid-cols-2">
-            <div className="relative hidden flex-col justify-between bg-gradient-to-br from-orange-500 via-orange-400 to-amber-300 p-10 text-white lg:flex">
-              <div>
-                <div className="inline-flex h-16 w-16 items-center justify-center rounded-3xl border border-white/20 bg-white/20 backdrop-blur-md">
-                  <PawPrint className="h-8 w-8" />
-                </div>
-
-                <h1 className="mt-8 text-4xl font-extrabold leading-tight">
-                  {t.auth?.registerTitle || "Welcome to"}
-                  <br />
-                  WePet
-                </h1>
-
-                <p className="mt-4 max-w-md text-base leading-7 text-white/90">
-                  {t.auth?.registerSubtitle ||
-                      "Create your pet profile, find new friends, and enjoy an AI-powered social experience made for pet owners."}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-2xl border border-white/20 bg-white/15 p-4 backdrop-blur-md">
-                  <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
-                    <Dog className="h-5 w-5" />
-                  </div>
-                  <p className="font-semibold">{t.auth?.petInfoTitle || "Pet Profile"}</p>
-                  <p className="mt-1 text-sm text-white/80">
-                    {t.auth?.petInfoSubtitle || "Introduce your lovely pet."}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-white/20 bg-white/15 p-4 backdrop-blur-md">
-                  <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
-                    <PawPrint className="h-5 w-5" />
-                  </div>
-                  <p className="font-semibold">{t.match?.aiOptimized || "Smart Matching"}</p>
-                  <p className="mt-1 text-sm text-white/80">
-                    {t.match?.title || "Connect with the right pet friends."}
-                  </p>
-                </div>
-              </div>
-            </div>
-
+          <div className="grid w-full max-w-xl overflow-hidden rounded-[32px] bg-white shadow-[0_20px_80px_rgba(0,0,0,0.08)]">
             <div className="flex items-center justify-center p-5 sm:p-8 lg:p-10">
               <div className="w-full max-w-md">
                 <div className="mb-8 text-center lg:text-left">

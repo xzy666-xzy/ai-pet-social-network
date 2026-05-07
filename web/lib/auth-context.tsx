@@ -77,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const data = await apiRequest<AuthSuccessResponse>("/auth/me", {
         method: "GET",
+        cache: "no-store",
         auth: true,
       })
       setUser(data.user)
