@@ -641,20 +641,24 @@ app.get("/health", (req, res) => {
 
 app.post("/auth/login", async (req, res) => {
   try {
-    const email = String(req.body?.email || "").trim().toLowerCase()
+    const loginIdentifier = String(req.body?.loginIdentifier || req.body?.email || "").trim()
     const password = String(req.body?.password || "")
 
-    if (!email || !password) {
+    if (!loginIdentifier || !password) {
       return res.status(400).json({
         success: false,
-        error: "Email and password are required",
+        error: "Username or email and password are required",
       })
     }
+
+    const isEmailLogin = loginIdentifier.includes("@")
+    const loginColumn = isEmailLogin ? "email" : "username"
+    const loginValue = isEmailLogin ? loginIdentifier.toLowerCase() : loginIdentifier
 
     const { data: user, error } = await supabase
         .from("users")
         .select("*")
-        .eq("email", email)
+        .eq(loginColumn, loginValue)
         .maybeSingle()
 
     if (error) throw error

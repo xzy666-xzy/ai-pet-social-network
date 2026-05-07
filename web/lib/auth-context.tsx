@@ -35,7 +35,7 @@ export interface UserData {
 interface AuthContextType {
   user: UserData | null
   loading: boolean
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
+  login: (loginIdentifier: string, password: string) => Promise<{ success: boolean; error?: string }>
   register: (data: RegisterData) => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
   refreshUser: () => Promise<void>
@@ -105,11 +105,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshUser()
   }, [refreshUser])
 
-  const login = async (email: string, password: string) => {
+  const login = async (loginIdentifier: string, password: string) => {
     try {
       const data = await apiRequest<AuthSuccessResponse>("/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: loginIdentifier, loginIdentifier, password }),
       })
 
       const accessToken = data.access_token || data.token

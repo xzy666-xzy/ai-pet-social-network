@@ -4,7 +4,7 @@ import type React from "react"
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { PawPrint, Mail, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react"
+import { PawPrint, User, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/lib/auth-context"
@@ -16,7 +16,7 @@ export default function LoginPage() {
   const { login } = useAuth()
   const router = useRouter()
 
-  const [email, setEmail] = useState("")
+  const [loginIdentifier, setLoginIdentifier] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
@@ -27,7 +27,7 @@ export default function LoginPage() {
     setError("")
     setIsLoading(true)
 
-    const result = await login(email, password)
+    const result = await login(loginIdentifier, password)
     if (result.success) {
       router.replace("/match")
     } else {
@@ -67,14 +67,14 @@ export default function LoginPage() {
             )}
 
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-stone-700">{t.auth?.email || "Email"}</label>
+              <label className="text-sm font-semibold text-stone-700">{t.auth?.loginIdentifier || t.auth?.username || "Username"}</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3 h-5 w-5 text-stone-400" />
+                <User className="absolute left-3 top-3 h-5 w-5 text-stone-400" />
                 <Input
-                  type="email"
-                  placeholder={t.auth?.emailPlaceholder || "your@email.com"}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  type="text"
+                  placeholder={t.auth?.loginIdentifierPlaceholder || "Enter username or email"}
+                  value={loginIdentifier}
+                  onChange={(e) => setLoginIdentifier(e.target.value)}
                   className="pl-11 h-12 rounded-xl border-stone-200 bg-white focus:border-orange-400 focus:ring-orange-400"
                   required
                 />

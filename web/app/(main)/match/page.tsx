@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { motion, AnimatePresence, animate, useMotionValue, useTransform } from "framer-motion"
-import { X, Heart, Sparkles, Info, MapPin } from "lucide-react"
+import { X, Heart, Sparkles, Info, MapPin, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
@@ -18,6 +18,9 @@ type MatchUser = {
   pet_type: string | null
   pet_age: number | null
   description: string | null
+  petBio?: string | null
+  pet_bio?: string | null
+  city?: string | null
   avatar_url: string | null
   is_ai?: boolean | null
   created_at?: string | null
@@ -100,6 +103,7 @@ export default function MatchPage() {
   const [checkingOut, setCheckingOut] = useState(false)
   const [membershipError, setMembershipError] = useState("")
   const [likedUserIds, setLikedUserIds] = useState<Set<string>>(new Set())
+  const [showPetDetail, setShowPetDetail] = useState(false)
   const hasToken = Boolean(getAccessToken())
   const dragX = useMotionValue(0)
   const dragRotate = useTransform(dragX, [-200, 0, 200], [-10, 0, 10])
@@ -327,7 +331,12 @@ export default function MatchPage() {
   const displayType = currentPet?.pet_type?.trim() || t.match.unknownBreed
 
   const displayDescription =
-      currentPet?.description?.trim() || t.match.noBio
+      currentPet?.description?.trim() ||
+      currentPet?.petBio?.trim() ||
+      currentPet?.pet_bio?.trim() ||
+      t.match.noBio
+
+  const displayCity = currentPet?.city?.trim() || ""
 
   const displayUsername =
       currentPet?.username?.trim() || "user"
@@ -336,6 +345,104 @@ export default function MatchPage() {
       currentPet?.avatar_url && currentPet.avatar_url.trim() !== ""
           ? currentPet.avatar_url
           : "/placeholder-pet.png"
+
+  if (showPetDetail && currentPet) {
+    return (
+        <div className="mx-auto flex h-full max-w-md flex-col bg-orange-50">
+          <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-orange-100 bg-white/95 px-4 py-3 backdrop-blur">
+            <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowPetDetail(false)}
+                className="h-10 w-10 rounded-full text-stone-700 hover:bg-orange-50"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-lg font-bold text-stone-900">{displayName}</h1>
+              <p className="text-xs text-stone-500">{matchScore}% {t.match.matchPercent}</p>
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto pb-24">
+            <div className="relative h-80 w-full bg-orange-100">
+              <img
+                  src={imageSrc}
+                  alt={displayName}
+                  className="h-full w-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = "/placeholder-pet.png"
+                  }}
+              />
+              <Badge className="absolute right-4 top-4 border-0 bg-white/90 text-stone-700 shadow-lg">
+                {matchScore}% {t.match.matchPercent}
+              </Badge>
+            </div>
+
+            <div className="space-y-4 p-4">
+              <Card className="border-orange-100 bg-white p-5 shadow-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-2xl font-bold text-stone-900">
+                    {displayName}
+                    {displayAge ? `, ${displayAge}` : ""}
+                  </h2>
+                  {currentPet.membership_active ? (
+                      <span className="rounded-full bg-gradient-to-r from-rose-500 to-amber-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                        VIP
+                      </span>
+                  ) : null}
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {displayType ? (
+                      <Badge variant="secondary" className="rounded-full">
+                        {displayType}
+                      </Badge>
+                  ) : null}
+                  {displayCity ? (
+                      <Badge variant="secondary" className="rounded-full">
+                        {displayCity}
+                      </Badge>
+                  ) : null}
+                  {distanceDisplayText ? (
+                      <Badge variant="secondary" className={`rounded-full ${distanceClassName}`}>
+                        <MapPin className="mr-1 h-3 w-3" />
+                        {distanceDisplayText}
+                      </Badge>
+                  ) : null}
+                </div>
+              </Card>
+
+              {currentPet.matchReasons && currentPet.matchReasons.length > 0 ? (
+                  <Card className="border-orange-100 bg-white p-5 shadow-sm">
+                    <div className="mb-3 text-sm font-semibold text-stone-700">Tags</div>
+                    <div className="flex flex-wrap gap-2">
+                      {currentPet.matchReasons.map((reason) => (
+                          <Badge key={reason} variant="secondary" className="rounded-full">
+                            {reason}
+                          </Badge>
+                      ))}
+                    </div>
+                  </Card>
+              ) : null}
+
+              <Card className="border-orange-100 bg-white p-5 shadow-sm">
+                <div className="mb-3 flex items-center gap-2">
+                  <Info className="h-4 w-4 text-orange-500" />
+                  <span className="text-sm font-semibold text-orange-700">
+                    {currentPet.is_ai ? t.match.roleIntro : t.match.aiAnalysis}
+                  </span>
+                </div>
+                <p className="whitespace-pre-line text-sm leading-relaxed text-stone-700">
+                  {displayDescription}
+                </p>
+              </Card>
+            </div>
+          </div>
+        </div>
+    )
+  }
 
   return (
       <>
@@ -407,7 +514,10 @@ export default function MatchPage() {
                             animate(dragX, 0, { type: "spring", stiffness: 300, damping: 30 })
                           }}
                       >
-                      <Card className="flex h-full flex-col overflow-hidden border-0 shadow-xl bg-white">
+                      <Card
+                          onClick={() => setShowPetDetail(true)}
+                          className="flex h-full flex-col overflow-hidden border-0 shadow-xl bg-white cursor-pointer"
+                      >
                         <div className="relative h-[44%] shrink-0">
                           <img
                               src={imageSrc}
