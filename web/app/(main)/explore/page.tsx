@@ -124,8 +124,24 @@ function sortEventItemsByTime(events: EventItem[]) {
 }
 
 function toFiniteNumber(value: unknown) {
+  if (value === null || value === undefined || value === "") {
+    return null
+  }
+
   const number = Number(value)
   return Number.isFinite(number) ? number : null
+}
+
+function isValidLatitude(value: number | null) {
+  return value !== null && value >= -90 && value <= 90
+}
+
+function isValidLongitude(value: number | null) {
+  return value !== null && value >= -180 && value <= 180
+}
+
+function isValidCoordinatePair(lat: number | null, lng: number | null) {
+  return isValidLatitude(lat) && isValidLongitude(lng)
 }
 
 function calculateDistanceKm(fromLat: unknown, fromLng: unknown, toLat: unknown, toLng: unknown) {
@@ -375,16 +391,16 @@ export default function ExplorePage() {
   const { user } = useAuth()
   const c = copy[locale]
   const userCity = (user as { city?: string | null } | null)?.city ?? null
-  const userCurrentLat = Number((user as { current_lat?: number | string | null } | null)?.current_lat)
-  const userCurrentLng = Number((user as { current_lng?: number | string | null } | null)?.current_lng)
-  const userCityLat = Number((user as { city_lat?: number | string | null } | null)?.city_lat)
-  const userCityLng = Number((user as { city_lng?: number | string | null } | null)?.city_lng)
+  const userCurrentLat = toFiniteNumber((user as { current_lat?: number | string | null } | null)?.current_lat)
+  const userCurrentLng = toFiniteNumber((user as { current_lng?: number | string | null } | null)?.current_lng)
+  const userCityLat = toFiniteNumber((user as { city_lat?: number | string | null } | null)?.city_lat)
+  const userCityLng = toFiniteNumber((user as { city_lng?: number | string | null } | null)?.city_lng)
   const userCurrentCenter =
-    Number.isFinite(userCurrentLat) && Number.isFinite(userCurrentLng)
+    isValidCoordinatePair(userCurrentLat, userCurrentLng)
       ? { lat: userCurrentLat, lng: userCurrentLng }
       : null
   const userCityCenter =
-    Number.isFinite(userCityLat) && Number.isFinite(userCityLng)
+    isValidCoordinatePair(userCityLat, userCityLng)
       ? { lat: userCityLat, lng: userCityLng }
       : null
 

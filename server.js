@@ -101,8 +101,24 @@ function toDataResponse(res, data) {
 }
 
 function toFiniteNumber(value) {
+  if (value === null || value === undefined || value === "") {
+    return null
+  }
+
   const number = Number(value)
   return Number.isFinite(number) ? number : null
+}
+
+function isValidLatitude(value) {
+  return value !== null && value >= -90 && value <= 90
+}
+
+function isValidLongitude(value) {
+  return value !== null && value >= -180 && value <= 180
+}
+
+function isValidCoordinatePair(lat, lng) {
+  return isValidLatitude(lat) && isValidLongitude(lng)
 }
 
 function calculateDistanceKm(fromLat, fromLng, toLat, toLng) {
@@ -133,14 +149,18 @@ function getPreferredUserLocation(user) {
   const currentLat = toFiniteNumber(user?.current_lat)
   const currentLng = toFiniteNumber(user?.current_lng)
 
-  if (currentLat !== null && currentLng !== null) {
+  if (isValidCoordinatePair(currentLat, currentLng)) {
     return { lat: currentLat, lng: currentLng }
   }
 
-  return {
-    lat: user?.city_lat,
-    lng: user?.city_lng,
+  const cityLat = toFiniteNumber(user?.city_lat)
+  const cityLng = toFiniteNumber(user?.city_lng)
+
+  if (isValidCoordinatePair(cityLat, cityLng)) {
+    return { lat: cityLat, lng: cityLng }
   }
+
+  return { lat: null, lng: null }
 }
 
 const STATIC_EVENT_PEOPLE = {

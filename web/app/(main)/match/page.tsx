@@ -407,8 +407,8 @@ export default function MatchPage() {
                             animate(dragX, 0, { type: "spring", stiffness: 300, damping: 30 })
                           }}
                       >
-                      <Card className="h-full overflow-hidden border-0 shadow-xl bg-white">
-                        <div className="relative h-[55%]">
+                      <Card className="flex h-full flex-col overflow-hidden border-0 shadow-xl bg-white">
+                        <div className="relative h-[44%] shrink-0">
                           <img
                               src={imageSrc}
                               alt={displayName}
@@ -425,7 +425,7 @@ export default function MatchPage() {
                           </div>
                         </div>
 
-                        <div className="p-5 space-y-4">
+                        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 pb-6">
                           <div>
                             <div className="flex flex-wrap items-center gap-2">
                               <h2 className="text-2xl font-bold text-stone-800">
