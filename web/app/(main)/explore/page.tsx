@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Capacitor } from "@capacitor/core"
-import { Geolocation } from "@capacitor/geolocation"
 import {
   CalendarDays,
   ChevronRight,
@@ -535,17 +533,39 @@ export default function ExplorePage() {
       })
 
     try {
-      if (Capacitor.isNativePlatform()) {
-        const permission = await Geolocation.requestPermissions()
-        const granted = permission.location === "granted" || permission.coarseLocation === "granted"
+      if (typeof window !== "undefined") {
+        const importModule = new Function("specifier", "return import(specifier)") as (
+          specifier: string,
+        ) => Promise<any>
 
-        if (!granted) {
-          throw new Error("Location permission denied")
+        let capacitorCore: any = null
+        let capacitorGeo: any = null
+
+        try {
+          ;[capacitorCore, capacitorGeo] = await Promise.all([
+            importModule("@capacitor/core"),
+            importModule("@capacitor/geolocation"),
+          ])
+        } catch (importError) {
+          console.warn("Capacitor geolocation unavailable, fallback to web geolocation", importError)
         }
 
-        const position = await Geolocation.getCurrentPosition()
-        applyPosition(position.coords.latitude, position.coords.longitude)
-        return
+        const nativeCapacitor = (window as any).Capacitor
+        const capacitor = capacitorCore?.Capacitor ?? nativeCapacitor
+        const geolocation = capacitorGeo?.Geolocation ?? nativeCapacitor?.Plugins?.Geolocation
+
+        if (capacitor?.isNativePlatform?.() && geolocation) {
+          const permission = await geolocation.requestPermissions()
+          const granted = permission.location === "granted" || permission.coarseLocation === "granted"
+
+          if (!granted) {
+            throw new Error("Location permission denied")
+          }
+
+          const position = await geolocation.getCurrentPosition()
+          applyPosition(position.coords.latitude, position.coords.longitude)
+          return
+        }
       }
 
       const position = await getBrowserPosition()
