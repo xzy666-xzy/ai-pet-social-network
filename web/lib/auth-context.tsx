@@ -24,6 +24,9 @@ export interface UserData {
   city: string | null
   city_lat: number | null
   city_lng: number | null
+  current_lat?: number | null
+  current_lng?: number | null
+  location_updated_at?: string | null
   created_at: string | null
   updated_at: string | null
   is_ai: boolean | null

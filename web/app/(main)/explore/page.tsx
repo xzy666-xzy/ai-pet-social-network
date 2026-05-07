@@ -123,11 +123,44 @@ function sortEventItemsByTime(events: EventItem[]) {
   return [...events].sort((a, b) => getEventTimeValue(a.time) - getEventTimeValue(b.time))
 }
 
-function sortEventItemsForUserCity(events: EventItem[], userCity?: string | null) {
+function toFiniteNumber(value: unknown) {
+  const number = Number(value)
+  return Number.isFinite(number) ? number : null
+}
+
+function calculateDistanceKm(fromLat: unknown, fromLng: unknown, toLat: unknown, toLng: unknown) {
+  const lat1 = toFiniteNumber(fromLat)
+  const lng1 = toFiniteNumber(fromLng)
+  const lat2 = toFiniteNumber(toLat)
+  const lng2 = toFiniteNumber(toLng)
+
+  if (lat1 === null || lng1 === null || lat2 === null || lng2 === null) {
+    return null
+  }
+
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180
+  const earthRadiusKm = 6371
+  const deltaLat = toRadians(lat2 - lat1)
+  const deltaLng = toRadians(lng2 - lng1)
+  const a =
+    Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(toRadians(lat1)) *
+      Math.cos(toRadians(lat2)) *
+      Math.sin(deltaLng / 2) ** 2
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+  return Math.round(earthRadiusKm * c * 10) / 10
+}
+
+function sortEventItemsForUserCity(
+  events: EventItem[],
+  userCity?: string | null,
+  userLocation?: { lat: number; lng: number } | null,
+) {
   const normalizedCity = userCity?.trim().toLowerCase()
   const sortedByTime = sortEventItemsByTime(events)
 
-  if (!normalizedCity) {
+  if (!normalizedCity && !userLocation) {
     return sortedByTime
   }
 
@@ -135,11 +168,25 @@ function sortEventItemsForUserCity(events: EventItem[], userCity?: string | null
     const aSameCity = a.city?.trim().toLowerCase() === normalizedCity
     const bSameCity = b.city?.trim().toLowerCase() === normalizedCity
 
-    if (aSameCity === bSameCity) {
+    if (aSameCity !== bSameCity) {
+      return aSameCity ? -1 : 1
+    }
+
+    if (aSameCity && bSameCity) {
       return 0
     }
 
-    return aSameCity ? -1 : 1
+    const aDistance = userLocation ? calculateDistanceKm(userLocation.lat, userLocation.lng, a.lat, a.lng) : null
+    const bDistance = userLocation ? calculateDistanceKm(userLocation.lat, userLocation.lng, b.lat, b.lng) : null
+
+    if (aDistance === null && bDistance === null) {
+      return 0
+    }
+
+    if (aDistance === null) return 1
+    if (bDistance === null) return -1
+
+    return aDistance - bDistance
   })
 }
 
@@ -328,8 +375,14 @@ export default function ExplorePage() {
   const { user } = useAuth()
   const c = copy[locale]
   const userCity = (user as { city?: string | null } | null)?.city ?? null
+  const userCurrentLat = Number((user as { current_lat?: number | string | null } | null)?.current_lat)
+  const userCurrentLng = Number((user as { current_lng?: number | string | null } | null)?.current_lng)
   const userCityLat = Number((user as { city_lat?: number | string | null } | null)?.city_lat)
   const userCityLng = Number((user as { city_lng?: number | string | null } | null)?.city_lng)
+  const userCurrentCenter =
+    Number.isFinite(userCurrentLat) && Number.isFinite(userCurrentLng)
+      ? { lat: userCurrentLat, lng: userCurrentLng }
+      : null
   const userCityCenter =
     Number.isFinite(userCityLat) && Number.isFinite(userCityLng)
       ? { lat: userCityLat, lng: userCityLng }
@@ -344,6 +397,7 @@ export default function ExplorePage() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [detailEventId, setDetailEventId] = useState<number | null>(null)
   const [detailApiEvent, setDetailApiEvent] = useState<ApiEvent | null>(null)
+  const userPreferredCenter = userLocation || userCurrentCenter || userCityCenter
 
   const cardRefs = useRef<Record<number, HTMLDivElement | null>>({})
   const carouselRef = useRef<HTMLDivElement | null>(null)
@@ -375,7 +429,7 @@ export default function ExplorePage() {
   const filteredEvents = useMemo(() => {
     const keyword = query.trim().toLowerCase()
 
-    return sortEventItemsForUserCity(events, userCity).filter((item) => {
+    return sortEventItemsForUserCity(events, userCity, userPreferredCenter).filter((item) => {
       const title = item.title[locale].toLowerCase()
       const desc = item.desc[locale].toLowerCase()
 
@@ -387,7 +441,7 @@ export default function ExplorePage() {
           item.time.toLowerCase().includes(keyword)
       )
     })
-  }, [events, locale, query, userCity])
+  }, [events, locale, query, userCity, userPreferredCenter])
 
   const detailEvent = filteredEvents.find((item) => item.id === detailEventId) || null
 
@@ -428,7 +482,7 @@ export default function ExplorePage() {
     userLocation ||
     (selectedEvent
       ? { lat: selectedEvent.lat, lng: selectedEvent.lng }
-      : userCityCenter || DEFAULT_MAP_CENTER)
+      : userCurrentCenter || userCityCenter || DEFAULT_MAP_CENTER)
 
   const handleJoinToggle = async (eventItem: EventItem, fallbackPeople: number) => {
     const id = eventItem.id
@@ -518,8 +572,22 @@ export default function ExplorePage() {
   }
 
   const handleUseMyLocation = async () => {
+    const saveCurrentLocation = (lat: number, lng: number) => {
+      void apiRequest("/profile/location", {
+        method: "PUT",
+        auth: true,
+        body: JSON.stringify({
+          current_lat: lat,
+          current_lng: lng,
+        }),
+      }).catch((error) => {
+        console.error("Failed to save current location", error)
+      })
+    }
+
     const applyPosition = (lat: number, lng: number) => {
       setUserLocation({ lat, lng })
+      saveCurrentLocation(lat, lng)
     }
 
     const getBrowserPosition = () =>
@@ -575,14 +643,7 @@ export default function ExplorePage() {
         const position = await getBrowserPosition()
         applyPosition(position.coords.latitude, position.coords.longitude)
       } catch (fallbackError) {
-        console.error("Failed to get current location", { error, fallbackError })
-        alert(
-            locale === "zh"
-                ? "无法获取当前位置"
-                : locale === "ko"
-                    ? "현재 위치를 가져올 수 없습니다"
-                    : "Unable to get current location",
-        )
+        console.warn("Failed to get current location, keeping existing map center", { error, fallbackError })
       }
     }
   }

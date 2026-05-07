@@ -76,6 +76,9 @@ function toSafeUser(user) {
     city: user.city ?? null,
     city_lat: user.city_lat ?? null,
     city_lng: user.city_lng ?? null,
+    current_lat: user.current_lat ?? null,
+    current_lng: user.current_lng ?? null,
+    location_updated_at: user.location_updated_at ?? null,
     last_seen: user.last_seen ?? null,
     created_at: user.created_at ?? null,
     updated_at: user.updated_at ?? null,
@@ -124,6 +127,20 @@ function calculateDistanceKm(fromLat, fromLng, toLat, toLng) {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 
   return Math.round(earthRadiusKm * c * 10) / 10
+}
+
+function getPreferredUserLocation(user) {
+  const currentLat = toFiniteNumber(user?.current_lat)
+  const currentLng = toFiniteNumber(user?.current_lng)
+
+  if (currentLat !== null && currentLng !== null) {
+    return { lat: currentLat, lng: currentLng }
+  }
+
+  return {
+    lat: user?.city_lat,
+    lng: user?.city_lng,
+  }
 }
 
 const STATIC_EVENT_PEOPLE = {
@@ -856,11 +873,13 @@ app.get("/match/recommend", authMiddleware, async (req, res) => {
     const recommendations = (users || [])
       .filter((candidate) => !likedUserIds.has(String(candidate.id)))
       .map((candidate) => {
+        const currentLocation = getPreferredUserLocation(currentUser)
+        const candidateLocation = getPreferredUserLocation(candidate)
         const distanceKm = calculateDistanceKm(
-          currentUser.city_lat,
-          currentUser.city_lng,
-          candidate.city_lat,
-          candidate.city_lng
+          currentLocation.lat,
+          currentLocation.lng,
+          candidateLocation.lat,
+          candidateLocation.lng
         )
 
         return {
@@ -1181,6 +1200,65 @@ app.put("/profile", authMiddleware, async (req, res) => {
     return res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Failed to update profile",
+    })
+  }
+})
+
+app.put("/profile/location", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = req.user?.userId
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    const currentLat = Number(req.body?.current_lat)
+    const currentLng = Number(req.body?.current_lng)
+
+    if (Number.isNaN(currentLat)) {
+      return res.status(400).json({
+        success: false,
+        error: "current_lat must be a number",
+      })
+    }
+
+    if (Number.isNaN(currentLng)) {
+      return res.status(400).json({
+        success: false,
+        error: "current_lng must be a number",
+      })
+    }
+
+    const { data: updatedUser, error } = await supabaseAdmin
+      .from("users")
+      .update({
+        current_lat: currentLat,
+        current_lng: currentLng,
+        location_updated_at: new Date().toISOString(),
+      })
+      .eq("id", currentUserId)
+      .select("id,current_lat,current_lng,location_updated_at")
+      .maybeSingle()
+
+    if (error) throw error
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        error: "User not found",
+      })
+    }
+
+    return toDataResponse(res, updatedUser)
+  } catch (error) {
+    console.error("Profile location update error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update location",
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
     })
   }
 })
