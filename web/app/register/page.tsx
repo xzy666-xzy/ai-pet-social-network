@@ -221,10 +221,6 @@ export default function RegisterPage() {
             <div className="flex items-center justify-center p-5 sm:p-8 lg:p-10">
               <div className="w-full max-w-md">
                 <div className="mb-8 text-center lg:text-left">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-orange-500 to-orange-600 shadow-xl lg:mx-0">
-                    <PawPrint className="h-8 w-8 text-white" />
-                  </div>
-
                   <h2 className="text-3xl font-extrabold text-stone-900">
                     {step === 1
                         ? t.auth?.registerTitle || "Create account"
@@ -299,7 +295,10 @@ export default function RegisterPage() {
                           <SelectTrigger className="h-13 w-full rounded-2xl border-stone-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
                             <SelectValue placeholder={t.auth?.cityPlaceholder || "Select your city"} />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent
+                              position="item-aligned"
+                              className="max-h-64 overflow-y-auto border border-stone-200 bg-white text-stone-800 shadow-xl"
+                          >
                             {registerCityOptions.map((option) => (
                                 <SelectItem key={option.city} value={option.city}>
                                   {option.label[locale]}
