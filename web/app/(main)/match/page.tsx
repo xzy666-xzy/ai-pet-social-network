@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { motion, AnimatePresence, animate, useMotionValue, useTransform } from "framer-motion"
-import { X, Heart, Sparkles, Info } from "lucide-react"
+import { X, Heart, Sparkles, Info, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
@@ -22,6 +22,7 @@ type MatchUser = {
   is_ai?: boolean | null
   created_at?: string | null
   membership_active?: boolean
+  distance_km?: number | null
   matchScore?: number
   matchReasons?: string[]
   liked?: boolean
@@ -294,8 +295,22 @@ export default function MatchPage() {
     }
   }
 
-  const distanceList = ["1.2km", "0.5km", "0.8km", "1.5km", "2.1km", "0.9km", "1.8km", "2.4km"]
-  const distance = distanceList[currentIndex % distanceList.length]
+  const distanceKm =
+      typeof currentPet?.distance_km === "number" && Number.isFinite(currentPet.distance_km)
+          ? currentPet.distance_km
+          : null
+  const distanceDisplayText =
+      distanceKm !== null
+          ? `${t.match.distanceLabel} ${Math.round(distanceKm)} ${t.match.distanceUnit}`
+          : ""
+  const distanceClassName =
+      distanceKm === null
+          ? ""
+          : distanceKm <= 20
+              ? "text-emerald-600"
+              : distanceKm <= 40
+                  ? "text-amber-500"
+                  : "text-red-500"
 
   const matchScore = currentPet?.matchScore ?? [98, 85, 92, 88, 95, 84, 90, 87][currentIndex % 8]
 
@@ -424,9 +439,14 @@ export default function MatchPage() {
                               ) : null}
                             </div>
 
-                            <p className="text-stone-500 mt-1">
-                              {displayType} • {distance}
-                            </p>
+                            <p className="text-stone-500 mt-1">{displayType}</p>
+
+                            {distanceDisplayText ? (
+                                <div className={`mt-1 flex items-center gap-1 text-sm font-medium ${distanceClassName}`}>
+                                  <MapPin className="h-4 w-4" />
+                                  <span>{distanceDisplayText}</span>
+                                </div>
+                            ) : null}
                           </div>
 
                           {currentPet.matchReasons && currentPet.matchReasons.length > 0 ? (

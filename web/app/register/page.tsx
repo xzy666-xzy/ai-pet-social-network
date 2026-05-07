@@ -20,11 +20,52 @@ import { useAuth } from "@/lib/auth-context"
 import { useLanguage } from "@/lib/i18n/language-context"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { supabase } from "@/lib/supabase"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+type RegisterCityOption = {
+  city: string
+  city_lat: number
+  city_lng: number
+  label: {
+    en: string
+    ko: string
+    zh: string
+  }
+}
+
+const registerCityOptions: RegisterCityOption[] = [
+  { city: "Seoul", city_lat: 37.5665, city_lng: 126.978, label: { en: "Seoul", zh: "首尔", ko: "서울" } },
+  { city: "Busan", city_lat: 35.1796, city_lng: 129.0756, label: { en: "Busan", zh: "釜山", ko: "부산" } },
+  { city: "Incheon", city_lat: 37.4563, city_lng: 126.7052, label: { en: "Incheon", zh: "仁川", ko: "인천" } },
+  { city: "Daegu", city_lat: 35.8714, city_lng: 128.6014, label: { en: "Daegu", zh: "大邱", ko: "대구" } },
+  { city: "Daejeon", city_lat: 36.3504, city_lng: 127.3845, label: { en: "Daejeon", zh: "大田", ko: "대전" } },
+  { city: "Gwangju", city_lat: 35.1595, city_lng: 126.8526, label: { en: "Gwangju", zh: "光州", ko: "광주" } },
+  { city: "Ulsan", city_lat: 35.5384, city_lng: 129.3114, label: { en: "Ulsan", zh: "蔚山", ko: "울산" } },
+  { city: "Sejong", city_lat: 36.4801, city_lng: 127.289, label: { en: "Sejong", zh: "世宗", ko: "세종" } },
+  { city: "Suwon", city_lat: 37.2636, city_lng: 127.0286, label: { en: "Suwon", zh: "水原", ko: "수원" } },
+  { city: "Yongin", city_lat: 37.2411, city_lng: 127.1776, label: { en: "Yongin", zh: "龙仁", ko: "용인" } },
+  { city: "Seongnam", city_lat: 37.42, city_lng: 127.1265, label: { en: "Seongnam", zh: "城南", ko: "성남" } },
+  { city: "Goyang", city_lat: 37.6584, city_lng: 126.832, label: { en: "Goyang", zh: "高阳", ko: "고양" } },
+  { city: "Ansan", city_lat: 37.3219, city_lng: 126.8309, label: { en: "Ansan", zh: "安山", ko: "안산" } },
+  { city: "Anyang", city_lat: 37.3943, city_lng: 126.9568, label: { en: "Anyang", zh: "安养", ko: "안양" } },
+  { city: "Bucheon", city_lat: 37.5035, city_lng: 126.766, label: { en: "Bucheon", zh: "富川", ko: "부천" } },
+  { city: "Hwaseong", city_lat: 37.1995, city_lng: 126.8312, label: { en: "Hwaseong", zh: "华城", ko: "화성" } },
+  { city: "Cheongju", city_lat: 36.6424, city_lng: 127.489, label: { en: "Cheongju", zh: "清州", ko: "청주" } },
+  { city: "Jeonju", city_lat: 35.8242, city_lng: 127.148, label: { en: "Jeonju", zh: "全州", ko: "전주" } },
+  { city: "Cheonan", city_lat: 36.8151, city_lng: 127.1139, label: { en: "Cheonan", zh: "天安", ko: "천안" } },
+  { city: "Jeju", city_lat: 33.4996, city_lng: 126.5312, label: { en: "Jeju", zh: "济州", ko: "제주" } },
+]
 
 export default function RegisterPage() {
   const router = useRouter()
   const { register } = useAuth()
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
 
   const [step, setStep] = useState(1)
 
@@ -32,6 +73,9 @@ export default function RegisterPage() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [city, setCity] = useState("")
+  const [cityLat, setCityLat] = useState<number | null>(null)
+  const [cityLng, setCityLng] = useState<number | null>(null)
 
   const [petName, setPetName] = useState("")
   const [petAvatarFile, setPetAvatarFile] = useState<File | null>(null)
@@ -47,11 +91,18 @@ export default function RegisterPage() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
+  const handleCityChange = (value: string) => {
+    const selectedCity = registerCityOptions.find((option) => option.city === value)
+    setCity(selectedCity?.city || "")
+    setCityLat(selectedCity?.city_lat ?? null)
+    setCityLng(selectedCity?.city_lng ?? null)
+  }
+
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
 
-    if (!email || !username || !password || !confirmPassword) {
+    if (!email || !username || !password || !confirmPassword || !city || cityLat === null || cityLng === null) {
       setError(t.auth?.fillRequired || "Please fill in all required fields")
       return
     }
@@ -115,6 +166,9 @@ export default function RegisterPage() {
         petAge,
         petBio: description,
         avatar_url: avatarUrl || null,
+        city,
+        city_lat: cityLat ?? undefined,
+        city_lng: cityLng ?? undefined,
       })
 
       if (!result.success) {
@@ -276,6 +330,24 @@ export default function RegisterPage() {
                               onChange={(e) => setUsername(e.target.value)}
                           />
                         </div>
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold text-stone-700">
+                          {t.auth?.city || "City"}
+                        </label>
+                        <Select value={city} onValueChange={handleCityChange}>
+                          <SelectTrigger className="h-13 w-full rounded-2xl border-stone-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
+                            <SelectValue placeholder={t.auth?.cityPlaceholder || "Select your city"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {registerCityOptions.map((option) => (
+                                <SelectItem key={option.city} value={option.city}>
+                                  {option.label[locale]}
+                                </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       <div>

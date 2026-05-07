@@ -21,6 +21,9 @@ import { useAuth } from "@/lib/auth-context"
 
 type EventItem = MapPlace & {
   event_id?: string
+  city?: string | null
+  city_lat?: number | null
+  city_lng?: number | null
   image: string
   title: {
     zh: string
@@ -62,6 +65,9 @@ type ApiEvent = {
   organizer_name: string | null
   lat: number | null
   lng: number | null
+  city?: string | null
+  city_lat?: number | string | null
+  city_lng?: number | string | null
 }
 
 type EventsResponse = {
@@ -115,6 +121,26 @@ function sortApiEventsByTime(events: ApiEvent[]) {
 
 function sortEventItemsByTime(events: EventItem[]) {
   return [...events].sort((a, b) => getEventTimeValue(a.time) - getEventTimeValue(b.time))
+}
+
+function sortEventItemsForUserCity(events: EventItem[], userCity?: string | null) {
+  const normalizedCity = userCity?.trim().toLowerCase()
+  const sortedByTime = sortEventItemsByTime(events)
+
+  if (!normalizedCity) {
+    return sortedByTime
+  }
+
+  return sortedByTime.sort((a, b) => {
+    const aSameCity = a.city?.trim().toLowerCase() === normalizedCity
+    const bSameCity = b.city?.trim().toLowerCase() === normalizedCity
+
+    if (aSameCity === bSameCity) {
+      return 0
+    }
+
+    return aSameCity ? -1 : 1
+  })
 }
 
 const eventData: EventItem[] = [
@@ -190,6 +216,8 @@ function toEventItem(event: ApiEvent, index: number): EventItem {
   const description = event.description || ""
   const lat = Number(event.lat)
   const lng = Number(event.lng)
+  const cityLat = Number(event.city_lat)
+  const cityLng = Number(event.city_lng)
 
   return {
     id: index + 1000,
@@ -199,6 +227,9 @@ function toEventItem(event: ApiEvent, index: number): EventItem {
     address: event.organizer_name || "Event location",
     lat: Number.isFinite(lat) ? lat : 37.3212,
     lng: Number.isFinite(lng) ? lng : 126.8309,
+    city: event.city || null,
+    city_lat: Number.isFinite(cityLat) ? cityLat : null,
+    city_lng: Number.isFinite(cityLng) ? cityLng : null,
     image: event.image_url || "",
     title: {
       zh: title,
@@ -223,7 +254,7 @@ const copy = {
   zh: {
     title: "探索",
     subtitle: "附近活动 + 地图交互",
-    searchPlaceholder: "搜索活动、公园、聚会...",
+    searchPlaceholder: "搜索宠物公园、宠物咖啡厅、动物医院...",
     searchButton: "查询",
     useMyLocation: "使用我的位置",
     mapHint: "点击活动卡片或定位按钮，可联动查看位置",
@@ -246,7 +277,7 @@ const copy = {
   ko: {
     title: "탐색",
     subtitle: "근처 활동 + 지도 인터랙션",
-    searchPlaceholder: "활동, 공원, 모임 검색...",
+    searchPlaceholder: "반려동물 공원, 펫카페, 동물병원 검색...",
     searchButton: "검색",
     useMyLocation: "내 위치 사용",
     mapHint: "카드나 위치 버튼을 누르면 위 지도와 연동됩니다",
@@ -269,7 +300,7 @@ const copy = {
   en: {
     title: "Explore",
     subtitle: "Nearby events + map interaction",
-    searchPlaceholder: "Search events, parks, meetups...",
+    searchPlaceholder: "Search pet parks, pet cafes, vet clinics...",
     searchButton: "Search",
     useMyLocation: "Use my location",
     mapHint: "Tap event cards or locate buttons to sync the map",
@@ -296,6 +327,13 @@ export default function ExplorePage() {
   const router = useRouter()
   const { user } = useAuth()
   const c = copy[locale]
+  const userCity = (user as { city?: string | null } | null)?.city ?? null
+  const userCityLat = Number((user as { city_lat?: number | string | null } | null)?.city_lat)
+  const userCityLng = Number((user as { city_lng?: number | string | null } | null)?.city_lng)
+  const userCityCenter =
+    Number.isFinite(userCityLat) && Number.isFinite(userCityLng)
+      ? { lat: userCityLat, lng: userCityLng }
+      : null
 
   const [events, setEvents] = useState<EventItem[]>(sortEventItemsByTime(eventData))
   const [query, setQuery] = useState("")
@@ -337,7 +375,7 @@ export default function ExplorePage() {
   const filteredEvents = useMemo(() => {
     const keyword = query.trim().toLowerCase()
 
-    return sortEventItemsByTime(events).filter((item) => {
+    return sortEventItemsForUserCity(events, userCity).filter((item) => {
       const title = item.title[locale].toLowerCase()
       const desc = item.desc[locale].toLowerCase()
 
@@ -349,7 +387,7 @@ export default function ExplorePage() {
           item.time.toLowerCase().includes(keyword)
       )
     })
-  }, [events, locale, query])
+  }, [events, locale, query, userCity])
 
   const detailEvent = filteredEvents.find((item) => item.id === detailEventId) || null
 
@@ -386,9 +424,11 @@ export default function ExplorePage() {
   const selectedEvent =
       filteredEvents.find((item) => item.id === selectedId) ?? null
 
-  const center = userLocation || (selectedEvent
+  const center =
+    userLocation ||
+    (selectedEvent
       ? { lat: selectedEvent.lat, lng: selectedEvent.lng }
-      : DEFAULT_MAP_CENTER)
+      : userCityCenter || DEFAULT_MAP_CENTER)
 
   const handleJoinToggle = async (eventItem: EventItem, fallbackPeople: number) => {
     const id = eventItem.id
@@ -725,7 +765,7 @@ export default function ExplorePage() {
                                 : "border-stone-100 shadow-sm bg-white"
                         }`}
                     >
-                      <div className="aspect-[16/9] w-full bg-stone-100">
+                      <div className="h-48 w-full overflow-hidden bg-stone-100">
                         {item.image ? (
                             <img
                                 src={item.image}

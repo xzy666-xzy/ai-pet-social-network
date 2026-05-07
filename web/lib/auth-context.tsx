@@ -21,6 +21,9 @@ export interface UserData {
   pet_age: number | null
   description: string | null
   avatar_url: string | null
+  city: string | null
+  city_lat: number | null
+  city_lng: number | null
   created_at: string | null
   updated_at: string | null
   is_ai: boolean | null
@@ -44,6 +47,9 @@ interface RegisterData {
   petAge?: string
   petBio?: string
   avatar_url?: string | null
+  city?: string
+  city_lat?: number
+  city_lng?: number
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -132,6 +138,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           pet_age: registerData.petAge || "",
           description: registerData.petBio || "",
           avatar_url: registerData.avatar_url || null,
+          city: registerData.city || "",
+          city_lat: registerData.city_lat,
+          city_lng: registerData.city_lng,
         }),
       })
 

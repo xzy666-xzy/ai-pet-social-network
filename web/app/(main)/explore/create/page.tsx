@@ -132,6 +132,7 @@ export default function CreateExploreEventPage() {
           max_people: Number(maxPeople),
           description,
           organizer_id: user.id,
+          city: user.city || null,
           lat: Number.isFinite(selectedLat) ? selectedLat : null,
           lng: Number.isFinite(selectedLng) ? selectedLng : null,
         }),

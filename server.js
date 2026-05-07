@@ -73,6 +73,9 @@ function toSafeUser(user) {
     description: user.description ?? null,
     avatar_url: user.avatar_url ?? null,
     cover_url: user.cover_url ?? null,
+    city: user.city ?? null,
+    city_lat: user.city_lat ?? null,
+    city_lng: user.city_lng ?? null,
     last_seen: user.last_seen ?? null,
     created_at: user.created_at ?? null,
     updated_at: user.updated_at ?? null,
@@ -92,6 +95,35 @@ function toDataResponse(res, data) {
     success: true,
     data,
   })
+}
+
+function toFiniteNumber(value) {
+  const number = Number(value)
+  return Number.isFinite(number) ? number : null
+}
+
+function calculateDistanceKm(fromLat, fromLng, toLat, toLng) {
+  const lat1 = toFiniteNumber(fromLat)
+  const lng1 = toFiniteNumber(fromLng)
+  const lat2 = toFiniteNumber(toLat)
+  const lng2 = toFiniteNumber(toLng)
+
+  if (lat1 === null || lng1 === null || lat2 === null || lng2 === null) {
+    return null
+  }
+
+  const toRadians = (degrees) => (degrees * Math.PI) / 180
+  const earthRadiusKm = 6371
+  const deltaLat = toRadians(lat2 - lat1)
+  const deltaLng = toRadians(lng2 - lng1)
+  const a =
+    Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(toRadians(lat1)) *
+      Math.cos(toRadians(lat2)) *
+      Math.sin(deltaLng / 2) ** 2
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+  return Math.round(earthRadiusKm * c * 10) / 10
 }
 
 const STATIC_EVENT_PEOPLE = {
@@ -132,12 +164,12 @@ async function listEventsWithOrganizers() {
   }
 
   const organizerIds = [...new Set((events || []).map((event) => event.organizer_id).filter(Boolean))]
-  const organizerNames = new Map()
+  const organizersById = new Map()
 
   if (organizerIds.length > 0) {
     const { data: users, error: usersError } = await supabase
       .from("users")
-      .select("id, pet_name, username, email")
+      .select("id, pet_name, username, email, city, city_lat, city_lng")
       .in("id", organizerIds)
 
     if (usersError) {
@@ -145,14 +177,21 @@ async function listEventsWithOrganizers() {
     }
 
     ;(users || []).forEach((user) => {
-      organizerNames.set(user.id, user.pet_name || user.username || user.email || null)
+      organizersById.set(user.id, user)
     })
   }
 
-  return (events || []).map((event) => ({
-    ...event,
-    organizer_name: organizerNames.get(event.organizer_id) || null,
-  }))
+  return (events || []).map((event) => {
+    const organizer = organizersById.get(event.organizer_id)
+
+    return {
+      ...event,
+      organizer_name: organizer?.pet_name || organizer?.username || organizer?.email || null,
+      city: event.city ?? organizer?.city ?? null,
+      city_lat: event.city_lat ?? organizer?.city_lat ?? null,
+      city_lng: event.city_lng ?? organizer?.city_lng ?? null,
+    }
+  })
 }
 
 async function getEventWithOrganizer(eventId) {
@@ -663,12 +702,25 @@ app.post("/auth/register", async (req, res) => {
     const petType = String(req.body?.pet_type || "").trim()
     const description = String(req.body?.description || "").trim()
     const avatar_url = String(req.body?.avatar_url || "").trim()
+    const city = String(req.body?.city || "").trim()
 
     const petAge =
         req.body?.pet_age !== undefined &&
         req.body?.pet_age !== null &&
         req.body?.pet_age !== ""
             ? Number(req.body.pet_age)
+            : null
+    const cityLat =
+        req.body?.city_lat !== undefined &&
+        req.body?.city_lat !== null &&
+        req.body?.city_lat !== ""
+            ? Number(req.body.city_lat)
+            : null
+    const cityLng =
+        req.body?.city_lng !== undefined &&
+        req.body?.city_lng !== null &&
+        req.body?.city_lng !== ""
+            ? Number(req.body.city_lng)
             : null
 
     if (!email || !password || !username || !petName || !petType) {
@@ -689,6 +741,13 @@ app.post("/auth/register", async (req, res) => {
       return res.status(400).json({
         success: false,
         error: "pet_age must be a number",
+      })
+    }
+
+    if ((cityLat !== null && Number.isNaN(cityLat)) || (cityLng !== null && Number.isNaN(cityLng))) {
+      return res.status(400).json({
+        success: false,
+        error: "city_lat and city_lng must be numbers",
       })
     }
 
@@ -720,6 +779,9 @@ app.post("/auth/register", async (req, res) => {
           pet_age: petAge,
           description,
           avatar_url: avatar_url || null,
+          city: city || null,
+          city_lat: cityLat,
+          city_lng: cityLng,
         })
         .select("*")
         .single()
@@ -793,13 +855,38 @@ app.get("/match/recommend", authMiddleware, async (req, res) => {
 
     const recommendations = (users || [])
       .filter((candidate) => !likedUserIds.has(String(candidate.id)))
-      .map((candidate) => ({
-        ...toSafeUser(candidate),
-        membership_active: activeMembershipUserIds.has(String(candidate.id)),
-        matchScore: buildMatchScore(currentUser, candidate),
-        matchReasons: buildMatchReasons(currentUser, candidate),
-      }))
-      .sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0))
+      .map((candidate) => {
+        const distanceKm = calculateDistanceKm(
+          currentUser.city_lat,
+          currentUser.city_lng,
+          candidate.city_lat,
+          candidate.city_lng
+        )
+
+        return {
+          ...toSafeUser(candidate),
+          membership_active: activeMembershipUserIds.has(String(candidate.id)),
+          matchScore: buildMatchScore(currentUser, candidate),
+          matchReasons: buildMatchReasons(currentUser, candidate),
+          distance_km: distanceKm,
+        }
+      })
+      .sort((a, b) => {
+        const scoreDiff = (b.matchScore ?? 0) - (a.matchScore ?? 0)
+
+        if (Math.abs(scoreDiff) > 5) {
+          return scoreDiff
+        }
+
+        const aDistance = a.distance_km ?? Number.POSITIVE_INFINITY
+        const bDistance = b.distance_km ?? Number.POSITIVE_INFINITY
+
+        if (aDistance !== bDistance) {
+          return aDistance - bDistance
+        }
+
+        return scoreDiff
+      })
 
     return toDataResponse(res, {
       users: recommendations,
@@ -1039,6 +1126,38 @@ app.put("/profile", authMiddleware, async (req, res) => {
       updates.cover_url = String(req.body.cover_url).trim() || null
     }
 
+    if (req.body?.city !== undefined) {
+      updates.city = String(req.body.city).trim() || null
+    }
+
+    if (req.body?.city_lat !== undefined) {
+      updates.city_lat =
+        req.body.city_lat !== null && String(req.body.city_lat).trim() !== ""
+          ? Number(req.body.city_lat)
+          : null
+
+      if (updates.city_lat !== null && Number.isNaN(updates.city_lat)) {
+        return res.status(400).json({
+          success: false,
+          error: "city_lat must be a number",
+        })
+      }
+    }
+
+    if (req.body?.city_lng !== undefined) {
+      updates.city_lng =
+        req.body.city_lng !== null && String(req.body.city_lng).trim() !== ""
+          ? Number(req.body.city_lng)
+          : null
+
+      if (updates.city_lng !== null && Number.isNaN(updates.city_lng)) {
+        return res.status(400).json({
+          success: false,
+          error: "city_lng must be a number",
+        })
+      }
+    }
+
     const { data: updatedUser, error } = await supabaseAdmin
       .from("users")
       .update(updates)
@@ -1264,6 +1383,7 @@ app.post("/events", authMiddleware, async (req, res) => {
         current_people: 0,
         description: description || null,
         organizer_id: organizerId,
+        city: currentUser.city || null,
         lat: Number.isFinite(lat) ? lat : null,
         lng: Number.isFinite(lng) ? lng : null,
       })

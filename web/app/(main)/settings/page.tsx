@@ -5,26 +5,30 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  MapPin,
   PencilLine,
   Repeat,
   Shield,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { useAuth } from "@/lib/auth-context"
-
-const settingsItems = [
-  { label: "账号", icon: Shield, href: "/settings/account" },
-  { label: "编辑个人主页", icon: PencilLine, href: "/profile/edit" },
-  { label: "切换账号", icon: Repeat, href: "/login" },
-  { label: "退出登录", icon: LogOut, action: "logout" },
-]
+import { useLanguage } from "@/lib/i18n/language-context"
 
 export default function SettingsPage() {
   const router = useRouter()
   const { logout } = useAuth()
+  const { t } = useLanguage()
+
+  const settingsItems = [
+    { label: t.profile.settingsAccount, icon: Shield, href: "/settings/account" },
+    { label: t.profile.editProfile, icon: PencilLine, href: "/profile/edit" },
+    { label: t.profile.switchCity, icon: MapPin, href: "/profile/settings/city" },
+    { label: t.profile.switchAccount, icon: Repeat, href: "/login" },
+    { label: t.profile.logout, icon: LogOut, action: "logout" },
+  ]
 
   const handleLogout = async () => {
-    if (!confirm("确定退出登录吗？")) return
+    if (!confirm(t.profile.logoutConfirm)) return
 
     await logout()
   }
@@ -41,7 +45,7 @@ export default function SettingsPage() {
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-2xl font-bold text-stone-900">设置</h1>
+          <h1 className="text-2xl font-bold text-stone-900">{t.profile.settings}</h1>
         </div>
 
         <Card className="overflow-hidden rounded-3xl border-orange-100 bg-white shadow-sm">
