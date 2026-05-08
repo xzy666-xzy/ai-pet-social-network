@@ -5,6 +5,7 @@ import { useState } from "react"
 import {
   Bot,
   CalendarDays,
+  CheckCircle2,
   Heart,
   MapPin,
   MessageCircle,
@@ -13,11 +14,14 @@ import {
   ShieldCheck,
   Sparkles,
   Stethoscope,
+  UserRound,
+  UsersRound,
 } from "lucide-react"
 
 type Lang = "en" | "zh" | "ko"
 
-const featureIcons = [Heart, MessageCircle, Stethoscope, CalendarDays]
+const featureIcons = [Heart, MessageCircle, CalendarDays, MapPin, Stethoscope, UserRound]
+const trustIcons = [Heart, PawPrint, UsersRound, ShieldCheck]
 
 const copy = {
   en: {
@@ -28,50 +32,101 @@ const copy = {
       login: "Log In",
       create: "Create Account",
     },
+    langLabels: {
+      en: "EN",
+      zh: "中文",
+      ko: "한국어",
+    },
     badge: "Pet social network in Korea",
     heroTitle: "Meet Pet Friends Nearby",
     heroSubtitle:
-      "WePet helps pet owners in Korea discover nearby pets, chat with other owners, join pet events, explore pet-friendly places, and care for pets using AI.",
-    appToday: "Today",
-    appWalk: "Weekend walks in Seoul",
-    appChat: "Chat UI",
-    appChatQuestion: "Walk near Hangang today?",
-    appChatAnswer: "See you at 6",
-    appExplore: "Explore Map",
-    appDoctor: "AI Doctor",
-    appDoctorText: "Care notes ready in seconds",
+      "Discover nearby pets, match with pet owners, chat, join events, explore pet-friendly places, and care for pets with AI.",
+    mockup: {
+      today: "Today",
+      match: "Pet Match",
+      distance: "1.8 km away",
+      petNames: "Mochi & Dodo",
+      walk: "Weekend walks in Seoul",
+      chat: "Chat preview",
+      chatQuestion: "Walk near Hangang today?",
+      chatAnswer: "See you at 6",
+      explore: "Explore map",
+      doctor: "AI Pet Doctor",
+      doctorText: "Care guidance in seconds",
+    },
     featuresLabel: "Features",
-    featuresTitle: "Everything pet owners need to meet, talk, explore, and care.",
-    featureCards: [
+    featuresTitle: "Built for modern pet friendships.",
+    featuresSubtitle:
+      "WePet brings matching, chat, local discovery, pet care, and community tools into one simple experience.",
+    features: [
       {
-        title: "Pet Matching",
-        text: "Meet nearby pets and owners based on distance, profiles, and shared routines.",
+        title: "Nearby Pet Matching",
+        text: "Find pets and owners around your daily area with a warm, social matching flow.",
       },
       {
-        title: "Real-time Chat",
-        text: "Start conversations after mutual interest and keep plans simple.",
+        title: "Mutual Like Chat",
+        text: "Start chatting only after both sides show interest, keeping first messages comfortable.",
+      },
+      {
+        title: "Pet Events & Meetups",
+        text: "Discover walks, meetups, and local pet activities built around real communities.",
+      },
+      {
+        title: "Explore Pet-friendly Places",
+        text: "Browse parks, cafes, clinics, and places that fit life with pets in Korea.",
       },
       {
         title: "AI Pet Doctor",
-        text: "Get everyday care guidance and organize symptoms before visiting a clinic.",
+        text: "Use AI guidance to organize symptoms, daily care notes, and questions before a clinic visit.",
       },
       {
-        title: "Pet Events & Explore",
-        text: "Find pet-friendly places, local walks, cafes, parks, and community events.",
+        title: "Pet Profile",
+        text: "Create a clear profile for your pet with personality, routine, photos, and location.",
       },
     ],
-    safetyTitle: "Designed for comfortable pet socializing.",
-    safetyCards: [
+    howLabel: "How WePet Works",
+    howTitle: "Start with your pet, then meet the right people nearby.",
+    steps: [
       {
-        title: "Mutual interest first",
-        text: "Chat begins when both owners choose to connect.",
+        title: "Create your pet profile",
+        text: "Add your pet's name, personality, routine, photos, and neighborhood.",
       },
       {
-        title: "Local and practical",
-        text: "Discover places, events, and people around your daily route.",
+        title: "Match with nearby pets",
+        text: "See compatible pet friends around you and send likes when it feels right.",
+      },
+      {
+        title: "Chat after mutual likes",
+        text: "Open a conversation after both owners choose to connect.",
+      },
+      {
+        title: "Join events and explore pet-friendly places",
+        text: "Plan walks, meetups, and everyday outings from local discovery.",
       },
     ],
-    ctaTitle: "Start WePet Today",
+    safetyLabel: "Safety & Trust",
+    safetyTitle: "Warm social discovery with clear boundaries.",
+    safety: [
+      {
+        title: "Mutual likes before chat",
+        text: "Conversations begin only when both owners choose to connect.",
+      },
+      {
+        title: "Pet-centered profiles",
+        text: "Profiles focus on pets, routines, and practical information for better matches.",
+      },
+      {
+        title: "Friendly community",
+        text: "WePet is designed around respectful, local, pet-first social behavior.",
+      },
+      {
+        title: "AI advice is for guidance only",
+        text: "AI Pet Doctor helps organize care thoughts, but it does not replace professional veterinary care.",
+      },
+    ],
+    ctaTitle: "Start meeting pet friends today",
+    ctaSubtitle: "Create a WePet account and begin discovering the pet community around you.",
+    openApp: "Open Web App",
     footerText: "Pet social network in Korea",
   },
   zh: {
@@ -82,50 +137,101 @@ const copy = {
       login: "登录",
       create: "创建账号",
     },
+    langLabels: {
+      en: "EN",
+      zh: "中文",
+      ko: "한국어",
+    },
     badge: "韩国宠物社交网络",
     heroTitle: "发现附近的宠物朋友",
     heroSubtitle:
-      "WePet 帮助韩国的宠物主人发现附近宠物、与其他主人聊天、参加宠物活动、探索宠物友好地点，并使用 AI 照顾宠物。",
-    appToday: "今日",
-    appWalk: "首尔周末遛宠",
-    appChat: "聊天界面",
-    appChatQuestion: "今天在汉江附近散步吗？",
-    appChatAnswer: "6 点见",
-    appExplore: "探索地图",
-    appDoctor: "AI 宠物医生",
-    appDoctorText: "几秒内整理护理建议",
+      "发现附近宠物，与宠物主人匹配、聊天、参加活动、探索宠物友好地点，并用 AI 更好地照顾宠物。",
+    mockup: {
+      today: "今日",
+      match: "宠物匹配",
+      distance: "距离 1.8 km",
+      petNames: "Mochi & Dodo",
+      walk: "首尔周末遛宠",
+      chat: "聊天预览",
+      chatQuestion: "今天在汉江附近散步吗？",
+      chatAnswer: "6 点见",
+      explore: "探索地图",
+      doctor: "AI 宠物医生",
+      doctorText: "几秒内获得护理建议",
+    },
     featuresLabel: "功能",
-    featuresTitle: "宠物主人需要的匹配、聊天、探索与护理工具。",
-    featureCards: [
+    featuresTitle: "为现代宠物社交打造。",
+    featuresSubtitle:
+      "WePet 将匹配、聊天、本地探索、宠物护理和社区工具整合进一个简单体验。",
+    features: [
       {
-        title: "宠物匹配",
-        text: "根据距离、宠物资料和日常习惯，认识附近宠物与主人。",
+        title: "附近宠物匹配",
+        text: "在日常生活区域发现附近宠物和主人，用温暖的社交流程开启连接。",
       },
       {
-        title: "实时聊天",
-        text: "双方都有兴趣后开启对话，让约见和沟通更简单。",
+        title: "双向喜欢聊天",
+        text: "只有双方都表达兴趣后才开始聊天，让第一句对话更自然安心。",
+      },
+      {
+        title: "宠物活动与聚会",
+        text: "发现遛宠、见面会和围绕真实社区产生的本地宠物活动。",
+      },
+      {
+        title: "探索宠物友好地点",
+        text: "浏览适合韩国宠物生活的公园、咖啡店、医院和友好空间。",
       },
       {
         title: "AI 宠物医生",
-        text: "获取日常护理建议，并在就诊前整理宠物症状。",
+        text: "用 AI 整理症状、日常护理记录和就诊前想咨询的问题。",
       },
       {
-        title: "宠物活动与探索",
-        text: "发现宠物友好地点、本地遛宠、咖啡店、公园和社区活动。",
+        title: "宠物资料",
+        text: "为宠物创建清晰资料，展示性格、日常习惯、照片和所在区域。",
       },
     ],
-    safetyTitle: "为更舒适的宠物社交体验而设计。",
-    safetyCards: [
+    howLabel: "WePet 使用流程",
+    howTitle: "从宠物资料开始，认识附近合适的人和宠物。",
+    steps: [
       {
-        title: "先双向确认兴趣",
-        text: "只有双方都选择连接后，聊天才会开始。",
+        title: "创建宠物资料",
+        text: "添加宠物名字、性格、日常习惯、照片和所在社区。",
       },
       {
-        title: "本地且实用",
-        text: "围绕你的日常路线发现地点、活动和附近的人。",
+        title: "匹配附近宠物",
+        text: "浏览附近合适的宠物朋友，并在有兴趣时发送喜欢。",
+      },
+      {
+        title: "双向喜欢后聊天",
+        text: "双方都选择连接后，再开启安全自然的对话。",
+      },
+      {
+        title: "参加活动并探索宠物友好地点",
+        text: "通过本地探索计划散步、聚会和日常出行。",
       },
     ],
-    ctaTitle: "今天开始使用 WePet",
+    safetyLabel: "安全与信任",
+    safetyTitle: "温暖的社交发现，也需要清晰边界。",
+    safety: [
+      {
+        title: "聊天前先双向喜欢",
+        text: "只有双方主人都选择连接后，对话才会开始。",
+      },
+      {
+        title: "以宠物为中心的资料",
+        text: "资料聚焦宠物、生活习惯和实用信息，让匹配更合适。",
+      },
+      {
+        title: "友好的社区氛围",
+        text: "WePet 围绕尊重、本地和宠物优先的社交体验设计。",
+      },
+      {
+        title: "AI 建议仅供参考",
+        text: "AI 宠物医生可帮助整理护理思路，但不能替代专业兽医诊疗。",
+      },
+    ],
+    ctaTitle: "今天开始认识宠物朋友",
+    ctaSubtitle: "创建 WePet 账号，开始发现你身边的宠物社区。",
+    openApp: "打开 Web App",
     footerText: "韩国宠物社交网络",
   },
   ko: {
@@ -136,50 +242,101 @@ const copy = {
       login: "로그인",
       create: "계정 만들기",
     },
+    langLabels: {
+      en: "EN",
+      zh: "中文",
+      ko: "한국어",
+    },
     badge: "한국의 반려동물 소셜 네트워크",
     heroTitle: "가까운 반려동물 친구를 만나보세요",
     heroSubtitle:
-      "WePet은 한국의 반려동물 보호자가 주변 반려동물을 발견하고, 다른 보호자와 채팅하고, 반려동물 모임에 참여하고, 반려동물 동반 장소를 탐색하며, AI로 반려동물을 돌볼 수 있도록 돕습니다.",
-    appToday: "오늘",
-    appWalk: "서울 주말 산책",
-    appChat: "채팅 UI",
-    appChatQuestion: "오늘 한강 근처에서 산책할까요?",
-    appChatAnswer: "6시에 만나요",
-    appExplore: "탐색 지도",
-    appDoctor: "AI 반려동물 의사",
-    appDoctorText: "몇 초 만에 케어 메모 준비",
+      "주변 반려동물을 발견하고, 보호자와 매칭하고, 채팅하고, 모임에 참여하고, 반려동물 동반 장소를 탐색하며 AI로 케어하세요.",
+    mockup: {
+      today: "오늘",
+      match: "반려동물 매칭",
+      distance: "1.8 km 거리",
+      petNames: "Mochi & Dodo",
+      walk: "서울 주말 산책",
+      chat: "채팅 미리보기",
+      chatQuestion: "오늘 한강 근처에서 산책할까요?",
+      chatAnswer: "6시에 만나요",
+      explore: "탐색 지도",
+      doctor: "AI 반려동물 의사",
+      doctorText: "몇 초 만에 케어 가이드",
+    },
     featuresLabel: "기능",
-    featuresTitle: "만남, 대화, 탐색, 케어까지 반려동물 보호자에게 필요한 모든 것.",
-    featureCards: [
+    featuresTitle: "현대적인 반려동물 친구 만들기를 위해.",
+    featuresSubtitle:
+      "WePet은 매칭, 채팅, 지역 탐색, 반려동물 케어, 커뮤니티 도구를 하나의 간단한 경험으로 연결합니다.",
+    features: [
       {
-        title: "반려동물 매칭",
-        text: "거리, 프로필, 생활 패턴을 바탕으로 주변 반려동물과 보호자를 만나보세요.",
+        title: "근처 반려동물 매칭",
+        text: "일상 생활권 안의 반려동물과 보호자를 따뜻한 소셜 매칭 흐름으로 만나보세요.",
       },
       {
-        title: "실시간 채팅",
-        text: "서로 관심을 보낸 뒤 대화를 시작하고 약속을 간단하게 정하세요.",
+        title: "상호 좋아요 채팅",
+        text: "양쪽 모두 관심을 보낸 뒤 채팅이 시작되어 첫 대화가 더 편안합니다.",
+      },
+      {
+        title: "반려동물 이벤트와 모임",
+        text: "산책, 만남, 지역 커뮤니티 중심의 반려동물 활동을 발견하세요.",
+      },
+      {
+        title: "반려동물 동반 장소 탐색",
+        text: "한국에서 반려동물과 함께하기 좋은 공원, 카페, 병원, 공간을 둘러보세요.",
       },
       {
         title: "AI 반려동물 의사",
-        text: "일상 케어 가이드를 받고 병원 방문 전 증상을 정리하세요.",
+        text: "증상, 일상 케어 기록, 병원 방문 전 질문을 AI로 정리해보세요.",
       },
       {
-        title: "반려동물 이벤트와 탐색",
-        text: "반려동물 동반 장소, 산책 모임, 카페, 공원, 커뮤니티 이벤트를 찾아보세요.",
+        title: "반려동물 프로필",
+        text: "성격, 생활 패턴, 사진, 지역을 담은 명확한 반려동물 프로필을 만드세요.",
       },
     ],
-    safetyTitle: "편안한 반려동물 소셜 경험을 위해 설계했습니다.",
-    safetyCards: [
+    howLabel: "WePet 이용 방법",
+    howTitle: "반려동물 프로필에서 시작해 가까운 좋은 인연을 만나세요.",
+    steps: [
       {
-        title: "상호 관심을 먼저 확인",
-        text: "두 보호자가 모두 연결을 선택했을 때 채팅이 시작됩니다.",
+        title: "반려동물 프로필 만들기",
+        text: "이름, 성격, 생활 패턴, 사진, 동네 정보를 추가하세요.",
       },
       {
-        title: "지역 중심의 실용성",
-        text: "일상 동선 주변의 장소, 이벤트, 사람들을 발견하세요.",
+        title: "근처 반려동물과 매칭",
+        text: "주변의 잘 맞는 반려동물 친구를 보고 마음에 들면 좋아요를 보내세요.",
+      },
+      {
+        title: "상호 좋아요 후 채팅",
+        text: "두 보호자가 모두 연결을 선택한 뒤 자연스럽게 대화를 시작하세요.",
+      },
+      {
+        title: "이벤트에 참여하고 동반 장소 탐색",
+        text: "지역 탐색으로 산책, 모임, 일상 외출을 계획하세요.",
       },
     ],
-    ctaTitle: "오늘 WePet을 시작하세요",
+    safetyLabel: "안전과 신뢰",
+    safetyTitle: "따뜻한 소셜 발견에는 분명한 경계가 필요합니다.",
+    safety: [
+      {
+        title: "채팅 전 상호 좋아요",
+        text: "두 보호자가 모두 연결을 선택했을 때만 대화가 시작됩니다.",
+      },
+      {
+        title: "반려동물 중심 프로필",
+        text: "프로필은 반려동물, 생활 패턴, 실용적인 정보에 집중합니다.",
+      },
+      {
+        title: "친근한 커뮤니티",
+        text: "WePet은 존중, 지역성, 반려동물 우선 소셜 경험을 중심으로 설계되었습니다.",
+      },
+      {
+        title: "AI 조언은 참고용",
+        text: "AI 반려동물 의사는 케어 생각을 정리하도록 돕지만 전문 진료를 대체하지 않습니다.",
+      },
+    ],
+    ctaTitle: "오늘 반려동물 친구를 만나보세요",
+    ctaSubtitle: "WePet 계정을 만들고 주변 반려동물 커뮤니티를 발견해보세요.",
+    openApp: "Web App 열기",
     footerText: "한국의 반려동물 소셜 네트워크",
   },
 }
@@ -213,20 +370,16 @@ export default function LandingPage() {
 
           <div className="flex flex-wrap items-center justify-end gap-2 sm:flex-nowrap sm:gap-3">
             <div className="order-3 flex rounded-full border border-orange-100 bg-white p-1 shadow-sm sm:order-none">
-              {[
-                ["en", "EN"],
-                ["zh", "中文"],
-                ["ko", "한국어"],
-              ].map(([value, label]) => (
+              {(["en", "zh", "ko"] as Lang[]).map((value) => (
                 <button
                   key={value}
                   type="button"
-                  onClick={() => setLang(value as Lang)}
+                  onClick={() => setLang(value)}
                   className={`rounded-full px-3 py-1.5 text-xs font-black transition ${
                     lang === value ? "bg-orange-500 text-white" : "text-stone-700 hover:bg-orange-50"
                   }`}
                 >
-                  {label}
+                  {t.langLabels[value]}
                 </button>
               ))}
             </div>
@@ -285,8 +438,10 @@ export default function LandingPage() {
               <div className="absolute left-1/2 top-1/2 h-[520px] w-[360px] -translate-x-1/2 -translate-y-1/2 rounded-[4rem] bg-orange-500/20 blur-3xl transition duration-500 group-hover:scale-110" />
               <div className="absolute left-4 top-16 hidden w-56 -rotate-6 rounded-[2rem] bg-white/90 p-4 shadow-2xl shadow-orange-950/15 backdrop-blur transition duration-500 hover:-translate-y-2 hover:scale-105 lg:block">
                 <div className="mb-3 flex items-center justify-between">
-                  <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-black text-orange-600">Match</span>
-                  <span className="text-xs font-black text-stone-400">1.8 km</span>
+                  <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-black text-orange-600">
+                    {t.mockup.match}
+                  </span>
+                  <span className="text-xs font-black text-stone-400">{t.mockup.distance}</span>
                 </div>
                 <div className="h-28 rounded-[1.5rem] bg-gradient-to-br from-orange-500 to-amber-400 p-4 text-white">
                   <h3 className="mt-12 text-2xl font-black">Mochi</h3>
@@ -296,14 +451,14 @@ export default function LandingPage() {
               <div className="absolute bottom-20 left-0 hidden w-64 rotate-3 rounded-[2rem] bg-white p-4 shadow-2xl shadow-orange-950/15 transition duration-500 hover:-translate-y-2 hover:scale-105 xl:block">
                 <div className="mb-3 flex items-center gap-2 text-sm font-black">
                   <MessageCircle className="h-4 w-4 text-orange-500" />
-                  {t.appChat}
+                  {t.mockup.chat}
                 </div>
                 <div className="space-y-2">
                   <div className="w-4/5 rounded-2xl bg-stone-100 px-3 py-2 text-xs font-semibold text-stone-600">
-                    {t.appChatQuestion}
+                    {t.mockup.chatQuestion}
                   </div>
                   <div className="ml-auto rounded-2xl bg-orange-500 px-3 py-2 text-xs font-semibold text-white">
-                    {t.appChatAnswer}
+                    {t.mockup.chatAnswer}
                   </div>
                 </div>
               </div>
@@ -311,7 +466,7 @@ export default function LandingPage() {
               <div className="absolute right-0 top-20 hidden w-60 rotate-6 rounded-[2rem] bg-amber-50 p-4 shadow-2xl shadow-orange-950/15 transition duration-500 hover:-translate-y-2 hover:scale-105 xl:block">
                 <div className="mb-3 flex items-center gap-2 text-sm font-black">
                   <MapPin className="h-4 w-4 text-orange-500" />
-                  {t.appExplore}
+                  {t.mockup.explore}
                 </div>
                 <div className="relative h-28 overflow-hidden rounded-[1.5rem] bg-white">
                   <div className="absolute left-4 top-5 h-12 w-20 rounded-full border-2 border-orange-200" />
@@ -327,8 +482,8 @@ export default function LandingPage() {
                     <Bot className="h-5 w-5 text-amber-300" />
                   </span>
                   <div>
-                    <h3 className="font-black">{t.appDoctor}</h3>
-                    <p className="text-xs font-semibold text-white/60">{t.appDoctorText}</p>
+                    <h3 className="font-black">{t.mockup.doctor}</h3>
+                    <p className="text-xs font-semibold text-white/60">{t.mockup.doctorText}</p>
                   </div>
                 </div>
               </div>
@@ -339,7 +494,7 @@ export default function LandingPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-500">WePet</p>
-                      <h2 className="mt-1 text-2xl font-black tracking-tight">{t.appToday}</h2>
+                      <h2 className="mt-1 text-2xl font-black tracking-tight">{t.mockup.today}</h2>
                     </div>
                     <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-100 text-orange-600">
                       <PawPrint className="h-5 w-5" />
@@ -349,8 +504,8 @@ export default function LandingPage() {
                   <div className="mt-5 rounded-[2rem] bg-gradient-to-br from-orange-500 to-amber-400 p-4 text-white shadow-xl shadow-orange-500/25 transition duration-300 hover:scale-[1.02]">
                     <div className="flex h-48 flex-col justify-between rounded-[1.5rem] bg-white/16 p-4 backdrop-blur">
                       <div className="flex items-center justify-between">
-                        <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-black">Match</span>
-                        <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-black">1.8 km</span>
+                        <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-black">{t.mockup.match}</span>
+                        <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-black">{t.mockup.distance}</span>
                       </div>
                       <div>
                         <div className="mb-3 flex gap-2">
@@ -358,8 +513,8 @@ export default function LandingPage() {
                           <span className="h-10 w-10 rounded-full bg-amber-200" />
                           <span className="h-10 w-10 rounded-full bg-stone-900" />
                         </div>
-                        <h3 className="text-3xl font-black">Mochi & Dodo</h3>
-                        <p className="mt-1 text-sm font-semibold text-white/85">{t.appWalk}</p>
+                        <h3 className="text-3xl font-black">{t.mockup.petNames}</h3>
+                        <p className="mt-1 text-sm font-semibold text-white/85">{t.mockup.walk}</p>
                       </div>
                     </div>
                   </div>
@@ -368,14 +523,14 @@ export default function LandingPage() {
                     <div className="rounded-3xl bg-white p-4 shadow-lg shadow-orange-950/5 transition duration-300 hover:-translate-y-1 hover:scale-[1.01]">
                       <div className="mb-3 flex items-center gap-2 text-sm font-black text-stone-900">
                         <MessageCircle className="h-4 w-4 text-orange-500" />
-                        {t.appChat}
+                        {t.mockup.chat}
                       </div>
                       <div className="space-y-2">
                         <div className="w-4/5 rounded-2xl bg-stone-100 px-3 py-2 text-xs font-semibold text-stone-600">
-                          {t.appChatQuestion}
+                          {t.mockup.chatQuestion}
                         </div>
                         <div className="ml-auto flex w-3/4 items-center justify-between rounded-2xl bg-orange-500 px-3 py-2 text-xs font-semibold text-white">
-                          {t.appChatAnswer}
+                          {t.mockup.chatAnswer}
                           <Send className="h-3.5 w-3.5" />
                         </div>
                       </div>
@@ -384,7 +539,7 @@ export default function LandingPage() {
                     <div className="rounded-3xl bg-amber-50 p-4 shadow-lg shadow-orange-950/5 transition duration-300 hover:-translate-y-1 hover:scale-[1.01]">
                       <div className="mb-3 flex items-center gap-2 text-sm font-black text-stone-900">
                         <MapPin className="h-4 w-4 text-orange-500" />
-                        {t.appExplore}
+                        {t.mockup.explore}
                       </div>
                       <div className="relative h-24 overflow-hidden rounded-2xl bg-white">
                         <div className="absolute left-5 top-5 h-12 w-20 rounded-full border-2 border-orange-200" />
@@ -400,8 +555,8 @@ export default function LandingPage() {
                           <Bot className="h-5 w-5 text-amber-300" />
                         </span>
                         <div>
-                          <h3 className="font-black">{t.appDoctor}</h3>
-                          <p className="text-xs font-semibold text-white/60">{t.appDoctorText}</p>
+                          <h3 className="font-black">{t.mockup.doctor}</h3>
+                          <p className="text-xs font-semibold text-white/60">{t.mockup.doctorText}</p>
                         </div>
                       </div>
                     </div>
@@ -423,22 +578,23 @@ export default function LandingPage() {
             <h2 className="mt-4 text-4xl font-black tracking-tight text-stone-950 sm:text-5xl">
               {t.featuresTitle}
             </h2>
+            <p className="mt-5 text-lg leading-8 text-stone-600">{t.featuresSubtitle}</p>
           </div>
 
-          <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {t.featureCards.map((feature, index) => {
+          <div className="mt-14 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {t.features.map((feature, index) => {
               const Icon = featureIcons[index]
 
               return (
                 <article
                   key={feature.title}
-                  className="group relative overflow-hidden rounded-[2.25rem] border border-orange-100/80 bg-gradient-to-br from-white via-[#fffaf5] to-orange-50/80 p-7 shadow-[0_18px_50px_rgba(124,45,18,0.08)] transition duration-300 hover:-translate-y-2 hover:border-orange-200 hover:shadow-[0_28px_70px_rgba(249,115,22,0.16)]"
+                  className="group relative min-h-64 overflow-hidden rounded-[2.25rem] border border-orange-100/80 bg-gradient-to-br from-white via-[#fffaf5] to-orange-50/80 p-7 shadow-[0_18px_50px_rgba(124,45,18,0.08)] transition duration-300 hover:-translate-y-2 hover:border-orange-200 hover:shadow-[0_28px_70px_rgba(249,115,22,0.16)]"
                 >
                   <div className="absolute right-[-2.5rem] top-[-2.5rem] h-28 w-28 rounded-full bg-orange-200/35 transition duration-300 group-hover:scale-125" />
                   <div className="relative flex h-14 w-14 items-center justify-center rounded-[1.35rem] bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-lg shadow-orange-500/25 transition duration-300 group-hover:scale-110">
                     <Icon className="h-6 w-6" />
                   </div>
-                  <h3 className="relative mt-8 text-xl font-black tracking-tight text-stone-950">{feature.title}</h3>
+                  <h3 className="relative mt-8 text-2xl font-black tracking-tight text-stone-950">{feature.title}</h3>
                   <p className="relative mt-4 text-sm leading-7 text-stone-600">{feature.text}</p>
                 </article>
               )
@@ -447,36 +603,85 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="safety" className="px-5 py-20 sm:px-8 lg:py-28">
-        <div className="mx-auto grid w-full max-w-7xl gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-          <div className="rounded-[2.5rem] bg-stone-950 p-8 text-white shadow-2xl shadow-stone-950/15 sm:p-10">
-            <ShieldCheck className="h-10 w-10 text-amber-300" />
-            <h2 className="mt-7 text-4xl font-black tracking-tight sm:text-5xl">
-              {t.safetyTitle}
+      <section className="bg-[#fff8f1] px-5 py-20 sm:px-8 lg:py-28">
+        <div className="mx-auto grid w-full max-w-7xl gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+          <div className="lg:sticky lg:top-28">
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-orange-500">{t.howLabel}</p>
+            <h2 className="mt-4 text-4xl font-black tracking-tight text-stone-950 sm:text-5xl">
+              {t.howTitle}
             </h2>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-[2rem] bg-white p-7 shadow-sm">
-              <h3 className="text-xl font-black">{t.safetyCards[0].title}</h3>
-              <p className="mt-3 leading-7 text-stone-600">{t.safetyCards[0].text}</p>
-            </div>
-            <div className="rounded-[2rem] bg-white p-7 shadow-sm">
-              <h3 className="text-xl font-black">{t.safetyCards[1].title}</h3>
-              <p className="mt-3 leading-7 text-stone-600">{t.safetyCards[1].text}</p>
-            </div>
+
+          <div className="grid gap-4">
+            {t.steps.map((step, index) => (
+              <article
+                key={step.title}
+                className="group grid gap-5 rounded-[2rem] border border-orange-100 bg-white p-5 shadow-[0_18px_50px_rgba(124,45,18,0.07)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_60px_rgba(249,115,22,0.14)] sm:grid-cols-[auto_1fr] sm:p-7"
+              >
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-950 text-lg font-black text-white shadow-lg shadow-stone-950/15">
+                  {index + 1}
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black tracking-tight text-stone-950">{step.title}</h3>
+                  <p className="mt-3 leading-7 text-stone-600">{step.text}</p>
+                </div>
+              </article>
+            ))}
           </div>
         </div>
       </section>
 
-      <section id="download" className="px-5 pb-16 sm:px-8">
-        <div className="mx-auto w-full max-w-7xl rounded-[2.75rem] bg-gradient-to-r from-orange-500 via-orange-400 to-amber-400 px-6 py-16 text-center text-white shadow-2xl shadow-orange-500/25 sm:px-10 sm:py-20">
-          <h2 className="text-5xl font-black tracking-tight sm:text-6xl lg:text-7xl">{t.ctaTitle}</h2>
-          <Link
-            href="/register"
-            className="mt-8 inline-flex rounded-full bg-white px-8 py-4 text-base font-black text-orange-600 shadow-xl shadow-orange-900/10 transition hover:-translate-y-0.5"
-          >
-            {t.nav.create}
-          </Link>
+      <section id="safety" className="relative overflow-hidden bg-white px-5 py-20 sm:px-8 lg:py-28">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-orange-50 to-white" />
+        <div className="relative mx-auto w-full max-w-7xl">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-orange-500">{t.safetyLabel}</p>
+            <h2 className="mt-4 text-4xl font-black tracking-tight text-stone-950 sm:text-5xl">
+              {t.safetyTitle}
+            </h2>
+          </div>
+
+          <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {t.safety.map((item, index) => {
+              const Icon = trustIcons[index]
+
+              return (
+                <article
+                  key={item.title}
+                  className="rounded-[2rem] border border-orange-100 bg-[#fffaf5] p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-orange-500/10"
+                >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-orange-500 shadow-sm">
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  <h3 className="mt-6 text-xl font-black tracking-tight text-stone-950">{item.title}</h3>
+                  <p className="mt-3 text-sm leading-7 text-stone-600">{item.text}</p>
+                </article>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section id="download" className="bg-[#fff8f1] px-5 py-16 sm:px-8 lg:py-24">
+        <div className="mx-auto w-full max-w-7xl overflow-hidden rounded-[2.75rem] bg-gradient-to-r from-orange-500 via-orange-400 to-amber-400 px-6 py-16 text-center text-white shadow-2xl shadow-orange-500/25 sm:px-10 sm:py-20">
+          <div className="mx-auto max-w-4xl">
+            <h2 className="text-5xl font-black tracking-tight sm:text-6xl lg:text-7xl">{t.ctaTitle}</h2>
+            <p className="mx-auto mt-5 max-w-2xl text-lg font-semibold leading-8 text-white/85">{t.ctaSubtitle}</p>
+            <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
+              <Link
+                href="/register"
+                className="rounded-full bg-white px-8 py-4 text-base font-black text-orange-600 shadow-xl shadow-orange-900/10 transition hover:-translate-y-0.5 hover:scale-[1.02]"
+              >
+                {t.nav.create}
+              </Link>
+              <Link
+                href="/login"
+                className="rounded-full border border-white/40 bg-white/15 px-8 py-4 text-base font-black text-white backdrop-blur transition hover:-translate-y-0.5 hover:scale-[1.02] hover:bg-white/20"
+              >
+                {t.openApp}
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
 
