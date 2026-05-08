@@ -316,10 +316,10 @@ export default function ProfilePage() {
           onTouchStart={handleCoverTouchStart}
           onTouchMove={handleCoverTouchMove}
           onTouchEnd={handleCoverTouchEnd}
-          className="min-h-screen overflow-x-hidden bg-gradient-to-b from-[#fff8ef] via-orange-50 to-white p-4"
+          className="min-h-screen overflow-x-hidden bg-gradient-to-b from-orange-50 via-stone-50 to-white px-5 py-4"
       >
         <div
-            className="sticky top-0 z-0 -mx-4 -mt-4 overflow-hidden bg-gradient-to-br from-orange-200 via-amber-100 to-rose-100 transition-all duration-300 ease-out"
+            className="sticky top-0 z-0 -mx-5 -mt-4 overflow-hidden bg-gradient-to-br from-orange-200 via-amber-100 to-rose-100 shadow-2xl shadow-orange-900/10 transition-all duration-300 ease-out"
             style={{
               height: isCoverExpanded
                   ? EXPANDED_COVER_HEIGHT
@@ -333,10 +333,11 @@ export default function ProfilePage() {
                   className="absolute inset-0 h-full w-full object-cover"
               />
           ) : null}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-orange-950/35" />
           <button
               type="button"
               onClick={() => (window.location.href = "/settings")}
-              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-stone-700 shadow-sm backdrop-blur"
+              className="absolute right-5 top-5 flex h-11 w-11 items-center justify-center rounded-full border border-white/60 bg-white/85 text-stone-700 shadow-lg shadow-orange-900/10 backdrop-blur transition hover:bg-white"
               aria-label="Settings"
           >
             <Settings className="h-5 w-5" />
@@ -349,13 +350,13 @@ export default function ProfilePage() {
               onChange={handleCoverFileChange}
           />
 
-          <div className="absolute right-4 bottom-4 flex items-center gap-2">
+          <div className="absolute bottom-5 right-5 flex items-center gap-2">
             {isCoverExpanded === false ? (
                 <button
                     type="button"
                     aria-pressed={coverLiked}
                     onClick={() => setCoverLiked((liked) => !liked)}
-                    className={`rounded-full bg-white/80 px-3 py-2 text-sm font-semibold shadow-sm backdrop-blur ${
+                    className={`rounded-full border border-white/60 bg-white/85 px-3.5 py-2 text-sm font-bold shadow-lg backdrop-blur ${
                         coverLiked ? "text-rose-500" : "text-stone-700"
                     }`}
                 >
@@ -366,7 +367,7 @@ export default function ProfilePage() {
                 <button
                     type="button"
                     onClick={() => coverInputRef.current?.click()}
-                    className="rounded-full bg-white/80 px-4 py-2 text-sm font-semibold text-stone-700 shadow-sm backdrop-blur"
+                    className="rounded-full border border-white/60 bg-white/85 px-4 py-2 text-sm font-bold text-stone-700 shadow-lg backdrop-blur"
                 >
                   {t.profile.changeCover}
                 </button>
@@ -375,23 +376,23 @@ export default function ProfilePage() {
         </div>
 
         <div className="relative z-10 mx-auto max-w-md space-y-5 pt-4">
-          <Card className="rounded-3xl border-orange-100 bg-white p-4 shadow-sm">
+          <Card className="-mt-14 overflow-hidden rounded-[2rem] border border-orange-100/80 bg-white/95 p-5 shadow-2xl shadow-orange-900/10 ring-1 ring-white/70">
             <div className="flex items-center gap-4">
               <div className="w-24 shrink-0 text-center">
                 <button
                     type="button"
                     onClick={() => setIsAvatarPreviewOpen(true)}
-                    className="mx-auto block rounded-full"
+                    className="mx-auto block rounded-[1.75rem] transition hover:scale-[1.02]"
                     aria-label="Preview avatar"
                 >
                   {displayAvatarUrl ? (
                       <img
                           src={displayAvatarUrl}
                           alt={displayName}
-                          className="h-20 w-20 rounded-full border-4 border-white object-cover shadow-md"
+                          className="h-24 w-24 rounded-[1.75rem] border-4 border-white object-cover shadow-xl shadow-orange-900/15"
                       />
                   ) : (
-                      <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-orange-500 text-2xl font-bold text-white shadow-md">
+                      <div className="flex h-24 w-24 items-center justify-center rounded-[1.75rem] border-4 border-white bg-gradient-to-br from-orange-500 to-amber-400 text-3xl font-black text-white shadow-xl shadow-orange-900/15">
                         {displayInitial}
                       </div>
                   )}
@@ -407,75 +408,76 @@ export default function ProfilePage() {
 
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-2">
-                  <p className="truncate text-xl font-bold text-stone-900">
-                    {petAge}
+                  <p className="truncate text-2xl font-black tracking-tight text-stone-900">
+                    {petName}
                   </p>
                   {membership.isActive ? (
-                      <span className="shrink-0 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                      <span className="shrink-0 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2.5 py-1 text-[10px] font-black text-white shadow-md shadow-orange-500/20">
                         VIP
                       </span>
                   ) : null}
                 </div>
-                <p className="mt-1 truncate text-xs text-stone-500">{user.email}</p>
+                <p className="mt-1 truncate text-sm font-semibold text-stone-500">{displayName}</p>
+                <p className="mt-0.5 truncate text-xs text-stone-400">{user.email}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700 shadow-sm">
+                  <span className="rounded-full border border-orange-100 bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-700 shadow-sm">
                     {petType}
                   </span>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700 shadow-sm">
-                    {displayName}
+                  <span className="rounded-full border border-stone-100 bg-white px-3 py-1.5 text-xs font-bold text-stone-600 shadow-sm">
+                    {petAge}
                   </span>
                 </div>
               </div>
             </div>
           </Card>
 
-          <Card className="rounded-3xl border-orange-100 bg-white p-4 shadow-sm">
-            <h2 className="mb-4 text-lg font-bold text-stone-900">🐾 {t.profile.myPet}</h2>
+          <Card className="rounded-[2rem] border border-orange-100/80 bg-white/95 p-5 shadow-xl shadow-orange-900/5">
+            <h2 className="mb-4 text-lg font-black tracking-tight text-stone-900">🐾 {t.profile.myPet}</h2>
 
             <div className="space-y-4 text-sm">
-              <div className="space-y-2 rounded-2xl bg-stone-50 p-4">
-                <p className="font-medium text-stone-900">{t.profile.nameLabel}: {petName}</p>
-                <p className="font-medium text-stone-900">{t.profile.typeLabel}: {petType}</p>
-                <p className="font-medium text-stone-900">{t.profile.ageLabel}: {petAge}</p>
+              <div className="space-y-2 rounded-[1.5rem] border border-orange-100 bg-orange-50/70 p-4">
+                <p className="font-semibold text-stone-900">{t.profile.nameLabel}: {petName}</p>
+                <p className="font-semibold text-stone-900">{t.profile.typeLabel}: {petType}</p>
+                <p className="font-semibold text-stone-900">{t.profile.ageLabel}: {petAge}</p>
               </div>
 
               <div>
                 <p className="mb-2 font-bold text-stone-900">✨ {t.profile.aboutPet}:</p>
-                <p className="leading-6 text-stone-700">{bio}</p>
+                <p className="rounded-[1.4rem] bg-stone-50 p-4 font-medium leading-6 text-stone-700">{bio}</p>
               </div>
             </div>
           </Card>
 
-          <Card className="rounded-3xl border-orange-100 bg-white p-4 shadow-sm">
-            <h2 className="text-lg font-bold text-stone-900 mb-3">📊 {t.profile.activityStats}</h2>
+          <Card className="rounded-[2rem] border border-orange-100/80 bg-white/95 p-5 shadow-xl shadow-orange-900/5">
+            <h2 className="mb-4 text-lg font-black tracking-tight text-stone-900">📊 {t.profile.activityStats}</h2>
 
             {statsError ? (
               <p className="text-sm text-red-600">{statsError}</p>
             ) : (
               <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                <div className="rounded-2xl border border-orange-100 bg-orange-50/70 px-2 py-3 shadow-sm">
-                  <p className="min-h-[2rem] text-xs font-medium leading-4 text-stone-500">{t.profile.likesSent}</p>
-                  <p className="mt-2 text-lg font-bold text-orange-600">{stats.likesSent}</p>
+                <div className="rounded-[1.4rem] border border-orange-100 bg-gradient-to-br from-orange-50 to-white px-2 py-4 shadow-sm">
+                  <p className="min-h-[2rem] text-[11px] font-bold leading-4 text-stone-500">{t.profile.likesSent}</p>
+                  <p className="mt-2 text-2xl font-black text-orange-600">{stats.likesSent}</p>
                 </div>
 
-                <div className="rounded-2xl border border-rose-100 bg-rose-50/70 px-2 py-3 shadow-sm">
-                  <p className="min-h-[2rem] text-xs font-medium leading-4 text-stone-500">{t.profile.likesReceived}</p>
-                  <p className="mt-2 text-lg font-bold text-rose-500">{stats.likesReceived}</p>
+                <div className="rounded-[1.4rem] border border-rose-100 bg-gradient-to-br from-rose-50 to-white px-2 py-4 shadow-sm">
+                  <p className="min-h-[2rem] text-[11px] font-bold leading-4 text-stone-500">{t.profile.likesReceived}</p>
+                  <p className="mt-2 text-2xl font-black text-rose-500">{stats.likesReceived}</p>
                 </div>
 
-                <div className="rounded-2xl border border-amber-100 bg-amber-50/70 px-2 py-3 shadow-sm">
-                  <p className="min-h-[2rem] text-xs font-medium leading-4 text-stone-500">{t.profile.conversations}</p>
-                  <p className="mt-2 text-lg font-bold text-amber-600">{stats.conversations}</p>
+                <div className="rounded-[1.4rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white px-2 py-4 shadow-sm">
+                  <p className="min-h-[2rem] text-[11px] font-bold leading-4 text-stone-500">{t.profile.conversations}</p>
+                  <p className="mt-2 text-2xl font-black text-amber-600">{stats.conversations}</p>
                 </div>
               </div>
             )}
           </Card>
 
-          <Card className="rounded-3xl border-orange-100 bg-white p-4 shadow-sm">
+          <Card className="overflow-hidden rounded-[2rem] border border-orange-100/80 bg-gradient-to-br from-stone-900 via-stone-800 to-orange-950 p-5 text-white shadow-2xl shadow-orange-900/15">
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <h2 className="text-lg font-bold text-stone-900">🌟 {t.profile.monthlyMembership}</h2>
-                <p className="mt-2 text-sm text-stone-500">
+                <h2 className="text-lg font-black tracking-tight text-white">🌟 {t.profile.monthlyMembership}</h2>
+                <p className="mt-2 text-sm font-medium text-stone-300">
                   {t.profile.expiresPrefix}: 
                   {membership.expiresAt
                     ? new Date(membership.expiresAt).toLocaleDateString()
@@ -488,7 +490,7 @@ export default function ProfilePage() {
                     setMembershipError("")
                     setShowMembershipModal(true)
                   }}
-                  className="shrink-0 rounded-full bg-orange-500 px-4 text-white hover:bg-orange-600"
+                  className="shrink-0 rounded-full bg-gradient-to-br from-orange-500 to-amber-400 px-4 font-bold text-white shadow-lg shadow-orange-500/25 hover:shadow-orange-500/35"
               >
                 {t.profile.upgradeMembership}
               </Button>

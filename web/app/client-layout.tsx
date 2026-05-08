@@ -10,9 +10,6 @@ import {
   Map,
   User,
   PawPrint,
-  Battery,
-  Wifi,
-  Signal,
   Stethoscope,
 } from "lucide-react"
 import { useLanguage } from "@/lib/i18n/language-context"
@@ -80,9 +77,22 @@ export default function ClientLayout({
     return null
   }
 
+  const headerSafeTop = isCapacitor
+      ? "pt-[calc(0.875rem+max(env(safe-area-inset-top),14px))]"
+      : "pt-[calc(1rem+env(safe-area-inset-top))]"
+  const mainSafeTop = isCapacitor
+      ? "pt-[calc(5.25rem+max(env(safe-area-inset-top),14px))]"
+      : "pt-[calc(5.25rem+env(safe-area-inset-top))]"
+  const mainSafeBottom = isCapacitor
+      ? "pb-[calc(5.75rem+max(env(safe-area-inset-bottom),14px))]"
+      : "pb-[calc(5.5rem+env(safe-area-inset-bottom))]"
+  const navSafeBottom = isCapacitor
+      ? "pb-[calc(0.6rem+max(env(safe-area-inset-bottom),14px))]"
+      : "pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
+
   const appContent = (
-      <div className="relative flex h-full w-full flex-col bg-stone-50">
-        <header className="flex items-center justify-between bg-gradient-to-r from-orange-500 via-orange-400 to-amber-400 px-5 py-4 shadow-lg">
+      <div className="relative mx-auto flex h-[100dvh] min-h-[100dvh] w-full max-w-[430px] touch-pan-y flex-col overflow-hidden bg-stone-50 shadow-2xl shadow-orange-950/10">
+        <header className={`absolute inset-x-0 top-0 z-40 flex items-center justify-between bg-gradient-to-r from-orange-500 via-orange-400 to-amber-400 px-5 pb-4 shadow-lg ${headerSafeTop}`}>
           <Link href="/match" className="flex items-center gap-2.5">
             <div className="rounded-xl bg-white p-2 shadow-md">
               <PawPrint className="h-5 w-5 text-orange-500" />
@@ -106,11 +116,11 @@ export default function ClientLayout({
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto bg-stone-50">
+        <main className={`h-full overflow-y-auto overscroll-contain bg-stone-50 [-webkit-overflow-scrolling:touch] ${mainSafeBottom} ${mainSafeTop}`}>
           {children}
         </main>
 
-        <nav className="safe-bottom flex items-center justify-around border-t border-stone-200 bg-white px-4 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+        <nav className={`safe-bottom absolute inset-x-0 bottom-0 z-40 flex items-center justify-around border-t border-stone-200 bg-white/95 px-4 pt-2 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] backdrop-blur-xl ${navSafeBottom}`}>
           <NavLink
               href="/match"
               icon={<Home className="h-5 w-5" />}
@@ -147,38 +157,15 @@ export default function ClientLayout({
 
   if (isCapacitor) {
     return (
-        <div className="fixed inset-0 h-[100dvh] w-screen overflow-hidden bg-stone-50">
+        <div className="fixed inset-0 h-[100dvh] w-screen overflow-hidden overscroll-none bg-stone-100">
           {appContent}
         </div>
     )
   }
 
   return (
-      <div className="min-h-screen bg-gradient-to-br from-stone-200 via-stone-100 to-stone-200 flex items-center justify-center p-4">
-        <div className="relative h-[812px] w-full max-w-[380px] overflow-hidden rounded-[50px] border-[14px] border-stone-900 bg-black shadow-2xl">
-          <div className="absolute left-1/2 top-0 z-50 h-7 w-40 -translate-x-1/2 rounded-b-3xl bg-black" />
-
-          <div className="absolute left-0 right-0 top-0 z-40 flex h-11 items-center justify-between bg-gradient-to-b from-stone-50 to-white px-8 pt-2 text-stone-800">
-            <div className="flex items-center gap-1 text-xs font-semibold">
-              <span>
-                {new Date().toLocaleTimeString("en-US", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: false,
-                })}
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Signal className="h-3.5 w-3.5" />
-              <Wifi className="h-3.5 w-3.5" />
-              <Battery className="h-3.5 w-3.5" />
-            </div>
-          </div>
-
-          <div className="h-full w-full pt-11">
-            {appContent}
-          </div>
-        </div>
+      <div className="flex min-h-[100dvh] items-center justify-center bg-gradient-to-br from-orange-100 via-stone-100 to-amber-100">
+        {appContent}
       </div>
   )
 }

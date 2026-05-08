@@ -348,24 +348,24 @@ export default function MatchPage() {
 
   if (showPetDetail && currentPet) {
     return (
-        <div className="mx-auto flex h-full max-w-md flex-col bg-orange-50">
-          <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-orange-100 bg-white/95 px-4 py-3 backdrop-blur">
+        <div className="mx-auto flex h-full max-w-md flex-col bg-gradient-to-b from-orange-50 via-stone-50 to-white">
+          <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-orange-100/80 bg-white/90 px-5 py-4 shadow-sm backdrop-blur-xl">
             <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowPetDetail(false)}
-                className="h-10 w-10 rounded-full text-stone-700 hover:bg-orange-50"
+                className="h-11 w-11 rounded-full border border-orange-100 bg-white text-stone-700 shadow-sm hover:bg-orange-50"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-lg font-bold text-stone-900">{displayName}</h1>
+              <h1 className="text-xl font-extrabold tracking-tight text-stone-900">{displayName}</h1>
             </div>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto pb-24">
-            <div className="relative h-80 w-full bg-orange-100">
+            <div className="relative mx-4 mt-4 h-80 overflow-hidden rounded-[2rem] bg-orange-100 shadow-2xl shadow-orange-900/10">
               <img
                   src={imageSrc}
                   alt={displayName}
@@ -374,15 +374,16 @@ export default function MatchPage() {
                     e.currentTarget.src = "/placeholder-pet.png"
                   }}
               />
-              <Badge className="absolute right-4 top-4 border-0 bg-white/90 text-stone-700 shadow-lg">
+              <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/45 to-transparent" />
+              <Badge className="absolute right-4 top-4 rounded-full border border-white/60 bg-white/90 px-3 py-1.5 text-orange-600 shadow-lg backdrop-blur">
                 {matchScore}% {t.match.matchPercent}
               </Badge>
             </div>
 
-            <div className="space-y-4 p-4">
-              <Card className="border-orange-100 bg-white p-5 shadow-sm">
+            <div className="space-y-4 p-5">
+              <Card className="rounded-[1.75rem] border-orange-100/80 bg-white/95 p-5 shadow-lg shadow-orange-900/5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-2xl font-bold text-stone-900">
+                  <h2 className="text-2xl font-extrabold tracking-tight text-stone-900">
                     {displayName}
                     {displayAge ? `, ${displayAge}` : ""}
                   </h2>
@@ -395,17 +396,17 @@ export default function MatchPage() {
 
                 <div className="mt-3 flex flex-wrap gap-2">
                   {displayType ? (
-                      <Badge variant="secondary" className="rounded-full">
+                      <Badge variant="secondary" className="rounded-full border border-orange-100 bg-orange-50 px-3 py-1 text-orange-700">
                         {displayType}
                       </Badge>
                   ) : null}
                   {displayCity ? (
-                      <Badge variant="secondary" className="rounded-full">
+                      <Badge variant="secondary" className="rounded-full border border-stone-100 bg-stone-50 px-3 py-1 text-stone-600">
                         {displayCity}
                       </Badge>
                   ) : null}
                   {distanceDisplayText ? (
-                      <Badge variant="secondary" className={`rounded-full ${distanceClassName}`}>
+                      <Badge variant="secondary" className={`rounded-full border border-orange-100 bg-white px-3 py-1 shadow-sm ${distanceClassName}`}>
                         <MapPin className="mr-1 h-3 w-3" />
                         {distanceDisplayText}
                       </Badge>
@@ -414,11 +415,11 @@ export default function MatchPage() {
               </Card>
 
               {currentPet.matchReasons && currentPet.matchReasons.length > 0 ? (
-                  <Card className="border-orange-100 bg-white p-5 shadow-sm">
+                  <Card className="rounded-[1.75rem] border-orange-100/80 bg-white/95 p-5 shadow-lg shadow-orange-900/5">
                     <div className="mb-3 text-sm font-semibold text-stone-700">Tags</div>
                     <div className="flex flex-wrap gap-2">
                       {currentPet.matchReasons.map((reason) => (
-                          <Badge key={reason} variant="secondary" className="rounded-full">
+                          <Badge key={reason} variant="secondary" className="rounded-full border border-orange-100 bg-gradient-to-r from-orange-50 to-amber-50 px-3 py-1 text-orange-700">
                             {reason}
                           </Badge>
                       ))}
@@ -426,9 +427,11 @@ export default function MatchPage() {
                   </Card>
               ) : null}
 
-              <Card className="border-orange-100 bg-white p-5 shadow-sm">
+              <Card className="rounded-[1.75rem] border-orange-100/80 bg-gradient-to-br from-white to-orange-50/80 p-5 shadow-lg shadow-orange-900/5">
                 <div className="mb-3 flex items-center gap-2">
-                  <Info className="h-4 w-4 text-orange-500" />
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100">
+                    <Info className="h-4 w-4 text-orange-500" />
+                  </span>
                   <span className="text-sm font-semibold text-orange-700">
                     {currentPet.is_ai ? t.match.roleIntro : t.match.aiAnalysis}
                   </span>
@@ -445,13 +448,19 @@ export default function MatchPage() {
 
   return (
       <>
-        <div className="p-4 max-w-md mx-auto h-full flex flex-col">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-stone-800">{t.match.title}</h1>
+        <div className="mx-auto flex h-full max-w-md flex-col bg-gradient-to-b from-orange-50 via-stone-50 to-white px-5 py-4">
+          <div className="mb-5 flex items-start justify-between gap-3">
+            <div>
+              <div className="mb-1 flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-orange-500 shadow-[0_0_0_4px_rgba(249,115,22,0.12)]" />
+                <span className="text-xs font-bold uppercase tracking-[0.18em] text-orange-500">WePet Match</span>
+              </div>
+              <h1 className="text-3xl font-black tracking-tight text-stone-900">{t.match.title}</h1>
+            </div>
 
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-orange-100 to-amber-100 rounded-full">
+            <div className="flex shrink-0 items-center gap-2 rounded-full border border-orange-100 bg-white/90 px-3.5 py-2 shadow-lg shadow-orange-900/5 backdrop-blur">
               <Sparkles className="h-4 w-4 text-orange-500" />
-              <span className="text-sm font-medium text-orange-700">
+              <span className="text-xs font-bold text-orange-700">
               {isMember
                   ? t.match.memberUnlimited
                   : `${t.match.remainingLikes} ${remainingLikes} ${t.match.times}`}
@@ -460,28 +469,28 @@ export default function MatchPage() {
           </div>
 
           {inlineNotice ? (
-              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm font-medium text-amber-700 shadow-sm">
                 {inlineNotice}
               </div>
           ) : null}
 
           {pageError ? (
-              <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+              <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 shadow-sm">
                 {pageError}
               </div>
           ) : null}
 
           {loadingUsers ? (
-              <div className="flex-1 flex items-center justify-center text-stone-500">
+              <div className="flex flex-1 items-center justify-center rounded-[2rem] border border-orange-100 bg-white/70 text-stone-500 shadow-lg shadow-orange-900/5">
                 {t.match.loading}
               </div>
           ) : !currentPet ? (
-              <div className="flex-1 flex items-center justify-center text-stone-500">
+              <div className="flex flex-1 items-center justify-center rounded-[2rem] border border-orange-100 bg-white/70 text-stone-500 shadow-lg shadow-orange-900/5">
                 {t.match.noUsers}
               </div>
           ) : (
               <>
-                <div className="relative flex-1 min-h-0 overflow-hidden">
+                <div className="relative min-h-0 flex-1 overflow-visible">
                   <AnimatePresence mode="wait">
                     <motion.div
                         key={`${currentPet.id}-${currentIndex}`}
@@ -515,29 +524,31 @@ export default function MatchPage() {
                       >
                       <Card
                           onClick={() => setShowPetDetail(true)}
-                          className="flex h-full flex-col overflow-hidden border-0 shadow-xl bg-white cursor-pointer"
+                          className="flex h-full cursor-pointer flex-col overflow-hidden rounded-[2.25rem] border border-white/80 bg-white shadow-2xl shadow-orange-900/12 ring-1 ring-orange-100/70"
                       >
-                        <div className="relative h-[44%] shrink-0">
+                        <div className="relative m-3 h-[50%] shrink-0 overflow-hidden rounded-[1.8rem] bg-orange-100">
                           <img
                               src={imageSrc}
                               alt={displayName}
-                              className="w-full h-full object-cover"
+                              className="h-full w-full object-cover"
                               onError={(e) => {
                                 e.currentTarget.src = "/placeholder-pet.png"
                               }}
                           />
 
-                          <div className="absolute top-4 right-4">
-                            <Badge className="bg-white/90 text-stone-700 border-0 shadow-lg">
+                          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+
+                          <div className="absolute right-4 top-4">
+                            <Badge className="rounded-full border border-white/60 bg-white/92 px-3.5 py-1.5 text-sm font-extrabold text-orange-600 shadow-lg backdrop-blur">
                               {matchScore}% {t.match.matchPercent}
                             </Badge>
                           </div>
                         </div>
 
-                        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 pb-6">
+                        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 pb-6 pt-2">
                           <div>
                             <div className="flex flex-wrap items-center gap-2">
-                              <h2 className="text-2xl font-bold text-stone-800">
+                              <h2 className="text-3xl font-black tracking-tight text-stone-900">
                                 {displayName}
                                 {displayAge ? `, ${displayAge}` : ""}
                               </h2>
@@ -548,10 +559,10 @@ export default function MatchPage() {
                               ) : null}
                             </div>
 
-                            <p className="text-stone-500 mt-1">{displayType}</p>
+                            <p className="mt-1 text-sm font-semibold text-stone-500">{displayType}</p>
 
                             {distanceDisplayText ? (
-                                <div className={`mt-1 flex items-center gap-1 text-sm font-medium ${distanceClassName}`}>
+                                <div className={`mt-2 inline-flex items-center gap-1.5 rounded-full bg-stone-50 px-3 py-1.5 text-sm font-bold shadow-sm ${distanceClassName}`}>
                                   <MapPin className="h-4 w-4" />
                                   <span>{distanceDisplayText}</span>
                                 </div>
@@ -561,40 +572,42 @@ export default function MatchPage() {
                           {currentPet.matchReasons && currentPet.matchReasons.length > 0 ? (
                               <div className="flex flex-wrap gap-2">
                                 {currentPet.matchReasons.map((reason) => (
-                                    <Badge key={reason} variant="secondary" className="rounded-full">
+                                    <Badge key={reason} variant="secondary" className="rounded-full border border-orange-100 bg-gradient-to-r from-orange-50 to-amber-50 px-3 py-1.5 text-xs font-bold text-orange-700 shadow-sm">
                                       {reason}
                                     </Badge>
                                 ))}
                               </div>
                           ) : null}
 
-                          <div className="p-4 bg-gradient-to-r from-orange-50 to-amber-50 rounded-2xl border border-orange-100">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Info className="h-4 w-4 text-orange-500" />
+                          <div className="rounded-[1.5rem] border border-orange-100 bg-gradient-to-br from-orange-50 via-white to-amber-50 p-4 shadow-inner shadow-orange-100/70">
+                            <div className="mb-2 flex items-center gap-2">
+                              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm">
+                                <Info className="h-4 w-4 text-orange-500" />
+                              </span>
                               <span className="text-sm font-semibold text-orange-700">
                             {currentPet.is_ai ? t.match.roleIntro : t.match.aiAnalysis}
                           </span>
                             </div>
 
-                            <p className="text-sm text-stone-700 leading-relaxed">
+                            <p className="text-sm leading-relaxed text-stone-700">
                               {displayDescription}
                             </p>
                           </div>
 
                           <div className="flex flex-wrap gap-2">
                             {displayType ? (
-                                <Badge variant="secondary" className="rounded-full">
+                                <Badge variant="secondary" className="rounded-full border border-stone-100 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 shadow-sm">
                                   {displayType}
                                 </Badge>
                             ) : null}
 
                             {displayAge ? (
-                                <Badge variant="secondary" className="rounded-full">
+                                <Badge variant="secondary" className="rounded-full border border-stone-100 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 shadow-sm">
                                   {displayAge}
                                 </Badge>
                             ) : null}
 
-                            <Badge variant="secondary" className="rounded-full">
+                            <Badge variant="secondary" className="rounded-full border border-stone-100 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 shadow-sm">
                               @{displayUsername}
                             </Badge>
                           </div>
@@ -605,22 +618,22 @@ export default function MatchPage() {
                   </AnimatePresence>
                 </div>
 
-                <div className="flex items-center justify-center gap-6 mt-6 pb-2">
+                <div className="mt-6 flex items-center justify-center gap-7 pb-2">
                   <Button
                       onClick={handleDislike}
                       size="icon"
-                      className="h-14 w-14 rounded-full bg-white border border-stone-200 text-stone-400 hover:text-rose-500 hover:border-rose-200 shadow-sm hover:shadow-md transition-all"
+                      className="h-16 w-16 rounded-full border border-rose-100 bg-white text-rose-400 shadow-xl shadow-rose-900/10 transition-all hover:-translate-y-1 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-500 hover:shadow-2xl"
                   >
-                    <X className="h-6 w-6" />
+                    <X className="h-7 w-7" />
                   </Button>
 
                   <Button
                       onClick={handleLike}
                       size="icon"
                       disabled={liking}
-                      className="h-14 w-14 rounded-full bg-orange-500 text-white hover:bg-orange-600 shadow-lg hover:shadow-xl hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="h-16 w-16 rounded-full bg-gradient-to-br from-orange-500 via-orange-500 to-amber-400 text-white shadow-2xl shadow-orange-500/30 transition-all hover:-translate-y-1 hover:scale-105 hover:shadow-orange-500/40 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    <Heart className="h-6 w-6" />
+                    <Heart className="h-7 w-7 fill-current" />
                   </Button>
                 </div>
               </>

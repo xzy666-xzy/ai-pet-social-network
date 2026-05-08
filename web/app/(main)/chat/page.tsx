@@ -583,14 +583,14 @@ export default function ChatPage() {
   }
 
   return (
-      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-stone-50">
-        <div className="flex items-center justify-between gap-3 border-b bg-white px-4 py-3">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-gradient-to-b from-orange-50 via-stone-50 to-white">
+        <div className="flex items-center justify-between gap-3 border-b border-orange-100/80 bg-white/90 px-5 py-4 shadow-sm backdrop-blur-xl">
           <div className="flex min-w-0 items-center gap-3">
             {targetUserId ? (
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="rounded-full"
+                    className="h-10 w-10 rounded-full border border-orange-100 bg-white text-stone-700 shadow-sm hover:bg-orange-50"
                     onClick={() => router.push("/chat")}
                 >
                   <ChevronLeft className="h-5 w-5" />
@@ -598,15 +598,60 @@ export default function ChatPage() {
             ) : null}
 
             <div className="min-w-0">
-              <div className="font-semibold text-stone-900">{headerName}</div>
+              {!targetUserId ? (
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-orange-500 shadow-[0_0_0_4px_rgba(249,115,22,0.12)]" />
+                    <span className="text-xs font-bold uppercase tracking-[0.18em] text-orange-500">
+                      WePet Chat
+                    </span>
+                  </div>
+              ) : null}
               {targetUserId ? (
-                  <div className="mt-0.5 flex items-center gap-1.5 text-xs text-stone-500">
-                    <span
-                        className={`h-2 w-2 rounded-full animate-pulse ${
-                            targetOnline ? "bg-emerald-500" : "bg-red-500"
-                        }`}
-                    />
-                    <span>{targetOnline ? "在线中" : "离线中"}</span>
+                  <button
+                      type="button"
+                      onClick={() => setProfileOpen(true)}
+                      className="flex min-w-0 items-center gap-3 text-left"
+                  >
+                    <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-2xl border border-white bg-gradient-to-br from-orange-100 to-amber-100 shadow-md shadow-orange-900/10">
+                      {targetUser?.avatar_url ? (
+                          <img
+                              src={targetUser.avatar_url || "/placeholder.svg"}
+                              alt={headerName}
+                              className="h-full w-full object-cover"
+                          />
+                      ) : (
+                          <div className="flex h-full w-full items-center justify-center text-base font-black text-orange-600">
+                            {headerName.charAt(0).toUpperCase()}
+                          </div>
+                      )}
+                      <span
+                          className={`absolute bottom-1 right-1 h-3 w-3 rounded-full border-2 border-white shadow-sm ${
+                              targetOnline ? "bg-emerald-400" : "bg-stone-300"
+                          }`}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="truncate text-base font-extrabold tracking-tight text-stone-900">
+                        {headerName}
+                      </div>
+                      <div className="mt-0.5 flex items-center gap-1.5 text-[11px] font-semibold text-stone-500">
+                        <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                                targetOnline ? "bg-emerald-500" : "bg-stone-300"
+                            }`}
+                        />
+                        <span>{targetOnline ? "在线中" : "离线中"}</span>
+                      </div>
+                    </div>
+                  </button>
+              ) : (
+                  <div className="text-3xl font-black tracking-tight text-stone-900">
+                    {headerName}
+                  </div>
+              )}
+              {!targetUserId ? (
+                  <div className="mt-1 text-sm font-medium text-stone-500">
+                    {t.chat.recentMessages}
                   </div>
               ) : null}
             </div>
@@ -691,9 +736,9 @@ export default function ChatPage() {
             </div>
         ) : null}
 
-        <ScrollArea className="min-h-0 flex-1 px-4 py-4">
+        <ScrollArea className="min-h-0 flex-1 px-5 py-5">
           <div className="mx-auto max-w-2xl">
-            <div className="mb-4 text-center text-xs text-stone-400">
+            <div className="mb-4 text-center text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">
               {targetUserId ? t.chat.today : t.chat.recentMessages}
             </div>
 
@@ -732,23 +777,28 @@ export default function ChatPage() {
                                 if (!item.other_user_id) return
                                 router.push(`/chat?userId=${item.other_user_id}`)
                               }}
-                              className="w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-left shadow-sm transition hover:shadow-md"
+                              className="w-full rounded-[1.65rem] border border-orange-100/70 bg-white/95 px-4 py-3.5 text-left shadow-lg shadow-orange-900/5 ring-1 ring-white/70 transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-900/10 active:translate-y-0 active:scale-[0.985]"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-stone-200">
+                              <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-white bg-gradient-to-br from-orange-100 to-amber-100 shadow-md shadow-orange-900/10">
                                 {item.other_avatar_url ? (
                                     <img
                                         src={item.other_avatar_url || "/placeholder.svg"}
                                         alt={item.other_pet_name || item.other_username}
                                         className="h-full w-full object-cover"
                                     />
-                                ) : null}
+                                ) : (
+                                    <div className="flex h-full w-full items-center justify-center text-lg font-black text-orange-600">
+                                      {(item.other_pet_name || item.other_username || "W").charAt(0).toUpperCase()}
+                                    </div>
+                                )}
+                                <span className="absolute bottom-1 right-1 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-400 shadow-sm" />
                               </div>
 
                               <div className="min-w-0 flex-1">
-                                <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-start justify-between gap-3">
                                   <div className="flex min-w-0 items-center gap-2">
-                                    <div className="truncate font-semibold text-stone-900">
+                                    <div className="truncate text-base font-extrabold tracking-tight text-stone-900">
                                       {item.other_pet_name || item.other_username}
                                     </div>
                                     {item.other_membership_active ? (
@@ -757,19 +807,33 @@ export default function ChatPage() {
                                         </span>
                                     ) : null}
                                   </div>
-                                  <div className="shrink-0 text-xs text-stone-400">
+                                  <div className="shrink-0 pt-0.5 text-[11px] font-semibold text-stone-400">
                                     {item.last_message_time
                                         ? formatTime(item.last_message_time)
                                         : ""}
                                   </div>
                                 </div>
 
-                                <div className="mt-1 text-xs text-stone-400">
-                                  {getConversationStatusText(item)}
+                                <div className="mt-1.5 flex items-center gap-2">
+                                  <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-bold text-orange-600">
+                                    {getConversationStatusText(item)}
+                                  </span>
+                                  {item.liked_me && !item.is_match ? (
+                                      <span className="rounded-full bg-gradient-to-r from-orange-500 to-amber-400 px-2.5 py-1 text-[10px] font-extrabold text-white shadow-sm shadow-orange-500/20">
+                                        New
+                                      </span>
+                                  ) : null}
                                 </div>
 
-                                <div className="mt-1 truncate text-sm text-stone-500">
-                                  {item.last_message || t.chat.noMessagesYet}
+                                <div className="mt-2 flex min-w-0 items-center justify-between gap-3">
+                                  <div className="truncate text-sm font-medium leading-5 text-stone-600">
+                                    {item.last_message || t.chat.noMessagesYet}
+                                  </div>
+                                  {item.liked_me && !item.is_match ? (
+                                      <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-orange-500 px-1.5 text-[10px] font-black text-white shadow-md shadow-orange-500/25">
+                                        1
+                                      </span>
+                                  ) : null}
                                 </div>
                               </div>
                             </div>
@@ -797,19 +861,21 @@ export default function ChatPage() {
                     return (
                         <div key={msg.id}>
                           {showTimeDivider ? (
-                              <div className="my-4 text-center text-xs text-stone-400">
-                                {formatChatDividerTime(msg.created_at)}
+                              <div className="my-5 flex justify-center">
+                                <span className="rounded-full bg-white/80 px-3 py-1 text-[11px] font-semibold text-stone-400 shadow-sm ring-1 ring-stone-100">
+                                  {formatChatDividerTime(msg.created_at)}
+                                </span>
                               </div>
                           ) : null}
 
                           <div
-                              className={`flex items-end gap-2 ${isMe ? "justify-end" : "justify-start"}`}
+                              className={`flex items-end gap-2.5 ${isMe ? "justify-end" : "justify-start"}`}
                           >
                             {!isMe ? (
                                 <button
                                     type="button"
                                     onClick={() => setProfileOpen(true)}
-                                    className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-stone-200"
+                                    className="h-9 w-9 shrink-0 overflow-hidden rounded-2xl border border-white bg-orange-100 shadow-sm"
                                 >
                                   {targetUser?.avatar_url ? (
                                       <img
@@ -817,16 +883,20 @@ export default function ChatPage() {
                                           alt={headerName}
                                           className="h-full w-full object-cover"
                                       />
-                                  ) : null}
+                                  ) : (
+                                      <div className="flex h-full w-full items-center justify-center text-sm font-black text-orange-600">
+                                        {headerName.charAt(0).toUpperCase()}
+                                      </div>
+                                  )}
                                 </button>
                             ) : null}
                             <div
-                                className={`max-w-[75%] px-4 py-2.5 ${
+                                className={`max-w-[76%] px-4 py-3 ${
                                     isDeleted
                                         ? "rounded-full bg-stone-100 text-xs text-stone-500"
                                         : isMe
-                                        ? "rounded-2xl rounded-br-md bg-orange-500 text-white shadow-sm"
-                                        : "rounded-2xl rounded-bl-md border border-stone-200 bg-white text-stone-800 shadow-sm"
+                                        ? "rounded-[1.35rem] rounded-br-md bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-lg shadow-orange-500/20"
+                                        : "rounded-[1.35rem] rounded-bl-md border border-orange-100/80 bg-white text-stone-800 shadow-md shadow-orange-900/5"
                                 }`}
                                 onContextMenu={
                                   isDeleted ? undefined : (event) => handleMessageContextMenu(event, msg)
@@ -835,7 +905,7 @@ export default function ChatPage() {
                                 onTouchEnd={isDeleted ? undefined : clearLongPressTimer}
                                 onTouchMove={isDeleted ? undefined : clearLongPressTimer}
                             >
-                              <div className={`break-words whitespace-pre-wrap ${isDeleted ? "text-xs" : "text-sm"}`}>
+                              <div className={`break-words whitespace-pre-wrap leading-relaxed ${isDeleted ? "text-xs" : "text-[15px]"}`}>
                                 {isDeleted ? "删除了一条消息" : msg.content}
                               </div>
                             </div>
@@ -845,7 +915,7 @@ export default function ChatPage() {
                                     aria-label={chatLiked ? "Liked this pet" : "Like this pet"}
                                     disabled={chatLikeLoading || chatLiked}
                                     onClick={handleMessageLike}
-                                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-70"
+                                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-lg shadow-orange-500/25 transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-70"
                                 >
                                   {chatLikeLoading ? (
                                       <span className="text-xs font-bold">...</span>
@@ -855,14 +925,18 @@ export default function ChatPage() {
                                 </button>
                             ) : null}
                             {isMe ? (
-                                <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-stone-200">
+                                <div className="h-9 w-9 shrink-0 overflow-hidden rounded-2xl border border-white bg-stone-200 shadow-sm">
                                   {user?.avatar_url ? (
                                       <img
                                           src={user.avatar_url || "/placeholder.svg"}
                                           alt={user.pet_name || user.username || "Me"}
                                           className="h-full w-full object-cover"
                                       />
-                                  ) : null}
+                                  ) : (
+                                      <div className="flex h-full w-full items-center justify-center text-sm font-black text-orange-600">
+                                        {(user?.pet_name || user?.username || "M").charAt(0).toUpperCase()}
+                                      </div>
+                                  )}
                                 </div>
                             ) : null}
                           </div>
@@ -896,15 +970,15 @@ export default function ChatPage() {
             </div>
         ) : null}
 
-        <div className="shrink-0 border-t bg-white px-4 py-3">
+        <div className="shrink-0 border-t border-orange-100/80 bg-white/90 px-4 py-3 shadow-[0_-8px_24px_rgba(249,115,22,0.08)] backdrop-blur-xl">
           <div className="mx-auto max-w-2xl">
             {inlineNotice ? (
-                <div className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                <div className="mb-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700">
                   {inlineNotice}
                 </div>
             ) : null}
 
-            <div className="flex items-center gap-2 rounded-2xl border bg-stone-50 px-3 py-2">
+            <div className="flex items-center gap-2 rounded-[1.6rem] border border-orange-100 bg-stone-50/90 px-3 py-2 shadow-inner">
               <Input
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
@@ -922,7 +996,7 @@ export default function ChatPage() {
                             : t.chat.typeMessage
                   }
                   disabled={!targetUserId || introLocked}
-                  className="h-auto border-0 bg-transparent p-0 shadow-none placeholder:text-stone-400 focus-visible:ring-0"
+                  className="h-10 border-0 bg-transparent px-1 py-0 text-[15px] shadow-none placeholder:text-stone-400 focus-visible:ring-0"
               />
 
               <Button
@@ -935,7 +1009,7 @@ export default function ChatPage() {
                       sending ||
                       introLocked
                   }
-                  className="h-8 w-8 shrink-0 rounded-full bg-orange-500 text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="h-10 w-10 shrink-0 rounded-full bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-lg shadow-orange-500/25 transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Send className="h-4 w-4" />
               </Button>

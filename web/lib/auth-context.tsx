@@ -66,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const token = getAccessToken()
     const isPublicPath =
       pathname === "/" ||
+      pathname === "/app" ||
       pathname === "/landing" ||
       pathname === "/login" ||
       pathname === "/register"

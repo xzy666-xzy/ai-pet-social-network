@@ -537,55 +537,57 @@ export default function DoctorPage() {
   if (!mounted) return null
 
   return (
-      <div className="h-full min-h-0">
-        <div className="mx-auto flex h-full min-h-0 max-w-md flex-col bg-stone-50">
+      <div className="h-full min-h-0 bg-gradient-to-b from-orange-50 via-stone-50 to-white">
+        <div className="mx-auto flex h-full min-h-0 max-w-md flex-col bg-gradient-to-b from-orange-50 via-stone-50 to-white">
           {!showChat ? (
-              <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
-                <section className="rounded-3xl bg-gradient-to-r from-orange-500 via-orange-400 to-amber-400 p-5 text-white shadow-lg">
-                  <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
+              <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
+                <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-orange-500 via-orange-400 to-amber-300 p-6 text-white shadow-2xl shadow-orange-500/20">
+                  <div className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-white/20 blur-2xl" />
+                  <div className="absolute -bottom-14 left-8 h-32 w-32 rounded-full bg-yellow-200/25 blur-2xl" />
+                  <div className="relative mb-4 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/20 px-3 py-1.5 text-xs font-bold backdrop-blur">
                     <Stethoscope className="h-4 w-4" />
                     {c.chatTitle}
                   </div>
 
-                  <h1 className="text-3xl font-bold leading-tight">{c.homeTitle}</h1>
-                  <p className="mt-3 text-sm leading-7 text-orange-50">{c.homeDesc}</p>
+                  <h1 className="relative text-3xl font-black leading-tight tracking-tight">{c.homeTitle}</h1>
+                  <p className="relative mt-3 text-sm font-medium leading-7 text-orange-50">{c.homeDesc}</p>
 
-                  <div className="mt-5 flex gap-2">
+                  <div className="relative mt-6 flex gap-2">
                     <button
                         onClick={() => {
                           setShowChat(true)
                           setActiveTab("chat")
                         }}
-                        className="rounded-2xl bg-white px-5 py-3 font-semibold text-orange-500 shadow-sm"
+                        className="rounded-full bg-white px-5 py-3 font-bold text-orange-500 shadow-lg shadow-orange-900/10 transition hover:-translate-y-0.5"
                     >
                       {c.consultNow}
                     </button>
 
-                    <button className="rounded-2xl border border-white/60 px-5 py-3 font-semibold text-white">
+                    <button className="rounded-full border border-white/60 bg-white/10 px-5 py-3 font-bold text-white backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/15">
                       {c.emergency}
                     </button>
                   </div>
                 </section>
 
-                <section className="rounded-3xl border border-stone-100 bg-white p-4 shadow-sm">
+                <section className="rounded-[2rem] border border-orange-100/80 bg-white/95 p-5 shadow-xl shadow-orange-900/5">
                   <div className="flex items-start gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-50">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-100 to-amber-100 shadow-sm">
                       <ShieldAlert className="h-5 w-5 text-orange-500" />
                     </div>
                     <div>
-                      <h2 className="text-lg font-bold text-stone-900">{c.tipsTitle}</h2>
-                      <p className="mt-2 text-sm leading-6 text-stone-600">{c.tipsDesc}</p>
+                      <h2 className="text-lg font-black tracking-tight text-stone-900">{c.tipsTitle}</h2>
+                      <p className="mt-2 text-sm font-medium leading-6 text-stone-600">{c.tipsDesc}</p>
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-2xl border border-red-100 bg-red-50 p-3 text-sm leading-6 text-red-600">
+                  <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-medium leading-6 text-amber-800">
                     {c.emergencyNotice}
                   </div>
                 </section>
 
-                <section className="rounded-3xl border border-stone-100 bg-white p-4 shadow-sm">
+                <section className="rounded-[2rem] border border-orange-100/80 bg-white/95 p-5 shadow-xl shadow-orange-900/5">
                   <div className="mb-3 flex items-center justify-between">
-                    <h3 className="font-bold text-stone-900">{c.faqTitle}</h3>
+                    <h3 className="text-lg font-black tracking-tight text-stone-900">{c.faqTitle}</h3>
                   </div>
 
                   <div className="space-y-3">
@@ -593,13 +595,13 @@ export default function DoctorPage() {
                         <button
                             key={item.id}
                             onClick={() => sendMessage(item.prompt[locale])}
-                            className="w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4 text-left transition hover:bg-stone-100"
+                            className="w-full rounded-[1.4rem] border border-orange-100 bg-gradient-to-br from-white to-orange-50/70 px-4 py-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-900/5"
                         >
                           <div className="flex items-center justify-between">
-                      <span className="pr-3 text-sm font-medium text-stone-700">
+                      <span className="pr-3 text-sm font-bold leading-5 text-stone-700">
                         {item.label[locale]}
                       </span>
-                            <ChevronRight className="h-4 w-4 shrink-0 text-stone-400" />
+                            <ChevronRight className="h-4 w-4 shrink-0 text-orange-400" />
                           </div>
                         </button>
                     ))}
@@ -608,10 +610,10 @@ export default function DoctorPage() {
               </div>
           ) : (
               <div className="flex h-full min-h-0 flex-col">
-                <div className="shrink-0 border-b border-stone-200 bg-white px-4 py-3">
+                <div className="shrink-0 border-b border-orange-100/80 bg-white/90 px-5 py-4 shadow-sm backdrop-blur-xl">
                   <div className="flex items-center gap-3">
                     <button
-                        className="rounded-full p-1 text-stone-700"
+                        className="rounded-full border border-orange-100 bg-white p-2 text-stone-700 shadow-sm hover:bg-orange-50"
                         onClick={() => {
                           setShowChat(false)
                           setActiveTab("chat")
@@ -621,7 +623,7 @@ export default function DoctorPage() {
                       <ArrowLeft className="h-5 w-5" />
                     </button>
 
-                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border border-stone-100 bg-stone-200">
+                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-2xl border border-white bg-orange-100 shadow-md shadow-orange-900/10">
                       <img
                           src={AI_DOCTOR_AVATAR}
                           alt="Pet Doctor"
@@ -633,18 +635,18 @@ export default function DoctorPage() {
                     </div>
 
                     <div className="min-w-0">
-                      <p className="text-lg font-bold leading-none text-stone-900">{c.chatTitle}</p>
+                      <p className="text-lg font-black leading-none tracking-tight text-stone-900">{c.chatTitle}</p>
                       <div className="mt-1 flex items-center gap-2">
                     <span className="relative flex h-2.5 w-2.5">
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
                       <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500"></span>
                     </span>
-                        <p className="text-sm text-stone-500">{c.chatSubTitle}</p>
+                        <p className="text-xs font-semibold text-stone-500">{c.chatSubTitle}</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-4 grid grid-cols-2 rounded-2xl bg-stone-100 p-1">
+                  <div className="mt-4 grid grid-cols-2 rounded-2xl bg-orange-50 p-1 ring-1 ring-orange-100">
                     <button
                         onClick={() => {
                           setActiveTab("chat")
@@ -673,8 +675,8 @@ export default function DoctorPage() {
 
                 {activeTab === "chat" ? (
                     <>
-                      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4">
-                        <div className="space-y-4">
+                      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+                        <div className="space-y-5">
                           {messages.map((msg, index) => {
                             const isUser = msg.role === "user"
                             const showTimeDivider = shouldShowTimeDivider(messages[index - 1], msg)
@@ -682,16 +684,18 @@ export default function DoctorPage() {
                             return (
                               <Fragment key={index}>
                                 {showTimeDivider && (
-                                  <div className="text-center text-sm text-stone-400">
-                                    {formatChatDividerTime(msg.time)}
+                                  <div className="flex justify-center">
+                                    <span className="rounded-full bg-white/80 px-3 py-1 text-[11px] font-semibold text-stone-400 shadow-sm ring-1 ring-stone-100">
+                                      {formatChatDividerTime(msg.time)}
+                                    </span>
                                   </div>
                                 )}
 
                                 <div
-                                    className={`flex items-end gap-2 ${isUser ? "justify-end" : "justify-start"}`}
+                                    className={`flex items-end gap-2.5 ${isUser ? "justify-end" : "justify-start"}`}
                                 >
                                   {!isUser && (
-                                    <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-stone-200">
+                                    <div className="h-9 w-9 shrink-0 overflow-hidden rounded-2xl border border-white bg-orange-100 shadow-sm">
                                       <img
                                           src={AI_DOCTOR_AVATAR}
                                           alt="Pet Doctor"
@@ -704,26 +708,30 @@ export default function DoctorPage() {
                                   )}
 
                                   <div
-                                      className={`max-w-[72%] rounded-3xl px-4 py-3 shadow-sm ${
+                                      className={`max-w-[74%] rounded-[1.35rem] px-4 py-3 shadow-md ${
                                           isUser
-                                              ? "rounded-br-xl bg-orange-500 text-white"
-                                              : "rounded-bl-xl border border-stone-100 bg-white text-stone-800"
+                                              ? "rounded-br-md bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-orange-500/20"
+                                              : "rounded-bl-md border border-orange-100/80 bg-white text-stone-800 shadow-orange-900/5"
                                       }`}
                                   >
-                                    <p className="whitespace-pre-wrap break-words text-base leading-7">
+                                    <p className="whitespace-pre-wrap break-words text-[15px] leading-7">
                                       {msg.content}
                                     </p>
                                   </div>
 
                                   {isUser && (
-                                    <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-stone-200">
+                                    <div className="h-9 w-9 shrink-0 overflow-hidden rounded-2xl border border-white bg-stone-200 shadow-sm">
                                       {user?.avatar_url ? (
                                         <img
                                             src={user.avatar_url || "/placeholder.svg"}
                                             alt={user.pet_name || user.username || "Me"}
                                             className="h-full w-full object-cover"
                                         />
-                                      ) : null}
+                                      ) : (
+                                        <div className="flex h-full w-full items-center justify-center text-sm font-black text-orange-600">
+                                          {(user?.pet_name || user?.username || "M").charAt(0).toUpperCase()}
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </div>
@@ -732,8 +740,8 @@ export default function DoctorPage() {
                           })}
 
                           {loading && (
-                              <div className="flex items-end gap-2 justify-start">
-                                <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-stone-200">
+                              <div className="flex items-end justify-start gap-2.5">
+                                <div className="h-9 w-9 shrink-0 overflow-hidden rounded-2xl border border-white bg-orange-100 shadow-sm">
                                   <img
                                       src={AI_DOCTOR_AVATAR}
                                       alt="Pet Doctor"
@@ -743,7 +751,7 @@ export default function DoctorPage() {
                                       }}
                                   />
                                 </div>
-                                <div className="max-w-[72%] rounded-3xl rounded-bl-xl border border-stone-100 bg-white px-4 py-3 text-stone-500 shadow-sm">
+                                <div className="max-w-[74%] rounded-[1.35rem] rounded-bl-md border border-orange-100/80 bg-white px-4 py-3 text-stone-500 shadow-md shadow-orange-900/5">
                                   <p className="text-sm">...</p>
                                 </div>
                               </div>
@@ -753,13 +761,13 @@ export default function DoctorPage() {
                         </div>
                       </div>
 
-                      <div className="shrink-0 border-t border-stone-200 bg-white px-3 py-3">
-                        <div className="flex items-center gap-2 rounded-3xl border border-stone-200 bg-white px-3 py-2 shadow-sm">
+                      <div className="shrink-0 border-t border-orange-100/80 bg-white/90 px-4 py-3 shadow-[0_-8px_24px_rgba(249,115,22,0.08)] backdrop-blur-xl">
+                        <div className="flex items-center gap-2 rounded-[1.6rem] border border-orange-100 bg-stone-50/90 px-3 py-2 shadow-inner">
                           <input
                               value={input}
                               onChange={(e) => setInput(e.target.value)}
                               placeholder={c.inputPlaceholder}
-                              className="flex-1 bg-transparent text-base text-stone-700 outline-none placeholder:text-stone-400"
+                              className="h-10 flex-1 bg-transparent px-1 text-[15px] text-stone-700 outline-none placeholder:text-stone-400"
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") {
                                   e.preventDefault()
@@ -771,7 +779,7 @@ export default function DoctorPage() {
                           <button
                               onClick={() => sendMessage()}
                               disabled={!input.trim() || loading}
-                              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange-400 text-white hover:bg-orange-500 disabled:bg-stone-200 disabled:text-stone-400"
+                              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-lg shadow-orange-500/25 transition hover:scale-105 disabled:bg-stone-200 disabled:text-stone-400 disabled:shadow-none"
                           >
                             <Send className="h-4 w-4" />
                           </button>

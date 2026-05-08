@@ -772,21 +772,25 @@ export default function ExplorePage() {
   }
 
   return (
-      <div className="p-4 max-w-md mx-auto space-y-6 pb-28">
+      <div className="mx-auto max-w-md space-y-6 bg-gradient-to-b from-orange-50 via-stone-50 to-white px-5 py-4 pb-28">
         <header className="space-y-4">
           <div>
-            <h1 className="text-2xl font-bold text-stone-900">{c.title}</h1>
-            <p className="text-sm text-stone-500 mt-1">{c.subtitle}</p>
+            <div className="mb-1 flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-orange-500 shadow-[0_0_0_4px_rgba(249,115,22,0.12)]" />
+              <span className="text-xs font-bold uppercase tracking-[0.18em] text-orange-500">WePet Map</span>
+            </div>
+            <h1 className="text-3xl font-black tracking-tight text-stone-900">{c.title}</h1>
+            <p className="mt-1 text-sm font-medium text-stone-500">{c.subtitle}</p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 rounded-[1.55rem] border border-orange-100 bg-white/95 p-2 shadow-lg shadow-orange-900/5">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-stone-400" />
+              <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-orange-400" />
               <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder={c.searchPlaceholder}
-                  className="pl-9 bg-white border-stone-200 rounded-xl h-11"
+                  className="h-11 rounded-[1.1rem] border-0 bg-stone-50 pl-10 pr-3 text-sm shadow-inner placeholder:text-stone-400 focus-visible:ring-2 focus-visible:ring-orange-200"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault()
@@ -798,15 +802,15 @@ export default function ExplorePage() {
 
             <Button
                 onClick={handleSearchLocation}
-                className="rounded-xl h-11 px-4 bg-orange-500 hover:bg-orange-600"
+                className="h-11 rounded-[1.1rem] bg-gradient-to-br from-orange-500 to-amber-400 px-4 font-bold text-white shadow-lg shadow-orange-500/20 transition hover:-translate-y-0.5 hover:shadow-orange-500/30"
             >
               {c.searchButton}
             </Button>
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-2">
-            <Badge className="bg-stone-900 text-white px-4 py-2 rounded-full">{c.all}</Badge>
-            <Badge variant="outline" className="px-4 py-2 rounded-full">
+            <Badge className="rounded-full bg-stone-900 px-4 py-2 text-white shadow-sm">{c.all}</Badge>
+            <Badge variant="outline" className="rounded-full border-orange-100 bg-white px-4 py-2 text-stone-600 shadow-sm">
               <CalendarDays className="h-3.5 w-3.5 mr-1" />
               {c.event}
             </Badge>
@@ -814,24 +818,26 @@ export default function ExplorePage() {
         </header>
 
         <section className="space-y-3">
-          <div className="rounded-2xl border border-stone-100 bg-white p-3 shadow-sm">
-            <GoogleMap
-                center={center}
-                places={filteredEvents}
-                selectedPlaceId={selectedId}
-                onSelectPlace={(id) => {
-                  setSelectedId(id)
-                  cardRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" })
-                }}
-                userLocation={userLocation}
-            />
+          <div className="overflow-hidden rounded-[2rem] border border-orange-100/80 bg-white p-3 shadow-2xl shadow-orange-900/10 ring-1 ring-white/70">
+            <div className="overflow-hidden rounded-[1.5rem] bg-stone-100">
+              <GoogleMap
+                  center={center}
+                  places={filteredEvents}
+                  selectedPlaceId={selectedId}
+                  onSelectPlace={(id) => {
+                    setSelectedId(id)
+                    cardRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" })
+                  }}
+                  userLocation={userLocation}
+              />
+            </div>
 
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <p className="text-xs text-stone-500">{c.mapHint}</p>
+            <div className="mt-3 flex items-center justify-between gap-3 px-1">
+              <p className="text-xs font-medium leading-relaxed text-stone-500">{c.mapHint}</p>
               <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-full"
+                  className="shrink-0 rounded-full border-orange-100 bg-white px-3 font-bold text-orange-600 shadow-md shadow-orange-900/5 transition hover:-translate-y-0.5 hover:bg-orange-50"
                   onClick={handleUseMyLocation}
               >
                 <Navigation className="h-4 w-4 mr-1" />
@@ -844,10 +850,13 @@ export default function ExplorePage() {
 
         <section className="space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-bold text-stone-800">{c.sectionTitle}</h2>
+            <div>
+              <h2 className="text-xl font-black tracking-tight text-stone-900">{c.sectionTitle}</h2>
+              <p className="mt-0.5 text-xs font-medium text-stone-500">{c.countSuffix(filteredEvents.length)}</p>
+            </div>
             <Button
                 onClick={() => router.push("/explore/create")}
-                className="shrink-0 bg-orange-500 text-white hover:bg-orange-600"
+                className="shrink-0 rounded-full bg-gradient-to-br from-orange-500 to-amber-400 px-4 font-bold text-white shadow-lg shadow-orange-500/25 transition hover:-translate-y-0.5 hover:shadow-orange-500/35"
             >
               {c.createEvent}
             </Button>
@@ -872,13 +881,13 @@ export default function ExplorePage() {
                       className="w-full shrink-0 snap-center"
                   >
                     <Card
-                        className={`overflow-hidden rounded-2xl border transition-all ${
+                        className={`flex min-h-[430px] flex-col overflow-hidden rounded-[2rem] border transition-all duration-200 ${
                             selected
-                                ? "border-orange-300 shadow-md bg-orange-50/40"
-                                : "border-stone-100 shadow-sm bg-white"
+                                ? "border-orange-300 bg-orange-50/60 shadow-2xl shadow-orange-500/15"
+                                : "border-orange-100/80 bg-white shadow-xl shadow-orange-900/8"
                         }`}
                     >
-                      <div className="h-48 w-full overflow-hidden bg-stone-100">
+                      <div className="h-52 w-full shrink-0 overflow-hidden bg-stone-100">
                         {item.image ? (
                             <img
                                 src={item.image}
@@ -892,16 +901,16 @@ export default function ExplorePage() {
                         )}
                       </div>
 
-                      <div className="p-4">
+                      <div className="flex flex-1 flex-col p-4">
                         <div className="flex items-center justify-between gap-3">
-                          <span className="text-[11px] font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded-full uppercase tracking-wide">
+                          <span className="rounded-full bg-orange-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-orange-600 ring-1 ring-orange-100">
                             EVENT
                           </span>
 
                           <Button
                               variant="outline"
                               size="sm"
-                              className="rounded-full shrink-0"
+                              className="shrink-0 rounded-full border-orange-100 bg-white font-bold text-orange-600 shadow-sm hover:bg-orange-50"
                               onClick={() => handleLocate(item.id)}
                           >
                             <MapPin className="h-4 w-4 mr-1" />
@@ -909,28 +918,28 @@ export default function ExplorePage() {
                           </Button>
                         </div>
 
-                        <h3 className="mt-3 font-bold text-stone-900">{item.title[locale]}</h3>
-                        <p className="mt-1 text-sm text-stone-500">{formatListEventTime(item.time)}</p>
+                        <h3 className="mt-3 line-clamp-2 min-h-[3rem] text-lg font-black leading-6 tracking-tight text-stone-900">{item.title[locale]}</h3>
+                        <p className="mt-1 text-sm font-medium text-stone-500">{formatListEventTime(item.time)}</p>
 
-                        <div className="flex items-center gap-4 text-xs text-stone-500 mt-4">
-                          <span className="flex items-center gap-1">
+                        <div className="mt-4 flex items-center gap-4 text-xs font-semibold text-stone-500">
+                          <span className="flex items-center gap-1 rounded-full bg-stone-50 px-3 py-1.5">
                             <Users className="h-3.5 w-3.5" />
                             {joined ? c.joined : c.joinedText(joinedCount)}
                           </span>
                         </div>
 
-                        <div className="mt-4 flex gap-2">
+                        <div className="mt-auto flex gap-2 pt-4">
                           <Button
                               onClick={() => handleJoinToggle(item, joinedCount)}
                               disabled={joiningMap[item.id]}
-                              className="rounded-xl bg-orange-500 hover:bg-orange-600"
+                              className="rounded-full bg-gradient-to-br from-orange-500 to-amber-400 px-5 font-bold text-white shadow-lg shadow-orange-500/20 hover:shadow-orange-500/30"
                           >
                             {joined ? c.cancel : c.join}
                           </Button>
 
                           <Button
                               variant="outline"
-                              className="rounded-xl"
+                              className="rounded-full border-orange-100 bg-white px-4 font-bold text-stone-700 shadow-sm hover:bg-orange-50"
                               onClick={() => setDetailEventId(item.id)}
                           >
                             <ChevronRight className="h-4 w-4" />
