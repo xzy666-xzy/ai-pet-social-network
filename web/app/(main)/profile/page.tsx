@@ -318,6 +318,14 @@ export default function ProfilePage() {
           onTouchEnd={handleCoverTouchEnd}
           className="min-h-screen overflow-x-hidden bg-gradient-to-b from-orange-50 via-stone-50 to-white px-5 py-4 -mt-[calc(5.25rem+env(safe-area-inset-top))]"
       >
+        <button
+            type="button"
+            onClick={() => (window.location.href = "/settings")}
+            className="sticky top-[calc(0.75rem+env(safe-area-inset-top))] z-[100] ml-auto mr-5 flex h-11 w-11 items-center justify-center rounded-full border border-white/60 bg-white/85 text-stone-700 shadow-lg shadow-orange-900/10 backdrop-blur transition hover:bg-white"
+            aria-label="Settings"
+        >
+          <Settings className="h-5 w-5" />
+        </button>
         <div
             className="sticky top-0 z-0 -mx-5 -mt-4 overflow-hidden bg-gradient-to-br from-orange-200 via-amber-100 to-rose-100 shadow-2xl shadow-orange-900/10 transition-all duration-300 ease-out"
             style={{
@@ -334,14 +342,6 @@ export default function ProfilePage() {
               />
           ) : null}
           <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-orange-950/35" />
-          <button
-              type="button"
-              onClick={() => (window.location.href = "/settings")}
-              className="absolute right-5 top-5 flex h-11 w-11 items-center justify-center rounded-full border border-white/60 bg-white/85 text-stone-700 shadow-lg shadow-orange-900/10 backdrop-blur transition hover:bg-white"
-              aria-label="Settings"
-          >
-            <Settings className="h-5 w-5" />
-          </button>
           <input
               ref={coverInputRef}
               type="file"
