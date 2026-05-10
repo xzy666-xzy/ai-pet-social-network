@@ -139,7 +139,7 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false)
   const [pageError, setPageError] = useState("")
   const [loadingConversations, setLoadingConversations] = useState(false)
-  const [inlineNotice, setInlineNotice] = useState("")
+  const [inlineNotice, setInlineNotice] = useState<string | boolean>(false)
   const [introLocked, setIntroLocked] = useState(false)
   const [chatLikeLoading, setChatLikeLoading] = useState(false)
   const [chatLiked, setChatLiked] = useState(false)
@@ -208,7 +208,7 @@ export default function ChatPage() {
     async function initPage() {
       try {
         setPageError("")
-        setInlineNotice("")
+        setInlineNotice(false)
         setConversationId(null)
         setTargetUser(null)
         setMessages([])
@@ -273,7 +273,7 @@ export default function ChatPage() {
 
         if (hasMyMessage && !isMatched) {
           setIntroLocked(true)
-          setInlineNotice("当前还未双向匹配，你只能先发送 1 条消息。请等待对方也给你点红心后继续聊天。")
+          setInlineNotice(true)
         }
       } catch (error: unknown) {
         if (cancelled) return
@@ -349,7 +349,7 @@ export default function ChatPage() {
       if (isMatched) {
         setChatMatched(true)
         setIntroLocked(false)
-        setInlineNotice("")
+        setInlineNotice(false)
 
         if (conversationId) {
           await loadMessages(conversationId)
@@ -372,7 +372,7 @@ export default function ChatPage() {
       if (currentConversation?.is_match) {
         setChatMatched(true)
         setIntroLocked(false)
-        setInlineNotice("")
+        setInlineNotice(false)
       }
 
       if (conversationId) {
@@ -391,7 +391,7 @@ export default function ChatPage() {
 
     try {
       setSending(true)
-      setInlineNotice("")
+      setInlineNotice(false)
       setPageError("")
 
       const text = inputText.trim()
@@ -412,12 +412,10 @@ export default function ChatPage() {
       await loadMessages(conversationId)
 
       if (!data.data.access?.isMatch) {
-        setInlineNotice(
-            "当前还未双向匹配，你只能先发送 1 条消息。请等待对方也给你点红心后继续聊天。"
-        )
+        setInlineNotice(true)
         setIntroLocked(true)
       } else {
-        setInlineNotice("")
+        setInlineNotice(false)
         setIntroLocked(false)
       }
     } catch (error: unknown) {
@@ -427,7 +425,7 @@ export default function ChatPage() {
               error.code === "LIKE_REQUIRED" ||
               error.code === "MESSAGE_NOT_ALLOWED")
       ) {
-        setInlineNotice(error.message)
+        setInlineNotice(error.code)
 
         if (error.code === "INTRO_MESSAGE_LIMIT_REACHED") {
           setIntroLocked(true)
@@ -440,7 +438,7 @@ export default function ChatPage() {
       if (error instanceof Error) {
         setPageError(error.message)
       } else {
-        setPageError("发送失败，请稍后重试。")
+        setPageError(t.chat.sendFailed)
       }
     } finally {
       setSending(false)
@@ -569,7 +567,7 @@ export default function ChatPage() {
     }
 
     if (messageDateKey === yesterdayKey) {
-      return `昨天 ${formattedTime}`
+      return `${t.chat.yesterday} ${formattedTime}`
     }
 
     return `${messageDateKey} ${formattedTime}`
@@ -640,7 +638,7 @@ export default function ChatPage() {
                                 targetOnline ? "bg-emerald-500" : "bg-stone-300"
                             }`}
                         />
-                        <span>{targetOnline ? "在线中" : "离线中"}</span>
+                        <span>{targetOnline ? t.chat.activeNow : t.chat.offline}</span>
                       </div>
                     </div>
                   </button>
@@ -842,7 +840,7 @@ export default function ChatPage() {
                   )
               ) : messages.length === 0 ? (
                   <div className="flex items-center justify-center py-16 text-sm text-stone-400">
-                    暂无消息
+                    {t.chat.noMessages}
                   </div>
               ) : (
                   messages.map((msg, index) => {
@@ -906,7 +904,7 @@ export default function ChatPage() {
                                 onTouchMove={isDeleted ? undefined : clearLongPressTimer}
                             >
                               <div className={`break-words whitespace-pre-wrap leading-relaxed ${isDeleted ? "text-xs" : "text-[15px]"}`}>
-                                {isDeleted ? "删除了一条消息" : msg.content}
+                                {isDeleted ? t.chat.messageDeleted : msg.content}
                               </div>
                             </div>
                             {showLikeButton ? (
@@ -957,14 +955,14 @@ export default function ChatPage() {
                     disabled={deletingMessageId === messageMenu.id}
                     className="w-full rounded-xl px-4 py-3 text-left text-sm font-medium text-red-600 hover:bg-red-50"
                 >
-                  {deletingMessageId === messageMenu.id ? "删除中..." : "删除"}
+                  {deletingMessageId === messageMenu.id ? t.chat.deleting : t.chat.delete}
                 </button>
                 <button
                     type="button"
                     onClick={() => setMessageMenu(null)}
                     className="mt-1 w-full rounded-xl px-4 py-3 text-left text-sm font-medium text-stone-700 hover:bg-stone-50"
                 >
-                  取消
+                  {t.chat.cancel}
                 </button>
               </div>
             </div>
@@ -974,7 +972,13 @@ export default function ChatPage() {
           <div className="mx-auto max-w-2xl">
             {inlineNotice ? (
                 <div className="mb-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700">
-                  {inlineNotice}
+                  {inlineNotice === true
+                      ? t.chat.notMatchedNotice
+                      : inlineNotice === "LIKE_REQUIRED"
+                          ? t.chat.waitForLike
+                          : inlineNotice === "INTRO_MESSAGE_LIMIT_REACHED"
+                              ? t.chat.notMatchedNotice
+                              : inlineNotice}
                 </div>
             ) : null}
 
@@ -992,7 +996,7 @@ export default function ChatPage() {
                     !targetUserId
                         ? t.chat.selectConversationFirst
                         : introLocked
-                            ? "等待对方也点红心后继续聊天"
+                            ? t.chat.waitForLike
                             : t.chat.typeMessage
                   }
                   disabled={!targetUserId || introLocked}

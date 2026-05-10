@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { apiRequest, getAccessToken } from "@/lib/api-client"
+import { supabase } from "@/lib/supabase"
 
 export default function ProfileEditPage() {
   const router = useRouter()
@@ -17,12 +18,43 @@ export default function ProfileEditPage() {
     tagline: "",
     about: "",
   })
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState("")
+  const [avatarUrl, setAvatarUrl] = useState("")
 
   const updateField = (field: keyof typeof form, value: string) => {
     setForm((current) => ({
       ...current,
       [field]: value,
     }))
+  }
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // 预览
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setAvatarPreview(reader.result)
+      }
+    }
+    reader.readAsDataURL(file)
+
+    // 上传到 Supabase
+    const filePath = `avatar-${Date.now()}-${file.name}`
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(filePath, file)
+
+    if (uploadError) {
+      alert("上传失败: " + uploadError.message)
+      return
+    }
+
+    const { data } = supabase.storage.from("avatars").getPublicUrl(filePath)
+    setAvatarUrl(data.publicUrl)
   }
 
   const handleSave = async () => {
@@ -43,6 +75,7 @@ export default function ProfileEditPage() {
           pet_age: form.petAge,
           pet_type: form.petType,
           description: form.about || form.tagline,
+          avatar_url: avatarUrl || undefined,
         }),
       })
 
@@ -121,6 +154,21 @@ export default function ProfileEditPage() {
                 onChange={(event) => updateField("about", event.target.value)}
                 placeholder="写一点关于它的性格、习惯和喜欢的事。"
                 className="min-h-28 rounded-2xl"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-stone-700">
+                宠物头像
+              </label>
+              {avatarPreview && (
+                <img src={avatarPreview} alt="预览" className="mb-2 h-20 w-20 rounded-full object-cover" />
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                className="block"
               />
             </div>
           </div>

@@ -506,6 +506,10 @@ async function handleUpdateProfile(req, res) {
       updates.description = String(body.description).trim() || null
     }
 
+    if (body.avatar_url !== undefined) {
+      updates.avatar_url = String(body.avatar_url).trim() || null
+    }
+
     const { data: updatedUser, error } = await supabaseAdmin
       .from("users")
       .update(updates)

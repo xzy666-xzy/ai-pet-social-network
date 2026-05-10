@@ -132,6 +132,7 @@ export const translations = {
     // Chat Page
     chat: {
       activeNow: "Active now",
+      offline: "Offline",
       today: "Today",
       typeMessage: "Type a message...",
       title: "Chat",
@@ -147,6 +148,15 @@ export const translations = {
       noMessagesYet: "No messages yet",
       loadingHistory: "Loading conversations...",
       introMessageSent: "You have sent 1 message. Wait for them to like you back to continue chatting.",
+      notMatchedNotice: "You are not mutually matched yet. You can send only one message for now. Continue chatting after the other user likes you back.",
+      waitForLike: "Continue chatting after the other user likes you back.",
+      noMessages: "No messages yet",
+      messageDeleted: "Message deleted",
+      delete: "Delete",
+      deleting: "Deleting...",
+      cancel: "Cancel",
+      sendFailed: "Send failed, please try again later.",
+      yesterday: "Yesterday",
     },
 
     // Explore Page
@@ -553,6 +563,7 @@ export const translations = {
     // Chat Page
     chat: {
       activeNow: "활동 중",
+      offline: "오프라인",
       today: "오늘",
       typeMessage: "메시지를 입력하세요...",
       title: "채팅",
@@ -568,6 +579,15 @@ export const translations = {
       noMessagesYet: "아직 메시지가 없습니다",
       loadingHistory: "대화 목록을 불러오는 중...",
       introMessageSent: "아직 상호 매칭이 아니에요. 1개의 메시지를 보냈으며, 상대가 하트를 보내면 계속 채팅할 수 있어요.",
+      notMatchedNotice: "아직 서로 매칭되지 않았어요. 지금은 메시지 1개만 보낼 수 있어요. 상대방도 하트를 누르면 계속 채팅할 수 있어요.",
+      waitForLike: "상대방도 하트를 누르면 계속 채팅할 수 있어요.",
+      noMessages: "아직 메시지가 없습니다",
+      messageDeleted: "메시지가 삭제되었습니다",
+      delete: "삭제",
+      deleting: "삭제 중...",
+      cancel: "취소",
+      sendFailed: "전송 실패, 나중에 다시 시도해주세요.",
+      yesterday: "어제",
     },
 
     // Explore Page
@@ -973,6 +993,7 @@ export const translations = {
     // Chat Page
     chat: {
       activeNow: "在线中",
+      offline: "离线中",
       today: "今天",
       typeMessage: "输入消息...",
       title: "聊天",
@@ -988,6 +1009,15 @@ export const translations = {
       noMessagesYet: "还没有消息",
       loadingHistory: "正在加载聊天记录...",
       introMessageSent: "当前还未双向匹配，你已发送了 1 条消息。请等待对方也给你点红心后继续聊天。",
+      notMatchedNotice: "当前还未双向匹配，你只能先发送 1 条消息。请等待对方也给你点红心后继续聊天。",
+      waitForLike: "等待对方也点红心后继续聊天",
+      noMessages: "暂无消息",
+      messageDeleted: "删除了一条消息",
+      delete: "删除",
+      deleting: "删除中...",
+      cancel: "取消",
+      sendFailed: "发送失败，请稍后重试。",
+      yesterday: "昨天",
     },
 
     // Explore Page
