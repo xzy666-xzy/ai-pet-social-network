@@ -316,7 +316,7 @@ export default function ProfilePage() {
           onTouchStart={handleCoverTouchStart}
           onTouchMove={handleCoverTouchMove}
           onTouchEnd={handleCoverTouchEnd}
-          className="min-h-screen overflow-x-hidden bg-gradient-to-b from-orange-50 via-stone-50 to-white px-5 py-4 -mt-[calc(5.25rem+env(safe-area-inset-top))]"
+          className="relative min-h-screen overflow-x-hidden bg-gradient-to-b from-orange-50 via-stone-50 to-white px-5 py-4 -mt-[calc(5.25rem+env(safe-area-inset-top))]"
       >
         <div
             className="relative sticky top-0 z-0 -mx-5 -mt-4 overflow-hidden bg-gradient-to-br from-orange-200 via-amber-100 to-rose-100 shadow-2xl shadow-orange-900/10 transition-all duration-300 ease-out"
@@ -373,10 +373,11 @@ export default function ProfilePage() {
           </div>
         </div>
 
+
         <button
             type="button"
             onClick={() => (window.location.href = "/settings")}
-            className="fixed right-6 top-32 z-[999] flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-lg text-stone-700"
+            className="absolute right-5 top-24 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-lg text-stone-700"
             aria-label="Settings"
         >
           <Settings className="h-6 w-6" />
