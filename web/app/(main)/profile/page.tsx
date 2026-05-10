@@ -337,7 +337,7 @@ export default function ProfilePage() {
           <button
               type="button"
               onClick={() => (window.location.href = "/settings")}
-              className="absolute right-6 top-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-lg text-stone-700"
+              className="absolute right-6 top-24 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-lg text-stone-700"
               aria-label="Settings"
           >
             <Settings className="h-6 w-6" />
