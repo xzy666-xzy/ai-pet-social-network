@@ -319,7 +319,7 @@ export default function ProfilePage() {
           className="min-h-screen overflow-x-hidden bg-gradient-to-b from-orange-50 via-stone-50 to-white px-5 py-4 -mt-[calc(5.25rem+env(safe-area-inset-top))]"
       >
         <div
-            className="sticky top-0 z-0 -mx-5 -mt-4 overflow-hidden bg-gradient-to-br from-orange-200 via-amber-100 to-rose-100 shadow-2xl shadow-orange-900/10 transition-all duration-300 ease-out"
+            className="relative sticky top-0 z-0 -mx-5 -mt-4 overflow-hidden bg-gradient-to-br from-orange-200 via-amber-100 to-rose-100 shadow-2xl shadow-orange-900/10 transition-all duration-300 ease-out"
             style={{
               height: isCoverExpanded
                   ? EXPANDED_COVER_HEIGHT
@@ -337,10 +337,10 @@ export default function ProfilePage() {
           <button
               type="button"
               onClick={() => (window.location.href = "/settings")}
-              className="absolute right-5 top-3 z-[60] flex h-11 w-11 items-center justify-center rounded-full border border-white/60 bg-white/85 text-stone-700 shadow-lg shadow-orange-900/10 backdrop-blur transition hover:bg-white"
+              className="absolute right-6 top-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-lg text-stone-700"
               aria-label="Settings"
           >
-            <Settings className="h-5 w-5" />
+            <Settings className="h-6 w-6" />
           </button>
           <input
               ref={coverInputRef}
