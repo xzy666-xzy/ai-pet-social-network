@@ -530,7 +530,7 @@ export default function MatchPage() {
                           <img
                               src={imageSrc}
                               alt={displayName}
-                              className="h-full w-full object-cover"
+                              className="h-full w-full object-contain"
                               onError={(e) => {
                                 e.currentTarget.src = "/placeholder-pet.png"
                               }}
@@ -551,6 +551,11 @@ export default function MatchPage() {
                               <h2 className="text-3xl font-black tracking-tight text-stone-900">
                                 {displayName}
                                 {displayAge ? `, ${displayAge}` : ""}
+                                {distanceDisplayText ? (
+                                    <span className="ml-2 text-base font-bold text-stone-400">
+                                      · {distanceDisplayText}
+                                    </span>
+                                ) : null}
                               </h2>
                               {currentPet.membership_active ? (
                                   <span className="rounded-full bg-gradient-to-r from-rose-500 to-amber-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
@@ -560,13 +565,6 @@ export default function MatchPage() {
                             </div>
 
                             <p className="mt-1 text-sm font-semibold text-stone-500">{displayType}</p>
-
-                            {distanceDisplayText ? (
-                                <div className={`mt-2 inline-flex items-center gap-1.5 rounded-full bg-stone-50 px-3 py-1.5 text-sm font-bold shadow-sm ${distanceClassName}`}>
-                                  <MapPin className="h-4 w-4" />
-                                  <span>{distanceDisplayText}</span>
-                                </div>
-                            ) : null}
                           </div>
 
                           {currentPet.matchReasons && currentPet.matchReasons.length > 0 ? (
