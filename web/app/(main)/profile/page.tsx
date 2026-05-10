@@ -350,14 +350,14 @@ export default function ProfilePage() {
               onChange={handleCoverFileChange}
           />
 
-          <div className="absolute bottom-5 right-5 flex items-center gap-2">
+          <div className="absolute bottom-5 right-5 flex items-center gap-2 z-20">
             {isCoverExpanded === false ? (
                 <button
                     type="button"
                     aria-pressed={coverLiked}
                     onClick={() => setCoverLiked((liked) => !liked)}
-                    className={`rounded-full border border-white/60 bg-white/85 px-3.5 py-2 text-sm font-bold shadow-lg backdrop-blur ${
-                        coverLiked ? "text-rose-500" : "text-stone-700"
+                    className={`rounded-full border-2 border-white/90 bg-white/95 px-3.5 py-2 text-sm font-bold shadow-xl shadow-black/20 backdrop-blur-sm ${
+                        coverLiked ? "text-rose-500" : "text-stone-800"
                     }`}
                 >
                   {coverLiked ? "❤️" : "♡"} {coverLiked ? 2 : 1}
@@ -367,7 +367,7 @@ export default function ProfilePage() {
                 <button
                     type="button"
                     onClick={() => coverInputRef.current?.click()}
-                    className="rounded-full border border-white/60 bg-white/85 px-4 py-2 text-sm font-bold text-stone-700 shadow-lg backdrop-blur"
+                    className="rounded-full border-2 border-white/90 bg-white/95 px-4 py-2 text-sm font-bold text-stone-800 shadow-xl shadow-black/20 backdrop-blur-sm"
                 >
                   {t.profile.changeCover}
                 </button>
