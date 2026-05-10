@@ -316,7 +316,7 @@ export default function ProfilePage() {
           onTouchStart={handleCoverTouchStart}
           onTouchMove={handleCoverTouchMove}
           onTouchEnd={handleCoverTouchEnd}
-          className="min-h-screen overflow-x-hidden bg-gradient-to-b from-orange-50 via-stone-50 to-white px-5 py-4"
+          className="min-h-screen overflow-x-hidden bg-gradient-to-b from-orange-50 via-stone-50 to-white px-5 py-4 -mt-[calc(5.25rem+env(safe-area-inset-top))]"
       >
         <div
             className="sticky top-0 z-0 -mx-5 -mt-4 overflow-hidden bg-gradient-to-br from-orange-200 via-amber-100 to-rose-100 shadow-2xl shadow-orange-900/10 transition-all duration-300 ease-out"
