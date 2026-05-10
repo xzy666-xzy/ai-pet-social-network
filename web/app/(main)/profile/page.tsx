@@ -350,13 +350,16 @@ export default function ProfilePage() {
               onChange={handleCoverFileChange}
           />
 
-          <div className="absolute bottom-5 right-5 flex items-center gap-2 z-20">
+          <div className="absolute bottom-14 right-5 flex items-center gap-2 z-50">
             {isCoverExpanded === false ? (
                 <button
                     type="button"
                     aria-pressed={coverLiked}
-                    onClick={() => setCoverLiked((liked) => !liked)}
-                    className={`rounded-full border-2 border-white/90 bg-white/95 px-3.5 py-2 text-sm font-bold shadow-xl shadow-black/20 backdrop-blur-sm ${
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setCoverLiked((liked) => !liked)
+                    }}
+                    className={`pointer-events-auto rounded-full border-2 border-white/90 bg-white/95 px-4 py-2.5 text-sm font-bold shadow-xl shadow-black/20 backdrop-blur-sm hover:bg-white active:scale-95 ${
                         coverLiked ? "text-rose-500" : "text-stone-800"
                     }`}
                 >
@@ -366,8 +369,11 @@ export default function ProfilePage() {
             {isCoverExpanded === true ? (
                 <button
                     type="button"
-                    onClick={() => coverInputRef.current?.click()}
-                    className="rounded-full border-2 border-white/90 bg-white/95 px-4 py-2 text-sm font-bold text-stone-800 shadow-xl shadow-black/20 backdrop-blur-sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      coverInputRef.current?.click()
+                    }}
+                    className="pointer-events-auto rounded-full border-2 border-white/90 bg-white/95 px-4 py-2.5 text-sm font-bold text-stone-800 shadow-xl shadow-black/20 backdrop-blur-sm hover:bg-white active:scale-95"
                 >
                   {t.profile.changeCover}
                 </button>
