@@ -334,14 +334,6 @@ export default function ProfilePage() {
               />
           ) : null}
           <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-orange-950/35" />
-          <button
-              type="button"
-              onClick={() => (window.location.href = "/settings")}
-              className="absolute right-6 top-24 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-lg text-stone-700"
-              aria-label="Settings"
-          >
-            <Settings className="h-6 w-6" />
-          </button>
           <input
               ref={coverInputRef}
               type="file"
@@ -380,6 +372,15 @@ export default function ProfilePage() {
             ) : null}
           </div>
         </div>
+
+        <button
+            type="button"
+            onClick={() => (window.location.href = "/settings")}
+            className="fixed right-6 top-32 z-[999] flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-lg text-stone-700"
+            aria-label="Settings"
+        >
+          <Settings className="h-6 w-6" />
+        </button>
 
         <div className="relative z-10 mx-auto max-w-md space-y-5 pt-4">
           <Card className="-mt-14 overflow-hidden rounded-[2rem] border border-orange-100/80 bg-white/95 p-5 shadow-2xl shadow-orange-900/10 ring-1 ring-white/70">
