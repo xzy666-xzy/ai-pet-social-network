@@ -790,7 +790,13 @@ export default function ChatPage() {
                                       {(item.other_pet_name || item.other_username || "W").charAt(0).toUpperCase()}
                                     </div>
                                 )}
-                                <span className="absolute bottom-1 right-1 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-400 shadow-sm" />
+                                <span
+                                    className={`absolute bottom-1 right-1 h-3.5 w-3.5 rounded-full border-2 border-white shadow-sm ${
+                                        isUserOnline(item.other_last_seen)
+                                            ? "bg-emerald-400"
+                                            : "bg-stone-300"
+                                    }`}
+                                />
                               </div>
 
                               <div className="min-w-0 flex-1">
@@ -821,6 +827,20 @@ export default function ChatPage() {
                                         New
                                       </span>
                                   ) : null}
+                                  <span className="flex items-center gap-1 text-[11px] font-semibold text-stone-400">
+                                    <span
+                                        className={`h-1.5 w-1.5 rounded-full ${
+                                            isUserOnline(item.other_last_seen)
+                                                ? "bg-emerald-500"
+                                                : "bg-stone-300"
+                                        }`}
+                                    />
+                                    <span>
+                                      {isUserOnline(item.other_last_seen)
+                                          ? t.chat.activeNow
+                                          : t.chat.offline}
+                                    </span>
+                                  </span>
                                 </div>
 
                                 <div className="mt-2 flex min-w-0 items-center justify-between gap-3">
