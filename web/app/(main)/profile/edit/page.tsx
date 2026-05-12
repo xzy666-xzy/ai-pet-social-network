@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase"
 
 export default function ProfileEditPage() {
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState({
     petName: "",
     petAge: "",
@@ -32,6 +33,8 @@ export default function ProfileEditPage() {
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    setAvatarFile(file)
 
     // 预览
     const reader = new FileReader()
@@ -165,11 +168,19 @@ export default function ProfileEditPage() {
                 <img src={avatarPreview} alt="预览" className="mb-2 h-20 w-20 rounded-full object-cover" />
               )}
               <input
+                ref={fileInputRef}
                 type="file"
                 accept="image/*"
                 onChange={handleAvatarChange}
-                className="block"
+                className="hidden"
               />
+              <Button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="rounded-full bg-orange-500 px-4 text-white hover:bg-orange-600"
+              >
+                {avatarFile ? "已选择头像，可重新选择" : "更换宠物头像"}
+              </Button>
             </div>
           </div>
 
