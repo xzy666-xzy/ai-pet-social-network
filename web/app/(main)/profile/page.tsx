@@ -304,6 +304,7 @@ export default function ProfilePage() {
           ? `${user.pet_age} ${t.profile.yearsSuffix}`
           : t.profile.ageNotSet
 
+  const tagline = user.tagline || ""
   const bio =
       user.description || t.profile.noDescriptionYet
   const savedCoverUrl = (user as { cover_url?: string | null }).cover_url || ""
@@ -451,6 +452,11 @@ export default function ProfilePage() {
 
               <div>
                 <p className="mb-2 font-bold text-stone-900">✨ {t.profile.aboutPet}:</p>
+                {tagline ? (
+                  <p className="mb-2 rounded-[1.2rem] border border-orange-100 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700">
+                    {tagline}
+                  </p>
+                ) : null}
                 <p className="rounded-[1.4rem] bg-stone-50 p-4 font-medium leading-6 text-stone-700">{bio}</p>
               </div>
             </div>

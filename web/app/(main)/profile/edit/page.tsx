@@ -17,6 +17,7 @@ export default function ProfileEditPage() {
   const { t } = useLanguage()
   const { user, refreshUser } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const initialized = useRef(false)
   const [form, setForm] = useState({
     petName: "",
     petAge: "",
@@ -30,7 +31,9 @@ export default function ProfileEditPage() {
 
   useEffect(() => {
     if (!user) return
+    if (initialized.current) return
 
+    initialized.current = true
     setForm({
       petName: user.pet_name ?? "",
       petAge: user.pet_age?.toString() ?? "",
