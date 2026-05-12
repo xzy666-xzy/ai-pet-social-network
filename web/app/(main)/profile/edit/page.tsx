@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import { ChevronLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -112,9 +113,20 @@ export default function ProfileEditPage() {
     <div className="min-h-screen bg-gradient-to-b from-[#fff8ef] via-orange-50 to-white p-4">
       <div className="mx-auto max-w-md space-y-5 pt-4">
         <Card className="rounded-3xl border-orange-100 bg-white p-5 shadow-sm">
-          <div>
-            <p className="text-sm font-semibold text-orange-500">{t.profile.editPage.brand}</p>
-            <h1 className="mt-2 text-2xl font-bold text-stone-900">{t.profile.editPage.title}</h1>
+          <div className="flex items-start gap-3">
+            <button
+              type="button"
+              onClick={() => router.push("/profile")}
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-stone-700 shadow-sm"
+              aria-label={t.profile.back}
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+
+            <div>
+              <p className="text-sm font-semibold text-orange-500">{t.profile.editPage.brand}</p>
+              <h1 className="mt-2 text-2xl font-bold text-stone-900">{t.profile.editPage.title}</h1>
+            </div>
           </div>
 
           <div className="mt-5 space-y-4">
