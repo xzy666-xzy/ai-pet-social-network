@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
             pet_type: user.pet_type ?? null,
             pet_age: user.pet_age ?? null,
             description: user.description ?? null,
+            tagline: user.tagline ?? null,
             avatar_url: user.avatar_url ?? null,
             is_ai: user.is_ai ?? false,
             created_at: user.created_at ?? null,
