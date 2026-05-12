@@ -35,7 +35,7 @@ export default function ProfileEditPage() {
       petName: user.pet_name ?? "",
       petAge: user.pet_age?.toString() ?? "",
       petType: user.pet_type ?? "",
-      tagline: (user as { tagline?: string | null }).tagline ?? "",
+      tagline: user.tagline ?? "",
       about: user.description ?? "",
     })
   }, [user])

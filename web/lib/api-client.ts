@@ -88,6 +88,7 @@ export type AuthUser = {
   pet_type: string | null
   pet_age: number | null
   description: string | null
+  tagline: string | null
   avatar_url: string | null
   created_at: string | null
   updated_at: string | null

@@ -20,6 +20,7 @@ export interface UserData {
   pet_type: string | null
   pet_age: number | null
   description: string | null
+  tagline: string | null
   avatar_url: string | null
   city: string | null
   city_lat: number | null
