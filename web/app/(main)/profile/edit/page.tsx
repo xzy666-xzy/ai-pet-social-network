@@ -1,18 +1,20 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { apiRequest, getAccessToken } from "@/lib/api-client"
+import { useAuth } from "@/lib/auth-context"
 import { useLanguage } from "@/lib/i18n/language-context"
 import { supabase } from "@/lib/supabase"
 
 export default function ProfileEditPage() {
   const router = useRouter()
   const { t } = useLanguage()
+  const { user, refreshUser } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState({
     petName: "",
@@ -24,6 +26,18 @@ export default function ProfileEditPage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState("")
   const [avatarUrl, setAvatarUrl] = useState("")
+
+  useEffect(() => {
+    if (!user) return
+
+    setForm({
+      petName: user.pet_name ?? "",
+      petAge: user.pet_age?.toString() ?? "",
+      petType: user.pet_type ?? "",
+      tagline: "",
+      about: user.description ?? "",
+    })
+  }, [user])
 
   const updateField = (field: keyof typeof form, value: string) => {
     setForm((current) => ({
@@ -86,6 +100,7 @@ export default function ProfileEditPage() {
       })
 
       alert(t.profile.editPage.saveSuccess)
+      await refreshUser()
       router.push("/profile")
     } catch (error) {
       console.error(error)
