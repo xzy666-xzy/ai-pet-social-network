@@ -48,7 +48,8 @@ export default function ProfileEditPage() {
     reader.readAsDataURL(file)
 
     // 上传到 Supabase
-    const filePath = `avatar-${Date.now()}-${file.name}`
+    const safeExtension = (file.name.split(".").pop() ?? "").toLowerCase().replace(/[^a-z0-9]/g, "")
+    const filePath = safeExtension ? `avatar-${Date.now()}.${safeExtension}` : `avatar-${Date.now()}`
     const { error: uploadError } = await supabase.storage
       .from("avatars")
       .upload(filePath, file)
