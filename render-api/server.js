@@ -207,6 +207,7 @@ function toSafeUser(user) {
     pet_name: user.pet_name ?? null,
     pet_type: user.pet_type ?? null,
     pet_age: user.pet_age ?? null,
+    tagline: user.tagline ?? null,
     description: user.description ?? null,
     avatar_url: user.avatar_url ?? null,
     created_at: user.created_at ?? null,
@@ -504,6 +505,10 @@ async function handleUpdateProfile(req, res) {
 
     if (body.description !== undefined) {
       updates.description = String(body.description).trim() || null
+    }
+
+    if (body.tagline !== undefined) {
+      updates.tagline = String(body.tagline).trim() || null
     }
 
     if (body.avatar_url !== undefined) {

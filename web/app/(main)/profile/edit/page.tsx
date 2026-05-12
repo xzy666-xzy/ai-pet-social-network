@@ -35,7 +35,7 @@ export default function ProfileEditPage() {
       petName: user.pet_name ?? "",
       petAge: user.pet_age?.toString() ?? "",
       petType: user.pet_type ?? "",
-      tagline: "",
+      tagline: (user as { tagline?: string | null }).tagline ?? "",
       about: user.description ?? "",
     })
   }, [user])
@@ -95,7 +95,8 @@ export default function ProfileEditPage() {
           pet_name: form.petName,
           pet_age: form.petAge,
           pet_type: form.petType,
-          description: form.about || form.tagline,
+          description: form.about,
+          tagline: form.tagline,
           avatar_url: avatarUrl || undefined,
         }),
       })
