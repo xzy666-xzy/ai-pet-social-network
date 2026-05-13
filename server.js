@@ -658,7 +658,7 @@ app.post("/auth/login", async (req, res) => {
     const { data: user, error } = await supabase
         .from("users")
         .select(
-          "id, email, username, password_hash, deleted_at, pet_name, pet_type, pet_age, description, avatar_url, cover_url, city, city_lat, city_lng, current_lat, current_lng, location_updated_at, last_seen, created_at, updated_at, is_ai"
+          "id, email, username, password_hash, deleted_at, pet_name, pet_type, pet_age, description, avatar_url, city, city_lat, city_lng, current_lat, current_lng, location_updated_at, last_seen, created_at, updated_at, is_ai"
         )
         .eq(loginColumn, loginValue)
         .maybeSingle()
