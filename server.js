@@ -734,6 +734,81 @@ app.get("/auth/me", authMiddleware, async (req, res) => {
   }
 })
 
+app.delete("/auth/me", authMiddleware, async (req, res) => {
+  try {
+    const userId = String(req.user?.userId || "").trim()
+
+    if (!userId) {
+      return sendUnauthorized(res)
+    }
+
+    const deletedAt = new Date().toISOString()
+
+    const { data: updatedUser, error: updateUserError } = await supabase
+      .from("users")
+      .update({
+        deleted_at: deletedAt,
+        email: null,
+        password_hash: null,
+        username: null,
+        pet_name: null,
+        avatar_url: null,
+      })
+      .eq("id", userId)
+      .select("id")
+      .maybeSingle()
+
+    if (updateUserError) {
+      throw updateUserError
+    }
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        error: "User not found",
+      })
+    }
+
+    const { error: deleteSessionsError } = await supabase
+      .from("sessions")
+      .delete()
+      .eq("user_id", userId)
+
+    if (
+      deleteSessionsError &&
+      deleteSessionsError?.code !== "PGRST205" &&
+      !deleteSessionsError?.message?.includes("Could not find the table 'public.sessions'")
+    ) {
+      throw deleteSessionsError
+    }
+
+    const { error: membershipsError } = await supabase
+      .from("memberships")
+      .update({
+        status: "cancelled",
+      })
+      .eq("user_id", userId)
+      .eq("status", "active")
+
+    if (
+      membershipsError &&
+      membershipsError?.code !== "PGRST205" &&
+      !membershipsError?.message?.includes("Could not find the table 'public.memberships'")
+    ) {
+      throw membershipsError
+    }
+
+    return res.json({ success: true })
+  } catch (error) {
+    console.error("Delete account error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to delete account",
+    })
+  }
+})
+
 app.post("/auth/register", async (req, res) => {
   try {
     const email = String(req.body?.email || "").trim().toLowerCase()
