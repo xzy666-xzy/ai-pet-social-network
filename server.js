@@ -748,10 +748,6 @@ app.delete("/auth/me", authMiddleware, async (req, res) => {
       .from("users")
       .update({
         deleted_at: deletedAt,
-        password_hash: null,
-        username: null,
-        pet_name: null,
-        avatar_url: null,
       })
       .eq("id", userId)
       .select("id")
