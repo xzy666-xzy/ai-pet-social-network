@@ -126,7 +126,7 @@ async function getEventWithOrganizer(eventId) {
 function setCorsHeaders(res) {
   res.setHeader("Access-Control-Allow-Origin", CORS_ORIGIN)
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization")
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 }
 
 function sendJson(res, statusCode, body) {
@@ -448,6 +448,89 @@ async function handleMe(req, res) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unauthorized"
     return sendJson(res, 401, { success: false, error: message })
+  }
+}
+
+async function handleDeleteMe(req, res) {
+  try {
+    const accessToken = getBearerToken(req)
+
+    if (!accessToken) {
+      return sendJson(res, 401, {
+        success: false,
+        error: "Missing access token",
+      })
+    }
+
+    const payload = verifyToken(accessToken)
+    const userId = String(payload.sub || "").trim()
+
+    if (!userId) {
+      return sendJson(res, 401, {
+        success: false,
+        error: "Invalid access token",
+      })
+    }
+
+    const deletedAt = new Date().toISOString()
+
+    const { data: updatedUser, error: updateUserError } = await supabaseAdmin
+      .from("users")
+      .update({
+        deleted_at: deletedAt,
+        email: null,
+        password_hash: null,
+        username: null,
+        pet_name: null,
+        avatar_url: null,
+      })
+      .eq("id", userId)
+      .select("id")
+      .maybeSingle()
+
+    if (updateUserError) {
+      throw updateUserError
+    }
+
+    if (!updatedUser) {
+      return sendJson(res, 404, {
+        success: false,
+        error: "User not found",
+      })
+    }
+
+    const { error: deleteSessionsError } = await supabaseAdmin
+      .from("sessions")
+      .delete()
+      .eq("user_id", userId)
+
+    if (deleteSessionsError) {
+      throw deleteSessionsError
+    }
+
+    const { error: membershipsError } = await supabaseAdmin
+      .from("memberships")
+      .update({
+        status: "cancelled",
+      })
+      .eq("user_id", userId)
+      .eq("status", "active")
+
+    if (
+      membershipsError &&
+      membershipsError?.code !== "PGRST205" &&
+      !membershipsError?.message?.includes("Could not find the table 'public.memberships'")
+    ) {
+      throw membershipsError
+    }
+
+    return sendJson(res, 200, { success: true })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to delete account"
+    return sendJson(res, 500, {
+      success: false,
+      error: message,
+    })
   }
 }
 
@@ -859,6 +942,11 @@ const server = createServer(async (req, res) => {
 
   if (req.method === "GET" && url.pathname === "/auth/me") {
     await handleMe(req, res)
+    return
+  }
+
+  if (req.method === "DELETE" && url.pathname === "/auth/me") {
+    await handleDeleteMe(req, res)
     return
   }
 
