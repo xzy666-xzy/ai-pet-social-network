@@ -86,10 +86,14 @@ export type AuthUser = {
   username: string | null
   pet_name: string | null
   pet_type: string | null
+  pet_gender: string | null
   pet_age: number | null
   description: string | null
   tagline: string | null
   avatar_url: string | null
+  city: string | null
+  city_lat: number | null
+  city_lng: number | null
   created_at: string | null
   updated_at: string | null
   is_ai: boolean | null

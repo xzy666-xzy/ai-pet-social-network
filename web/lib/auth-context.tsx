@@ -18,6 +18,7 @@ export interface UserData {
   username: string | null
   pet_name: string | null
   pet_type: string | null
+  pet_gender: string | null
   pet_age: number | null
   description: string | null
   tagline: string | null
@@ -48,6 +49,7 @@ interface RegisterData {
   password: string
   petName?: string
   petBreed?: string
+  pet_gender?: string | null
   petAge?: string
   petBio?: string
   avatar_url?: string | null
@@ -145,6 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           password: registerData.password,
           pet_name: registerData.petName || "",
           pet_type: registerData.petBreed || "",
+          pet_gender: registerData.pet_gender ?? null,
           pet_age: registerData.petAge || "",
           description: registerData.petBio || "",
           avatar_url: registerData.avatar_url || null,

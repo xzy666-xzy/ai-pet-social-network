@@ -22,6 +22,7 @@ export default function ProfileEditPage() {
     petName: "",
     petAge: "",
     petType: "",
+    petGender: "",
     tagline: "",
     about: "",
   })
@@ -38,6 +39,7 @@ export default function ProfileEditPage() {
       petName: user.pet_name ?? "",
       petAge: user.pet_age?.toString() ?? "",
       petType: user.pet_type ?? "",
+      petGender: user.pet_gender ?? "",
       tagline: user.tagline ?? "",
       about: user.description ?? "",
     })
@@ -98,6 +100,7 @@ export default function ProfileEditPage() {
           pet_name: form.petName,
           pet_age: form.petAge,
           pet_type: form.petType,
+          pet_gender: form.petGender || null,
           description: form.about,
           tagline: form.tagline,
           avatar_url: avatarUrl || undefined,
@@ -168,6 +171,19 @@ export default function ProfileEditPage() {
                 placeholder={t.profile.editPage.petTypePlaceholder}
                 className="rounded-2xl"
               />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-stone-700">宠物性别</label>
+              <select
+                value={form.petGender}
+                onChange={(event) => updateField("petGender", event.target.value)}
+                className="h-10 w-full rounded-2xl border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+              >
+                <option value="">请选择宠物性别</option>
+                <option value="male">男 ♂</option>
+                <option value="female">女 ♀</option>
+              </select>
             </div>
 
             <div>

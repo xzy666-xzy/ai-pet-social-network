@@ -69,6 +69,7 @@ function toSafeUser(user) {
     username: user.username ?? null,
     pet_name: user.pet_name ?? null,
     pet_type: user.pet_type ?? null,
+    pet_gender: user.pet_gender ?? null,
     pet_age: user.pet_age ?? null,
     description: user.description ?? null,
     avatar_url: user.avatar_url ?? null,
@@ -820,6 +821,7 @@ app.post("/auth/register", async (req, res) => {
     const username = String(req.body?.username || "").trim()
     const petName = String(req.body?.pet_name || "").trim()
     const petType = String(req.body?.pet_type || "").trim()
+    const petGender = String(req.body?.pet_gender || "").trim()
     const description = String(req.body?.description || "").trim()
     const avatar_url = String(req.body?.avatar_url || "").trim()
     const city = String(req.body?.city || "").trim()
@@ -896,6 +898,7 @@ app.post("/auth/register", async (req, res) => {
           username,
           pet_name: petName,
           pet_type: petType,
+          pet_gender: petGender || null,
           pet_age: petAge,
           description,
           avatar_url: avatar_url || null,
@@ -1220,6 +1223,10 @@ app.put("/profile", authMiddleware, async (req, res) => {
 
     if (req.body?.pet_type !== undefined) {
       updates.pet_type = String(req.body.pet_type).trim() || null
+    }
+
+    if (req.body?.pet_gender !== undefined) {
+      updates.pet_gender = String(req.body.pet_gender).trim() || null
     }
 
     if (req.body?.pet_age !== undefined) {

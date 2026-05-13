@@ -89,7 +89,7 @@ export default function ProfilePage() {
     }
 
     function handleScroll() {
-      const scrollTop = scrollContainer.scrollTop
+      const scrollTop = scrollContainer?.scrollTop ?? 0
 
       if (scrollTop > 5) {
         setIsCoverExpanded(false)
@@ -303,6 +303,13 @@ export default function ProfilePage() {
       user.pet_age !== null && user.pet_age !== undefined
           ? `${user.pet_age} ${t.profile.yearsSuffix}`
           : t.profile.ageNotSet
+  const petGenderSymbol =
+      user.pet_gender === "male"
+          ? "♂"
+          : user.pet_gender === "female"
+              ? "♀"
+              : ""
+  const petAgeWithGender = `${petAge}${petGenderSymbol ? ` ${petGenderSymbol}` : ""}`
 
   const tagline = user.tagline || ""
   const bio =
@@ -433,7 +440,7 @@ export default function ProfilePage() {
                     {petType}
                   </span>
                   <span className="rounded-full border border-stone-100 bg-white px-3 py-1.5 text-xs font-bold text-stone-600 shadow-sm">
-                    {petAge}
+                    {petAgeWithGender}
                   </span>
                 </div>
               </div>
@@ -447,7 +454,7 @@ export default function ProfilePage() {
               <div className="space-y-2 rounded-[1.5rem] border border-orange-100 bg-orange-50/70 p-4">
                 <p className="font-semibold text-stone-900">{t.profile.nameLabel}: {petName}</p>
                 <p className="font-semibold text-stone-900">{t.profile.typeLabel}: {petType}</p>
-                <p className="font-semibold text-stone-900">{t.profile.ageLabel}: {petAge}</p>
+                <p className="font-semibold text-stone-900">{t.profile.ageLabel}: {petAgeWithGender}</p>
               </div>
 
               <div>

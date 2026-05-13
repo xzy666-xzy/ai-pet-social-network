@@ -82,6 +82,7 @@ export default function RegisterPage() {
   const [petAvatarPreview, setPetAvatarPreview] = useState("")
   const [avatarUrl, setAvatarUrl] = useState("")
   const [petType, setPetType] = useState("")
+  const [petGender, setPetGender] = useState("")
   const [petAge, setPetAge] = useState("")
   const [description, setDescription] = useState("")
 
@@ -163,6 +164,7 @@ export default function RegisterPage() {
         username,
         petName,
         petBreed: petType,
+        pet_gender: petGender || null,
         petAge,
         petBio: description,
         avatar_url: avatarUrl || null,
@@ -433,6 +435,24 @@ export default function RegisterPage() {
                               onChange={(e) => setPetType(e.target.value)}
                           />
                         </div>
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold text-stone-700">
+                          Pet gender
+                        </label>
+                        <Select value={petGender} onValueChange={setPetGender}>
+                          <SelectTrigger className="h-13 w-full rounded-2xl border-stone-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
+                            <SelectValue placeholder="Select pet gender" />
+                          </SelectTrigger>
+                          <SelectContent
+                            position="item-aligned"
+                            className="border border-stone-200 bg-white text-stone-800 shadow-xl"
+                          >
+                            <SelectItem value="male">男 ♂</SelectItem>
+                            <SelectItem value="female">女 ♀</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       <div>

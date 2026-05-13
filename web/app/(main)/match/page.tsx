@@ -16,6 +16,7 @@ type MatchUser = {
   username: string | null
   pet_name: string | null
   pet_type: string | null
+  pet_gender?: string | null
   pet_age: number | null
   description: string | null
   petBio?: string | null
@@ -327,6 +328,15 @@ export default function MatchPage() {
       currentPet?.pet_age !== null && currentPet?.pet_age !== undefined
           ? `${currentPet.pet_age}${t.match.ageUnit}`
           : ""
+  const petGenderSymbol =
+      currentPet?.pet_gender === "male"
+          ? "♂"
+          : currentPet?.pet_gender === "female"
+              ? "♀"
+              : ""
+  const displayAgeWithGender = displayAge
+      ? `${displayAge}${petGenderSymbol ? ` ${petGenderSymbol}` : ""}`
+      : ""
 
   const displayType = currentPet?.pet_type?.trim() || t.match.unknownBreed
 
@@ -385,7 +395,7 @@ export default function MatchPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-2xl font-extrabold tracking-tight text-stone-900">
                     {displayName}
-                    {displayAge ? `, ${displayAge}` : ""}
+                    {displayAgeWithGender ? `, ${displayAgeWithGender}` : ""}
                   </h2>
                   {currentPet.membership_active ? (
                       <span className="rounded-full bg-gradient-to-r from-rose-500 to-amber-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
@@ -550,7 +560,7 @@ export default function MatchPage() {
                             <div className="flex flex-wrap items-center gap-2">
                               <h2 className="text-3xl font-black tracking-tight text-stone-900">
                                 {displayName}
-                                {displayAge ? `, ${displayAge}` : ""}
+                                {displayAgeWithGender ? `, ${displayAgeWithGender}` : ""}
                               </h2>
                               {currentPet.membership_active ? (
                                   <span className="rounded-full bg-gradient-to-r from-rose-500 to-amber-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
@@ -601,9 +611,9 @@ export default function MatchPage() {
                                 </Badge>
                             ) : null}
 
-                            {displayAge ? (
+                            {displayAgeWithGender ? (
                                 <Badge variant="secondary" className="rounded-full border border-stone-100 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 shadow-sm">
-                                  {displayAge}
+                                  {displayAgeWithGender}
                                 </Badge>
                             ) : null}
 
