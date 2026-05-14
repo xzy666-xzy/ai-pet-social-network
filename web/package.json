@@ -10,6 +10,8 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "@capacitor/core": "^8.3.4",
+    "@capacitor/push-notifications": "^8.0.4",
     "@emotion/is-prop-valid": "latest",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "1.2.2",
