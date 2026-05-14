@@ -928,6 +928,57 @@ app.post("/auth/register", async (req, res) => {
   }
 })
 
+app.post("/push/register", authMiddleware, async (req, res) => {
+  try {
+    const userId = String(req.user?.userId || "").trim()
+
+    if (!userId) {
+      return sendUnauthorized(res)
+    }
+
+    const token = String(req.body?.token || "").trim()
+    const platformInput = String(req.body?.platform || "android").trim().toLowerCase()
+    const platform = platformInput || "android"
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        error: "token is required",
+      })
+    }
+
+    const now = new Date().toISOString()
+    const { error } = await supabase
+      .from("push_tokens")
+      .upsert(
+        {
+          user_id: userId,
+          token,
+          platform,
+          is_active: true,
+          last_seen_at: now,
+          updated_at: now,
+        },
+        {
+          onConflict: "token",
+        }
+      )
+
+    if (error) {
+      throw error
+    }
+
+    return res.json({ success: true })
+  } catch (error) {
+    console.error("Push register error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to register push token",
+    })
+  }
+})
+
 app.get("/match/recommend", authMiddleware, async (req, res) => {
   try {
     const currentUser = await getCurrentUserById(req.user?.userId)

@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import { useLanguage } from "@/lib/i18n/language-context"
 import { useAuth } from "@/lib/auth-context"
+import { apiRequest, getAccessToken } from "@/lib/api-client"
 import { LanguageSwitcher } from "@/components/language-switcher"
 
 function isCapacitorRuntime() {
@@ -89,8 +90,30 @@ export default function ClientLayout({
       }
 
       try {
-        await PushNotifications.addListener("registration", (token) => {
+        await PushNotifications.addListener("registration", async (token) => {
           console.log("[Push] FCM token:", token.value)
+
+          if (!token?.value) {
+            return
+          }
+
+          if (!user && !getAccessToken()) {
+            return
+          }
+
+          try {
+            await apiRequest("/push/register", {
+              method: "POST",
+              auth: true,
+              body: JSON.stringify({
+                token: token.value,
+                platform: "android",
+              }),
+            })
+            console.log("[Push] token registered")
+          } catch {
+            console.warn("[Push] token register failed")
+          }
         })
 
         await PushNotifications.addListener("registrationError", (error) => {
