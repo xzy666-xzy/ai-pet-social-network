@@ -604,6 +604,13 @@ async function sendNewMessagePushNotification({
         title: senderDisplayName || "New message",
         body: truncateNotificationBody(content),
       },
+      android: {
+        priority: "high",
+        notification: {
+          priority: "high",
+          channelId: "chat_messages",
+        },
+      },
       data: {
         type: "new_message",
         conversationId: String(conversationId),
