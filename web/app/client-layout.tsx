@@ -55,9 +55,14 @@ function isAndroidCapacitorWebView() {
       ? capacitorOnWindow.getPlatform()
       : undefined
 
-  const platform = windowPlatform ?? Capacitor.getPlatform()
+  const corePlatform = Capacitor.getPlatform()
+  const platform = windowPlatform ?? corePlatform
+  const isNativePlatform =
+    typeof capacitorOnWindow.isNativePlatform === "function"
+      ? capacitorOnWindow.isNativePlatform()
+      : corePlatform !== "web"
 
-  return platform === "android"
+  return isNativePlatform && corePlatform !== "web" && platform === "android"
 }
 
 export default function ClientLayout({
@@ -83,13 +88,13 @@ export default function ClientLayout({
 
   useEffect(() => {
     const setupPushNotifications = async () => {
-      console.log("[Push] setup start")
-
-      if (!isAndroidCapacitorWebView()) {
-        return
-      }
-
       try {
+        if (!isAndroidCapacitorWebView()) {
+          return
+        }
+
+        console.log("[Push] setup start")
+
         await PushNotifications.addListener("registration", async (token) => {
           console.log("[Push] FCM token:", token.value)
 
@@ -140,14 +145,22 @@ export default function ClientLayout({
 
         await PushNotifications.register()
       } catch (error) {
-        console.error("[Push] setup failed:", error)
+        console.warn("[Push] setup skipped or failed:", error)
       }
     }
 
     void setupPushNotifications()
 
     return () => {
-      void PushNotifications.removeAllListeners()
+      if (!isAndroidCapacitorWebView()) {
+        return
+      }
+
+      try {
+        void PushNotifications.removeAllListeners()
+      } catch (error) {
+        console.warn("[Push] remove listeners failed:", error)
+      }
     }
   }, [])
 
