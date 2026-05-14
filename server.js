@@ -5,6 +5,8 @@ const express = require("express")
 const cors = require("cors")
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcryptjs")
+const { cert, getApps, initializeApp } = require("firebase-admin/app")
+const { getMessaging } = require("firebase-admin/messaging")
 const { createClient } = require("@supabase/supabase-js")
 const OpenAI = require("openai")
 const authMiddleware = require("./middleware/auth")
@@ -25,6 +27,34 @@ const DEFAULT_DAILY_LIKE_LIMIT = 3
 const MEMBER_DAILY_LIKE_LIMIT = 999
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-5.2"
+const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID
+const FIREBASE_PRIVATE_KEY = process.env.FIREBASE_PRIVATE_KEY
+const FIREBASE_CLIENT_EMAIL = process.env.FIREBASE_CLIENT_EMAIL
+
+let firebaseMessaging = null
+
+if (FIREBASE_PROJECT_ID && FIREBASE_PRIVATE_KEY && FIREBASE_CLIENT_EMAIL) {
+  try {
+    const firebaseApp =
+      getApps().length > 0
+        ? getApps()[0]
+        : initializeApp({
+            credential: cert({
+              projectId: FIREBASE_PROJECT_ID,
+              privateKey: FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+              clientEmail: FIREBASE_CLIENT_EMAIL,
+            }),
+          })
+
+    firebaseMessaging = getMessaging(firebaseApp)
+  } catch (error) {
+    console.warn("Firebase Admin init skipped:", error?.message || error)
+  }
+} else {
+  console.warn(
+    "Firebase Admin init skipped: missing FIREBASE_PROJECT_ID / FIREBASE_PRIVATE_KEY / FIREBASE_CLIENT_EMAIL"
+  )
+}
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !JWT_SECRET) {
   throw new Error(
@@ -528,6 +558,61 @@ async function createMessage(conversationId, senderId, content) {
   }
 
   return data
+}
+
+function truncateNotificationBody(content) {
+  const text = String(content || "").trim()
+
+  if (text.length <= 80) {
+    return text
+  }
+
+  return `${text.slice(0, 80)}...`
+}
+
+async function sendNewMessagePushNotification({
+  conversationId,
+  senderId,
+  senderDisplayName,
+  otherUserId,
+  content,
+}) {
+  if (!firebaseMessaging) {
+    return
+  }
+
+  try {
+    const { data: tokenRows, error: tokenError } = await supabase
+      .from("push_tokens")
+      .select("token")
+      .eq("user_id", otherUserId)
+      .eq("is_active", true)
+
+    if (tokenError) {
+      throw tokenError
+    }
+
+    const tokens = [...new Set((tokenRows || []).map((row) => String(row.token || "").trim()).filter(Boolean))]
+
+    if (tokens.length === 0) {
+      return
+    }
+
+    await firebaseMessaging.sendEachForMulticast({
+      tokens,
+      notification: {
+        title: senderDisplayName || "New message",
+        body: truncateNotificationBody(content),
+      },
+      data: {
+        type: "new_message",
+        conversationId: String(conversationId),
+        senderId: String(senderId),
+      },
+    })
+  } catch (error) {
+    console.warn("Send chat message push failed:", error?.message || error)
+  }
 }
 
 async function getConversationAccess(conversationId, currentUserId) {
@@ -2210,6 +2295,17 @@ app.post("/chat/messages", authMiddleware, async (req, res) => {
 
     const message = await createMessage(conversationId, String(currentUser.id), content)
     const latestAccess = await getConversationAccess(conversationId, String(currentUser.id))
+    const otherUserId =
+      conversation.user1_id === currentUser.id ? conversation.user2_id : conversation.user1_id
+    const senderDisplayName = currentUser.pet_name || currentUser.username || "New message"
+
+    void sendNewMessagePushNotification({
+      conversationId,
+      senderId: String(currentUser.id),
+      senderDisplayName,
+      otherUserId: String(otherUserId),
+      content,
+    })
 
     return toDataResponse(res, {
       message,
