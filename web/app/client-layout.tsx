@@ -4,6 +4,8 @@ import type React from "react"
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
+import { Capacitor } from "@capacitor/core"
+import { PushNotifications } from "@capacitor/push-notifications"
 import {
   Home,
   MessageCircle,
@@ -31,6 +33,32 @@ function isCapacitorRuntime() {
   return hasCapacitorBridge || hasCapacitorUserAgent
 }
 
+function isAndroidCapacitorWebView() {
+  if (typeof window === "undefined") {
+    return false
+  }
+
+  const capacitorOnWindow = (window as typeof window & {
+    Capacitor?: {
+      getPlatform?: () => string
+      isNativePlatform?: () => boolean
+    }
+  }).Capacitor
+
+  if (!capacitorOnWindow) {
+    return false
+  }
+
+  const windowPlatform =
+    typeof capacitorOnWindow.getPlatform === "function"
+      ? capacitorOnWindow.getPlatform()
+      : undefined
+
+  const platform = windowPlatform ?? Capacitor.getPlatform()
+
+  return platform === "android"
+}
+
 export default function ClientLayout({
                                        children,
                                      }: {
@@ -50,6 +78,54 @@ export default function ClientLayout({
 
   useEffect(() => {
     setIsCapacitor(isCapacitorRuntime())
+  }, [])
+
+  useEffect(() => {
+    const setupPushNotifications = async () => {
+      console.log("[Push] setup start")
+
+      if (!isAndroidCapacitorWebView()) {
+        return
+      }
+
+      try {
+        await PushNotifications.addListener("registration", (token) => {
+          console.log("[Push] FCM token:", token.value)
+        })
+
+        await PushNotifications.addListener("registrationError", (error) => {
+          console.error("[Push] registration error:", error)
+        })
+
+        console.log("[Push] listener attached")
+
+        const permissionState = await PushNotifications.checkPermissions()
+        let receivePermission = permissionState.receive
+
+        if (receivePermission === "prompt") {
+          const requested = await PushNotifications.requestPermissions()
+          receivePermission = requested.receive
+        }
+
+        if (receivePermission !== "granted") {
+          console.warn("[Push] notification permission not granted")
+          return
+        }
+
+        console.log("[Push] permissions granted")
+        console.log("[Push] calling register")
+
+        await PushNotifications.register()
+      } catch (error) {
+        console.error("[Push] setup failed:", error)
+      }
+    }
+
+    void setupPushNotifications()
+
+    return () => {
+      void PushNotifications.removeAllListeners()
+    }
   }, [])
 
   const displayName = useMemo(() => {
