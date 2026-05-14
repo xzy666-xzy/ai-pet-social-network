@@ -615,6 +615,7 @@ async function sendNewMessagePushNotification({
         type: "new_message",
         conversationId: String(conversationId),
         senderId: String(senderId),
+        senderUserId: String(senderId),
       },
     })
   } catch (error) {

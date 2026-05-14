@@ -125,6 +125,28 @@ export default function ClientLayout({
           console.error("[Push] registration error:", error)
         })
 
+        try {
+          await PushNotifications.addListener(
+            "pushNotificationActionPerformed",
+            (notification) => {
+              console.log("[Push] notification tapped", notification)
+
+              const senderUserId = String(
+                notification?.notification?.data?.senderUserId || ""
+              ).trim()
+
+              if (!senderUserId) {
+                return
+              }
+
+              console.log("[Push] navigating to chat", senderUserId)
+              router.push(`/chat?userId=${senderUserId}`)
+            }
+          )
+        } catch (error) {
+          console.warn("[Push] action listener failed:", error)
+        }
+
         console.log("[Push] listener attached")
 
         const permissionState = await PushNotifications.checkPermissions()
