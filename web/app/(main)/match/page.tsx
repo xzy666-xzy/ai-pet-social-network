@@ -555,33 +555,35 @@ export default function MatchPage() {
 
                         </div>
 
-<div className="space-y-4 px-5 pb-3 pt-4">
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h2 className="text-3xl font-black tracking-tight text-stone-900">
-                                {displayName}
-                                {displayAgeText
-                                    ? `, ${displayAgeText}${petGenderSymbol ? " " : ""}` : ""}
-                                {petGenderSymbol ? (
-                                    <span className={petGenderColor}>{petGenderSymbol}</span>
-                                ) : null}
-                              </h2>
+<div className="space-y-1 px-5 py-3">
+                          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1">
+                            <div className="min-w-0 space-y-1">
+                              <div className="flex flex-wrap items-center gap-2 leading-tight">
+                                <h2 className="text-3xl font-black leading-tight tracking-tight text-stone-900">
+                                  {displayName}
+                                  {displayAgeText
+                                      ? `, ${displayAgeText}${petGenderSymbol ? " " : ""}` : ""}
+                                  {petGenderSymbol ? (
+                                      <span className={petGenderColor}>{petGenderSymbol}</span>
+                                  ) : null}
+                                </h2>
+                              </div>
+
+                              <p className="text-sm font-semibold leading-tight text-stone-500">{displayType}</p>
                             </div>
 
-                            <p className="mt-1 text-sm font-semibold text-stone-500">{displayType}</p>
+                            <div className="flex flex-col items-end justify-start gap-1 pt-1">
+                              {distanceDisplayText ? (
+                                  <p className={`flex items-center gap-1 text-sm font-semibold leading-tight ${distanceClassName}`}>
+                                    <MapPin className="h-4 w-4" />
+                                    {distanceDisplayText}
+                                  </p>
+                              ) : null}
 
-                            {distanceDisplayText ? (
-                                <p className={`mt-2 flex items-center gap-1 text-sm font-semibold ${distanceClassName}`}>
-                                  <MapPin className="h-4 w-4" />
-                                  {distanceDisplayText}
-                                </p>
-                            ) : null}
-                          </div>
-
-                          <div className="flex flex-wrap gap-2">
-                            <Badge variant="secondary" className="rounded-full border border-orange-100 bg-gradient-to-r from-orange-50 to-amber-50 px-3 py-1.5 text-xs font-bold text-orange-700 shadow-sm">
-                              {t.match.similarPetAgeTag}
-                            </Badge>
+                              <Badge variant="secondary" className="rounded-full border border-orange-100 bg-gradient-to-r from-orange-50 to-amber-50 px-3 py-1 text-xs font-bold text-orange-700 shadow-sm">
+                                {t.match.similarPetAgeTag}
+                              </Badge>
+                            </div>
                           </div>
                         </div>
                       </Card>
