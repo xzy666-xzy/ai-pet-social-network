@@ -544,7 +544,7 @@ export default function MatchPage() {
                           onClick={() => setShowPetDetail(true)}
                           className="flex h-full cursor-pointer flex-col overflow-hidden rounded-[2.25rem] border border-white/80 bg-white shadow-2xl shadow-orange-900/12 ring-1 ring-orange-100/70"
                       >
-                        <div className="relative m-3 h-[50%] shrink-0 overflow-hidden rounded-[1.8rem] bg-orange-100">
+                        <div className="relative m-3 aspect-[4/3] shrink-0 overflow-hidden rounded-[1.8rem] bg-orange-100">
                           <img
                               src={imageSrc}
                               alt={displayName}
