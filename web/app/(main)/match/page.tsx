@@ -555,35 +555,37 @@ export default function MatchPage() {
 
                         </div>
 
-<div className="space-y-1 px-5 py-3">
-                          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1">
-                            <div className="min-w-0 space-y-1">
-                              <div className="flex flex-wrap items-center gap-2 leading-tight">
-                                <h2 className="text-3xl font-black leading-tight tracking-tight text-stone-900">
-                                  {displayName}
-                                  {displayAgeText
-                                      ? `, ${displayAgeText}${petGenderSymbol ? " " : ""}` : ""}
-                                  {petGenderSymbol ? (
-                                      <span className={petGenderColor}>{petGenderSymbol}</span>
-                                  ) : null}
-                                </h2>
-                              </div>
-
-                              <p className="text-sm font-semibold leading-tight text-stone-500">{displayType}</p>
-                            </div>
-
-                            <div className="flex flex-col items-end justify-start gap-1 pt-1">
-                              {distanceDisplayText ? (
-                                  <p className={`flex items-center gap-1 text-sm font-semibold leading-tight ${distanceClassName}`}>
-                                    <MapPin className="h-4 w-4" />
-                                    {distanceDisplayText}
-                                  </p>
+<div className="space-y-1.5 px-5 py-2.5">
+                          <div className="flex items-center justify-between gap-3">
+                            <h2 className="min-w-0 truncate text-2xl font-black leading-tight tracking-tight text-stone-900">
+                              {displayName}
+                              {displayAgeText
+                                  ? `, ${displayAgeText}${petGenderSymbol ? " " : ""}` : ""}
+                              {petGenderSymbol ? (
+                                  <span className={petGenderColor}>{petGenderSymbol}</span>
                               ) : null}
+                            </h2>
 
-                              <Badge variant="secondary" className="rounded-full border border-orange-100 bg-gradient-to-r from-orange-50 to-amber-50 px-3 py-1 text-xs font-bold text-orange-700 shadow-sm">
-                                {t.match.similarPetAgeTag}
-                              </Badge>
-                            </div>
+                            {distanceDisplayText ? (
+                                <Badge
+                                    variant="secondary"
+                                    className={`inline-flex shrink-0 items-center gap-1 rounded-full border border-orange-100 bg-white px-2.5 py-1 text-xs font-semibold leading-none shadow-sm ${distanceClassName}`}
+                                >
+                                  <MapPin className="h-3.5 w-3.5" />
+                                  <span className="leading-none">{distanceDisplayText}</span>
+                                </Badge>
+                            ) : null}
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="min-w-0 truncate text-sm font-semibold leading-tight text-stone-500">{displayType}</p>
+
+                            <Badge
+                                variant="secondary"
+                                className="inline-flex shrink-0 items-center rounded-full border border-orange-100 bg-gradient-to-r from-orange-50 to-amber-50 px-2.5 py-1 text-xs font-bold leading-none text-orange-700 shadow-sm"
+                            >
+                              {t.match.similarPetAgeTag}
+                            </Badge>
                           </div>
                         </div>
                       </Card>
