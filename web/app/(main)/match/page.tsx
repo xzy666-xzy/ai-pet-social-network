@@ -555,37 +555,39 @@ export default function MatchPage() {
 
                         </div>
 
-<div className="space-y-1.5 px-5 py-2.5">
-                          <div className="flex items-center justify-between gap-3">
-                            <h2 className="min-w-0 truncate text-2xl font-black leading-tight tracking-tight text-stone-900">
-                              {displayName}
-                              {displayAgeText
-                                  ? `, ${displayAgeText}${petGenderSymbol ? " " : ""}` : ""}
-                              {petGenderSymbol ? (
-                                  <span className={petGenderColor}>{petGenderSymbol}</span>
+<div className="px-5 py-2.5">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1 space-y-1.5">
+                              <h2 className="min-w-0 truncate text-2xl font-black leading-tight tracking-tight text-stone-900">
+                                {displayName}
+                                {displayAgeText
+                                    ? `, ${displayAgeText}${petGenderSymbol ? " " : ""}` : ""}
+                                {petGenderSymbol ? (
+                                    <span className={petGenderColor}>{petGenderSymbol}</span>
+                                ) : null}
+                              </h2>
+
+                              <p className="min-w-0 truncate text-sm font-semibold leading-tight text-stone-500">{displayType}</p>
+                            </div>
+
+                            <div className="flex w-[138px] shrink-0 flex-col items-start gap-1.5">
+                              {distanceDisplayText ? (
+                                  <Badge
+                                      variant="secondary"
+                                      className={`inline-flex items-center gap-1 rounded-full border border-orange-100 bg-white px-2.5 py-1 text-xs font-semibold leading-none shadow-sm ${distanceClassName}`}
+                                  >
+                                    <MapPin className="h-3.5 w-3.5" />
+                                    <span className="leading-none">{distanceDisplayText}</span>
+                                  </Badge>
                               ) : null}
-                            </h2>
 
-                            {distanceDisplayText ? (
-                                <Badge
-                                    variant="secondary"
-                                    className={`inline-flex shrink-0 items-center gap-1 rounded-full border border-orange-100 bg-white px-2.5 py-1 text-xs font-semibold leading-none shadow-sm ${distanceClassName}`}
-                                >
-                                  <MapPin className="h-3.5 w-3.5" />
-                                  <span className="leading-none">{distanceDisplayText}</span>
-                                </Badge>
-                            ) : null}
-                          </div>
-
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="min-w-0 truncate text-sm font-semibold leading-tight text-stone-500">{displayType}</p>
-
-                            <Badge
-                                variant="secondary"
-                                className="inline-flex shrink-0 items-center rounded-full border border-orange-100 bg-gradient-to-r from-orange-50 to-amber-50 px-2.5 py-1 text-xs font-bold leading-none text-orange-700 shadow-sm"
-                            >
-                              {t.match.similarPetAgeTag}
-                            </Badge>
+                              <Badge
+                                  variant="secondary"
+                                  className="inline-flex items-center rounded-full border border-orange-100 bg-gradient-to-r from-orange-50 to-amber-50 px-2.5 py-1 text-xs font-bold leading-none text-orange-700 shadow-sm"
+                              >
+                                {t.match.similarPetAgeTag}
+                              </Badge>
+                            </div>
                           </div>
                         </div>
                       </Card>
