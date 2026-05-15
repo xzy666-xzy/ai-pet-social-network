@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { useLanguage } from "@/lib/i18n/language-context"
+import { apiRequest } from "@/lib/api-client"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { supabase } from "@/lib/supabase"
 import {
@@ -122,7 +123,7 @@ export default function RegisterPage() {
     setCityLng(selectedCity?.city_lng ?? null)
   }
 
-  const handleNext = (e: React.FormEvent) => {
+  const handleNext = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
 
@@ -138,6 +139,45 @@ export default function RegisterPage() {
 
     if (password !== confirmPassword) {
       setError(t.auth?.passwordMismatch || "Passwords do not match")
+      return
+    }
+
+    try {
+      const availability = await apiRequest<{
+        success: true
+        emailAvailable: boolean
+        usernameAvailable: boolean
+      }>("/auth/check-availability", {
+        method: "POST",
+        body: JSON.stringify({
+          email,
+          username,
+        }),
+      })
+
+      const emailUnavailable = !availability.emailAvailable
+      const usernameUnavailable = !availability.usernameAvailable
+
+      if (emailUnavailable && usernameUnavailable) {
+        setError(t.auth?.emailAndUsernameTaken || "Email and username are already used")
+        return
+      }
+
+      if (emailUnavailable) {
+        setError(t.auth?.emailTaken || "Email is already used")
+        return
+      }
+
+      if (usernameUnavailable) {
+        setError(t.auth?.usernameTaken || "Username is already used")
+        return
+      }
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : (t.auth?.registerFailed || "Registration failed")
+      )
       return
     }
 
@@ -202,8 +242,12 @@ export default function RegisterPage() {
       }
 
       router.replace("/match")
-    } catch {
-      setError(t.auth?.registerFailed || "Registration failed")
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : (t.auth?.registerFailed || "Registration failed")
+      )
     } finally {
       setLoading(false)
     }

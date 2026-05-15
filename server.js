@@ -1021,6 +1021,55 @@ app.post("/auth/register", async (req, res) => {
   }
 })
 
+app.post("/auth/check-availability", async (req, res) => {
+  try {
+    const email = String(req.body?.email || "").trim().toLowerCase()
+    const username = String(req.body?.username || "").trim()
+
+    if (!email || !username) {
+      return res.status(400).json({
+        success: false,
+        error: "email and username are required",
+      })
+    }
+
+    const { data: emailUser, error: emailError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", email)
+      .is("deleted_at", null)
+      .maybeSingle()
+
+    if (emailError) {
+      throw emailError
+    }
+
+    const { data: usernameUser, error: usernameError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("username", username)
+      .is("deleted_at", null)
+      .maybeSingle()
+
+    if (usernameError) {
+      throw usernameError
+    }
+
+    return res.json({
+      success: true,
+      emailAvailable: !emailUser,
+      usernameAvailable: !usernameUser,
+    })
+  } catch (error) {
+    console.error("Check availability error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to check availability",
+    })
+  }
+})
+
 app.post("/push/register", authMiddleware, async (req, res) => {
   try {
     const userId = String(req.user?.userId || "").trim()

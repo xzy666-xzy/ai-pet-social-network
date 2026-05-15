@@ -452,6 +452,9 @@ export const translations = {
       fillRequired: "Please fill in all required fields",
       passwordTooShort: "Password must be at least 6 characters",
       passwordMismatch: "Passwords do not match",
+      emailTaken: "Email is already used",
+      usernameTaken: "Username is already used",
+      emailAndUsernameTaken: "Email and username are already used",
     },
   },
 
@@ -827,10 +830,13 @@ export const translations = {
       petBio: "반려동물 소개",
       petBioPlaceholder: "반려동물의 성격을 설명해주세요",
       loginFailed: "이메일 또는 비밀번호가 올바르지 않습니다",
-      registerFailed: "가입에 실패했습니다",
+      registerFailed: "회원가입 실패",
       fillRequired: "모든 필수 항목을 입력해주세요",
       passwordTooShort: "비밀번호는 최소 6자 이상이어야 합니다",
       passwordMismatch: "비밀번호가 일치하지 않습니다",
+      emailTaken: "이미 사용 중인 이메일입니다",
+      usernameTaken: "이미 사용 중인 사용자 이름입니다",
+      emailAndUsernameTaken: "이미 사용 중인 이메일과 사용자 이름입니다",
     },
 
     // Growth Journal
@@ -1284,6 +1290,9 @@ export const translations = {
       fillRequired: "请填写所有必填项",
       passwordTooShort: "密码至少需要6个字符",
       passwordMismatch: "两次输入的密码不一致",
+      emailTaken: "邮箱已使用",
+      usernameTaken: "用户名已使用",
+      emailAndUsernameTaken: "邮箱和用户名已使用",
     },
 
     // Growth Journal
