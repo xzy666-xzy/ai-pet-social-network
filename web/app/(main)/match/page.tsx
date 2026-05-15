@@ -334,9 +334,13 @@ export default function MatchPage() {
           : currentPet?.pet_gender === "female"
               ? "♀"
               : ""
-  const displayAgeWithGender = displayAge
-      ? `${displayAge}${petGenderSymbol ? ` ${petGenderSymbol}` : ""}`
-      : ""
+  const petGenderColor =
+      currentPet?.pet_gender === "male"
+          ? "text-blue-500"
+          : currentPet?.pet_gender === "female"
+              ? "text-pink-500"
+              : ""
+  const displayAgeText = displayAge || ""
 
   const displayType = currentPet?.pet_type?.trim() || t.match.unknownBreed
 
@@ -395,7 +399,11 @@ export default function MatchPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-2xl font-extrabold tracking-tight text-stone-900">
                     {displayName}
-                    {displayAgeWithGender ? `, ${displayAgeWithGender}` : ""}
+                    {displayAgeText
+                        ? `, ${displayAgeText}${petGenderSymbol ? " " : ""}` : ""}
+                    {petGenderSymbol ? (
+                        <span className={petGenderColor}>{petGenderSymbol}</span>
+                    ) : null}
                   </h2>
                   {currentPet.membership_active ? (
                       <span className="rounded-full bg-gradient-to-r from-rose-500 to-amber-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
@@ -560,7 +568,11 @@ export default function MatchPage() {
                             <div className="flex flex-wrap items-center gap-2">
                               <h2 className="text-3xl font-black tracking-tight text-stone-900">
                                 {displayName}
-                                {displayAgeWithGender ? `, ${displayAgeWithGender}` : ""}
+                                {displayAgeText
+                                    ? `, ${displayAgeText}${petGenderSymbol ? " " : ""}` : ""}
+                                {petGenderSymbol ? (
+                                    <span className={petGenderColor}>{petGenderSymbol}</span>
+                                ) : null}
                               </h2>
                               {currentPet.membership_active ? (
                                   <span className="rounded-full bg-gradient-to-r from-rose-500 to-amber-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
@@ -611,9 +623,12 @@ export default function MatchPage() {
                                 </Badge>
                             ) : null}
 
-                            {displayAgeWithGender ? (
+                            {displayAgeText || petGenderSymbol ? (
                                 <Badge variant="secondary" className="rounded-full border border-stone-100 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 shadow-sm">
-                                  {displayAgeWithGender}
+                                  {displayAgeText}
+                                  {petGenderSymbol ? (
+                                      <span className={petGenderColor}>{petGenderSymbol}</span>
+                                  ) : null}
                                 </Badge>
                             ) : null}
 

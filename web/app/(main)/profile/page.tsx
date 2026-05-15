@@ -309,7 +309,13 @@ export default function ProfilePage() {
           : user.pet_gender === "female"
               ? "♀"
               : ""
-  const petAgeWithGender = `${petAge}${petGenderSymbol ? ` ${petGenderSymbol}` : ""}`
+  const petGenderColor =
+      user.pet_gender === "male"
+          ? "text-blue-500"
+          : user.pet_gender === "female"
+              ? "text-pink-500"
+              : ""
+  const petAgeText = petAge
 
   const tagline = user.tagline || ""
   const bio =
@@ -440,7 +446,10 @@ export default function ProfilePage() {
                     {petType}
                   </span>
                   <span className="rounded-full border border-stone-100 bg-white px-3 py-1.5 text-xs font-bold text-stone-600 shadow-sm">
-                    {petAgeWithGender}
+                    {petAgeText}
+                    {petGenderSymbol ? (
+                        <span className={petGenderColor}>{petGenderSymbol}</span>
+                    ) : null}
                   </span>
                 </div>
               </div>
@@ -454,7 +463,12 @@ export default function ProfilePage() {
               <div className="space-y-2 rounded-[1.5rem] border border-orange-100 bg-orange-50/70 p-4">
                 <p className="font-semibold text-stone-900">{t.profile.nameLabel}: {petName}</p>
                 <p className="font-semibold text-stone-900">{t.profile.typeLabel}: {petType}</p>
-                <p className="font-semibold text-stone-900">{t.profile.ageLabel}: {petAgeWithGender}</p>
+                <p className="font-semibold text-stone-900">
+                  {t.profile.ageLabel}: {petAgeText}
+                  {petGenderSymbol ? (
+                      <span className={petGenderColor}>{petGenderSymbol}</span>
+                  ) : null}
+                </p>
               </div>
 
               <div>
