@@ -352,9 +352,6 @@ export default function MatchPage() {
 
   const displayCity = currentPet?.city?.trim() || ""
 
-  const displayUsername =
-      currentPet?.username?.trim() || "user"
-
   const imageSrc =
       currentPet?.avatar_url && currentPet.avatar_url.trim() !== ""
           ? currentPet.avatar_url
@@ -466,7 +463,7 @@ export default function MatchPage() {
 
   return (
       <>
-        <div className="mx-auto flex h-full max-w-md flex-col bg-gradient-to-b from-orange-50 via-stone-50 to-white px-5 py-4">
+        <div className="mx-auto flex max-w-md flex-col bg-gradient-to-b from-orange-50 via-stone-50 to-white px-5 py-4">
           <div className="mb-5 flex items-start justify-between gap-3">
             <div>
               <div className="mb-1 flex items-center gap-2">
@@ -499,16 +496,16 @@ export default function MatchPage() {
           ) : null}
 
           {loadingUsers ? (
-              <div className="flex flex-1 items-center justify-center rounded-[2rem] border border-orange-100 bg-white/70 text-stone-500 shadow-lg shadow-orange-900/5">
+              <div className="flex min-h-[280px] items-center justify-center rounded-[2rem] border border-orange-100 bg-white/70 text-stone-500 shadow-lg shadow-orange-900/5">
                 {t.match.loading}
               </div>
           ) : !currentPet ? (
-              <div className="flex flex-1 items-center justify-center rounded-[2rem] border border-orange-100 bg-white/70 text-stone-500 shadow-lg shadow-orange-900/5">
+              <div className="flex min-h-[280px] items-center justify-center rounded-[2rem] border border-orange-100 bg-white/70 text-stone-500 shadow-lg shadow-orange-900/5">
                 {t.match.noUsers}
               </div>
           ) : (
               <>
-                <div className="relative min-h-0 flex-1 overflow-visible">
+                <div className="relative overflow-visible">
                   <AnimatePresence mode="wait">
                     <motion.div
                         key={`${currentPet.id}-${currentIndex}`}
@@ -516,10 +513,10 @@ export default function MatchPage() {
                         animate={{ x: 0, opacity: 1, rotate: 0 }}
                         exit={{ x: swipeExitX, opacity: 0, rotate: direction * 10 }}
                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                        className="absolute inset-0"
+                        className="w-full"
                     >
                       <motion.div
-                          className="h-full cursor-grab active:cursor-grabbing"
+                          className="cursor-grab active:cursor-grabbing"
                           drag="x"
                           dragConstraints={{ left: 0, right: 0 }}
                           dragMomentum={false}
@@ -542,9 +539,9 @@ export default function MatchPage() {
                       >
                       <Card
                           onClick={() => setShowPetDetail(true)}
-                          className="flex h-full cursor-pointer flex-col overflow-hidden rounded-[2.25rem] border border-white/80 bg-white shadow-2xl shadow-orange-900/12 ring-1 ring-orange-100/70"
+                          className="flex w-full cursor-pointer flex-col overflow-hidden rounded-[2.25rem] border border-white/80 bg-white shadow-2xl shadow-orange-900/12 ring-1 ring-orange-100/70"
                       >
-                        <div className="relative m-3 aspect-[4/3] shrink-0 overflow-hidden rounded-[1.8rem] bg-orange-100">
+                        <div className="relative m-3 h-[200px] shrink-0 overflow-hidden rounded-[1.8rem] bg-orange-100">
                           <img
                               src={imageSrc}
                               alt={displayName}
@@ -556,14 +553,9 @@ export default function MatchPage() {
 
                           <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
 
-                          <div className="absolute right-4 top-4">
-                            <Badge className="rounded-full border border-white/60 bg-white/92 px-3.5 py-1.5 text-sm font-extrabold text-orange-600 shadow-lg backdrop-blur">
-                              {matchScore}% {t.match.matchPercent}
-                            </Badge>
-                          </div>
                         </div>
 
-                        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 pb-6 pt-2">
+<div className="space-y-4 px-5 pb-3 pt-4">
                           <div>
                             <div className="flex flex-wrap items-center gap-2">
                               <h2 className="text-3xl font-black tracking-tight text-stone-900">
@@ -574,11 +566,6 @@ export default function MatchPage() {
                                     <span className={petGenderColor}>{petGenderSymbol}</span>
                                 ) : null}
                               </h2>
-                              {currentPet.membership_active ? (
-                                  <span className="rounded-full bg-gradient-to-r from-rose-500 to-amber-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
-                                    VIP
-                                  </span>
-                              ) : null}
                             </div>
 
                             <p className="mt-1 text-sm font-semibold text-stone-500">{displayType}</p>
@@ -591,49 +578,9 @@ export default function MatchPage() {
                             ) : null}
                           </div>
 
-                          {currentPet.matchReasons && currentPet.matchReasons.length > 0 ? (
-                              <div className="flex flex-wrap gap-2">
-                                {currentPet.matchReasons.map((reason) => (
-                                    <Badge key={reason} variant="secondary" className="rounded-full border border-orange-100 bg-gradient-to-r from-orange-50 to-amber-50 px-3 py-1.5 text-xs font-bold text-orange-700 shadow-sm">
-                                      {reason}
-                                    </Badge>
-                                ))}
-                              </div>
-                          ) : null}
-
-                          <div className="rounded-[1.5rem] border border-orange-100 bg-gradient-to-br from-orange-50 via-white to-amber-50 p-4 shadow-inner shadow-orange-100/70">
-                            <div className="mb-2 flex items-center gap-2">
-                              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm">
-                                <Info className="h-4 w-4 text-orange-500" />
-                              </span>
-                              <span className="text-sm font-semibold text-orange-700">
-                            {currentPet.is_ai ? t.match.roleIntro : t.match.aiAnalysis}
-                          </span>
-                            </div>
-
-                            <p className="text-sm leading-relaxed text-stone-700">
-                              {displayDescription}
-                            </p>
-                          </div>
-
                           <div className="flex flex-wrap gap-2">
-                            {displayType ? (
-                                <Badge variant="secondary" className="rounded-full border border-stone-100 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 shadow-sm">
-                                  {displayType}
-                                </Badge>
-                            ) : null}
-
-                            {displayAgeText || petGenderSymbol ? (
-                                <Badge variant="secondary" className="rounded-full border border-stone-100 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 shadow-sm">
-                                  {displayAgeText}
-                                  {petGenderSymbol ? (
-                                      <span className={petGenderColor}>{petGenderSymbol}</span>
-                                  ) : null}
-                                </Badge>
-                            ) : null}
-
-                            <Badge variant="secondary" className="rounded-full border border-stone-100 bg-white px-3 py-1.5 text-xs font-semibold text-stone-600 shadow-sm">
-                              @{displayUsername}
+                            <Badge variant="secondary" className="rounded-full border border-orange-100 bg-gradient-to-r from-orange-50 to-amber-50 px-3 py-1.5 text-xs font-bold text-orange-700 shadow-sm">
+                              {t.match.similarPetAgeTag}
                             </Badge>
                           </div>
                         </div>
@@ -643,7 +590,7 @@ export default function MatchPage() {
                   </AnimatePresence>
                 </div>
 
-                <div className="mt-6 flex items-center justify-center gap-7 pb-2">
+<div className="mt-3 flex items-center justify-center gap-7 pb-2">
                   <Button
                       onClick={handleDislike}
                       size="icon"
