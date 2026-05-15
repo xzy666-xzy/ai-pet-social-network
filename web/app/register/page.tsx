@@ -67,6 +67,29 @@ export default function RegisterPage() {
   const { register } = useAuth()
   const { t, locale } = useLanguage()
 
+  const petGenderTexts = {
+    zh: {
+      label: "宠物性别",
+      placeholder: "请选择宠物性别",
+      male: "男 ♂",
+      female: "女 ♀",
+    },
+    en: {
+      label: "Pet gender",
+      placeholder: "Select pet gender",
+      male: "Male ♂",
+      female: "Female ♀",
+    },
+    ko: {
+      label: "반려동물 성별",
+      placeholder: "반려동물 성별 선택",
+      male: "수컷 ♂",
+      female: "암컷 ♀",
+    },
+  } as const
+
+  const petGenderI18n = petGenderTexts[locale] ?? petGenderTexts.en
+
   const [step, setStep] = useState(1)
 
   const [email, setEmail] = useState("")
@@ -439,20 +462,19 @@ export default function RegisterPage() {
 
                       <div>
                         <label className="mb-2 block text-sm font-semibold text-stone-700">
-                          Pet gender
+                          {petGenderI18n.label}
                         </label>
-                        <Select value={petGender} onValueChange={setPetGender}>
-                          <SelectTrigger className="h-13 w-full rounded-2xl border-stone-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100">
-                            <SelectValue placeholder="Select pet gender" />
-                          </SelectTrigger>
-                          <SelectContent
-                            position="item-aligned"
-                            className="border border-stone-200 bg-white text-stone-800 shadow-xl"
-                          >
-                            <SelectItem value="male">男 ♂</SelectItem>
-                            <SelectItem value="female">女 ♀</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <select
+                          value={petGender}
+                          onChange={(e) => setPetGender(e.target.value)}
+                          className="h-13 w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-800 outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
+                        >
+                          <option value="" disabled>
+                            {petGenderI18n.placeholder}
+                          </option>
+                          <option value="male">{petGenderI18n.male}</option>
+                          <option value="female">{petGenderI18n.female}</option>
+                        </select>
                       </div>
 
                       <div>
