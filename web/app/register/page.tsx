@@ -68,6 +68,35 @@ export default function RegisterPage() {
   const { register } = useAuth()
   const { t, locale } = useLanguage()
 
+  const verificationTexts = {
+    zh: {
+      label: "验证码",
+      placeholder: "请输入验证码",
+      sendButton: "发送验证码",
+      sent: "验证码已发送",
+      enterEmailFirst: "请先输入邮箱",
+      invalidOrExpired: "验证码错误或已过期",
+    },
+    en: {
+      label: "Verification code",
+      placeholder: "Enter verification code",
+      sendButton: "Send code",
+      sent: "Code sent",
+      enterEmailFirst: "Please enter email first",
+      invalidOrExpired: "Verification code is invalid or expired",
+    },
+    ko: {
+      label: "인증번호",
+      placeholder: "인증번호를 입력하세요",
+      sendButton: "인증번호 보내기",
+      sent: "인증번호를 보냈습니다",
+      enterEmailFirst: "먼저 이메일을 입력하세요",
+      invalidOrExpired: "인증번호가 잘못되었거나 만료되었습니다",
+    },
+  } as const
+
+  const verificationI18n = verificationTexts[locale] ?? verificationTexts.en
+
   const petGenderTexts = {
     zh: {
       label: "宠物性别",
@@ -94,6 +123,7 @@ export default function RegisterPage() {
   const [step, setStep] = useState(1)
 
   const [email, setEmail] = useState("")
+  const [verificationCode, setVerificationCode] = useState("")
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -114,6 +144,8 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const [error, setError] = useState("")
+  const [codeMessage, setCodeMessage] = useState("")
+  const [sendingCode, setSendingCode] = useState(false)
   const [loading, setLoading] = useState(false)
 
   const handleCityChange = (value: string) => {
@@ -123,9 +155,37 @@ export default function RegisterPage() {
     setCityLng(selectedCity?.city_lng ?? null)
   }
 
+  const handleSendVerificationCode = async () => {
+    setError("")
+    setCodeMessage("")
+
+    if (!email.trim()) {
+      setError(verificationI18n.enterEmailFirst)
+      return
+    }
+
+    setSendingCode(true)
+
+    try {
+      await apiRequest<{ success: true }>("/auth/send-verification-code", {
+        method: "POST",
+        body: JSON.stringify({
+          email,
+        }),
+      })
+
+      setCodeMessage(verificationI18n.sent)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : (t.auth?.registerFailed || "Registration failed"))
+    } finally {
+      setSendingCode(false)
+    }
+  }
+
   const handleNext = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setCodeMessage("")
 
     if (!email || !username || !password || !confirmPassword || !city || cityLat === null || cityLng === null) {
       setError(t.auth?.fillRequired || "Please fill in all required fields")
@@ -172,7 +232,21 @@ export default function RegisterPage() {
         setError(t.auth?.usernameTaken || "Username is already used")
         return
       }
+
+      try {
+        await apiRequest<{ success: true }>("/auth/verify-code", {
+          method: "POST",
+          body: JSON.stringify({
+            email,
+            code: verificationCode,
+          }),
+        })
+      } catch {
+        setError(verificationI18n.invalidOrExpired)
+        return
+      }
     } catch (e) {
+
       setError(
         e instanceof Error
           ? e.message
@@ -223,6 +297,7 @@ export default function RegisterPage() {
     try {
       const result = await register({
         email,
+        verificationCode,
         password,
         username,
         petName,
@@ -338,6 +413,32 @@ export default function RegisterPage() {
                               onChange={(e) => setEmail(e.target.value)}
                           />
                         </div>
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm font-semibold text-stone-700">
+                          {verificationI18n.label}
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder={verificationI18n.placeholder}
+                            className="h-13 flex-1 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
+                            value={verificationCode}
+                            onChange={(e) => setVerificationCode(e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            onClick={handleSendVerificationCode}
+                            disabled={sendingCode}
+                            className="shrink-0 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-600 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-70"
+                          >
+                            {verificationI18n.sendButton}
+                          </button>
+                        </div>
+                        {codeMessage && (
+                          <p className="mt-2 text-sm text-emerald-600">{codeMessage}</p>
+                        )}
                       </div>
 
                       <div>

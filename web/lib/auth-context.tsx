@@ -47,6 +47,7 @@ interface RegisterData {
   email: string
   username: string
   password: string
+  verificationCode?: string
   petName?: string
   petBreed?: string
   pet_gender?: string | null
@@ -145,6 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: registerData.email,
           username: registerData.username,
           password: registerData.password,
+          verificationCode: registerData.verificationCode,
           pet_name: registerData.petName || "",
           pet_type: registerData.petBreed || "",
           pet_gender: registerData.pet_gender ?? null,
