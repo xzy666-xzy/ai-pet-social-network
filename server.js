@@ -9,6 +9,7 @@ const { cert, getApps, initializeApp } = require("firebase-admin/app")
 const { getMessaging } = require("firebase-admin/messaging")
 const { createClient } = require("@supabase/supabase-js")
 const OpenAI = require("openai")
+const { Resend } = require("resend")
 const authMiddleware = require("./middleware/auth")
 
 const envPath = path.join(__dirname, ".env")
@@ -27,9 +28,12 @@ const DEFAULT_DAILY_LIKE_LIMIT = 3
 const MEMBER_DAILY_LIKE_LIMIT = 999
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-5.2"
+const RESEND_API_KEY = process.env.RESEND_API_KEY
+const RESEND_FROM_EMAIL = "verify@mail.wepet.asia"
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID
 const FIREBASE_PRIVATE_KEY = process.env.FIREBASE_PRIVATE_KEY
 const FIREBASE_CLIENT_EMAIL = process.env.FIREBASE_CLIENT_EMAIL
+const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null
 
 let firebaseMessaging = null
 
@@ -129,6 +133,14 @@ function toDataResponse(res, data) {
     success: true,
     data,
   })
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || ""))
+}
+
+function generateVerificationCode() {
+  return String(Math.floor(100000 + Math.random() * 900000))
 }
 
 function toFiniteNumber(value) {
@@ -910,6 +922,7 @@ app.delete("/auth/me", authMiddleware, async (req, res) => {
 app.post("/auth/register", async (req, res) => {
   try {
     const email = String(req.body?.email || "").trim().toLowerCase()
+    const verificationCode = String(req.body?.verificationCode || "").trim()
     const password = String(req.body?.password || "")
     const username = String(req.body?.username || "").trim()
     const petName = String(req.body?.pet_name || "").trim()
@@ -945,6 +958,13 @@ app.post("/auth/register", async (req, res) => {
       })
     }
 
+    if (!verificationCode) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid or expired verification code",
+      })
+    }
+
     if (password.length < 6) {
       return res.status(400).json({
         success: false,
@@ -963,6 +983,28 @@ app.post("/auth/register", async (req, res) => {
       return res.status(400).json({
         success: false,
         error: "city_lat and city_lng must be numbers",
+      })
+    }
+
+    const now = new Date().toISOString()
+    const { data: latestVerificationCode, error: verificationError } = await supabase
+      .from("email_verification_codes")
+      .select("id")
+      .eq("email", email)
+      .eq("code", verificationCode)
+      .gt("expires_at", now)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (verificationError) {
+      throw verificationError
+    }
+
+    if (!latestVerificationCode) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid or expired verification code",
       })
     }
 
@@ -1004,6 +1046,15 @@ app.post("/auth/register", async (req, res) => {
 
     if (insertError) throw insertError
 
+    const { error: markCodeUsedError } = await supabase
+      .from("email_verification_codes")
+      .update({
+        used_at: now,
+      })
+      .eq("email", email)
+
+    if (markCodeUsedError) throw markCodeUsedError
+
     const accessToken = createAccessToken(createdUser)
 
     return res.json({
@@ -1017,6 +1068,116 @@ app.post("/auth/register", async (req, res) => {
     return res.status(500).json({
       success: false,
       error: "Registration failed",
+    })
+  }
+})
+
+app.post("/auth/send-verification-code", async (req, res) => {
+  try {
+    const email = String(req.body?.email || "").trim().toLowerCase()
+
+    if (!email || !isValidEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        error: "Valid email is required",
+      })
+    }
+
+    const code = generateVerificationCode()
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString()
+
+    const { error } = await supabase
+      .from("email_verification_codes")
+      .insert({
+        email,
+        code,
+        expires_at: expiresAt,
+      })
+
+    if (error) {
+      throw error
+    }
+
+    if (resend) {
+      await resend.emails.send({
+        from: RESEND_FROM_EMAIL,
+        to: email,
+        subject: "WePet Verification Code",
+        text: `Your WePet verification code is: ${code}\nThis code will expire in 10 minutes.`,
+      })
+    }
+
+    console.log(`[Email Verification] ${email}: ${code}`)
+
+    return res.json({
+      success: true,
+    })
+  } catch (error) {
+    console.error("Send verification code error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to send verification code",
+    })
+  }
+})
+
+app.post("/auth/verify-code", async (req, res) => {
+  try {
+    const email = String(req.body?.email || "").trim().toLowerCase()
+    const code = String(req.body?.code || "").trim()
+
+    if (!email || !code) {
+      return res.status(400).json({
+        success: false,
+        error: "email and code are required",
+      })
+    }
+
+    const now = new Date().toISOString()
+
+    const { data: verificationCode, error: selectError } = await supabase
+      .from("email_verification_codes")
+      .select("id")
+      .eq("email", email)
+      .eq("code", code)
+      .is("used_at", null)
+      .gt("expires_at", now)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (selectError) {
+      throw selectError
+    }
+
+    if (!verificationCode) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid or expired verification code",
+      })
+    }
+
+    const { error: updateError } = await supabase
+      .from("email_verification_codes")
+      .update({
+        used_at: now,
+      })
+      .eq("id", verificationCode.id)
+
+    if (updateError) {
+      throw updateError
+    }
+
+    return res.json({
+      success: true,
+    })
+  } catch (error) {
+    console.error("Verify code error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to verify code",
     })
   }
 })

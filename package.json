@@ -18,7 +18,8 @@
     "firebase-admin": "^13.9.0",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1.14.0",
-    "openai": "^6.32.0"
+    "openai": "^6.32.0",
+    "resend": "^6.12.3"
   },
   "devDependencies": {
     "typescript": "^6.0.3"
