@@ -233,6 +233,8 @@ export default function RegisterPage() {
         return
       }
 
+      setError("")
+
       try {
         await apiRequest<{ success: true }>("/auth/verify-code", {
           method: "POST",
@@ -241,6 +243,8 @@ export default function RegisterPage() {
             code: verificationCode,
           }),
         })
+
+        setError("")
       } catch {
         setError(verificationI18n.invalidOrExpired)
         return

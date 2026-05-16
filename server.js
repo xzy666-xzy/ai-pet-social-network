@@ -1158,17 +1158,6 @@ app.post("/auth/verify-code", async (req, res) => {
       })
     }
 
-    const { error: updateError } = await supabase
-      .from("email_verification_codes")
-      .update({
-        used_at: now,
-      })
-      .eq("id", verificationCode.id)
-
-    if (updateError) {
-      throw updateError
-    }
-
     return res.json({
       success: true,
     })
