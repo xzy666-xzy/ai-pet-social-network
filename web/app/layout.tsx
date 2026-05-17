@@ -7,10 +7,6 @@ import "./globals.css"
 export const metadata = {
     title: "WePet (위펫) - AI Pet Social Network",
     description: "Connect your pet with perfect friends through AI-powered matching. Find walking buddies and playdates.",
-    icons: {
-        icon: "/icon-light-32x32.png",
-        apple: "/apple-icon.png",
-    },
     generator: "v0.app",
 }
 
