@@ -677,6 +677,7 @@ async function sendLikePushNotification({
       },
       data: {
         type: "pet_like",
+        senderUserId: String(fromUser.id),
       },
     })
   } catch (error) {
