@@ -158,6 +158,16 @@ export const translations = {
       cancel: "Cancel",
       sendFailed: "Send failed, please try again later.",
       yesterday: "Yesterday",
+      settings: {
+        title: "Chat Settings",
+        mute: "Mute Notifications",
+        pin: "Pin Chat",
+        background: "Chat Background",
+        delete: "Delete Chat",
+        deleteConfirm: "Are you sure you want to delete this chat?",
+        cancel: "Cancel",
+        confirm: "Confirm",
+      },
     },
 
     // Explore Page
@@ -616,6 +626,16 @@ export const translations = {
       cancel: "취소",
       sendFailed: "전송 실패, 나중에 다시 시도해주세요.",
       yesterday: "어제",
+      settings: {
+        title: "채팅 설정",
+        mute: "알림 끄기",
+        pin: "채팅 고정",
+        background: "채팅 배경",
+        delete: "채팅 삭제",
+        deleteConfirm: "이 채팅을 삭제하시겠어요?",
+        cancel: "취소",
+        confirm: "확인",
+      },
     },
 
     // Explore Page
@@ -1073,6 +1093,16 @@ export const translations = {
       cancel: "取消",
       sendFailed: "发送失败，请稍后重试。",
       yesterday: "昨天",
+      settings: {
+        title: "聊天设置",
+        mute: "消息免打扰",
+        pin: "置顶聊天",
+        background: "聊天背景",
+        delete: "删除聊天",
+        deleteConfirm: "确定要删除此聊天吗？",
+        cancel: "取消",
+        confirm: "确认",
+      },
     },
 
     // Explore Page

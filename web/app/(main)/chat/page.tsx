@@ -2,10 +2,12 @@
 
 import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Send, ChevronLeft, Heart } from "lucide-react"
+import { Send, ChevronLeft, Heart, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Switch } from "@/components/ui/switch"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useLanguage } from "@/lib/i18n/language-context"
 import { useAuth } from "@/lib/auth-context"
 import { apiRequest, ApiError, getAccessToken } from "@/lib/api-client"
@@ -145,6 +147,9 @@ export default function ChatPage() {
   const [chatLiked, setChatLiked] = useState(false)
   const [chatMatched, setChatMatched] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [muteEnabled, setMuteEnabled] = useState(false)
+  const [pinEnabled, setPinEnabled] = useState(false)
   const [messageMenu, setMessageMenu] = useState<ChatMessage | null>(null)
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -216,6 +221,7 @@ export default function ChatPage() {
         setChatLiked(false)
         setChatMatched(false)
         setProfileOpen(false)
+        setSettingsOpen(false)
         setMessageMenu(null)
         setDeletingMessageId(null)
 
@@ -655,7 +661,57 @@ export default function ChatPage() {
             </div>
           </div>
 
+          {targetUserId ? (
+              <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-10 w-10 rounded-full border border-orange-100 bg-white text-stone-700 shadow-sm hover:bg-orange-50"
+                  onClick={() => setSettingsOpen(true)}
+              >
+                <Settings className="h-5 w-5" />
+              </Button>
+          ) : null}
+
         </div>
+
+        <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+          <SheetContent side="right" className="w-[86%] border-l border-orange-100 p-0 sm:max-w-sm">
+            <SheetHeader className="border-b border-orange-100 px-5 py-4">
+              <SheetTitle className="text-base font-extrabold tracking-tight text-stone-900">
+                {t.chat.settings.title}
+              </SheetTitle>
+            </SheetHeader>
+
+            <div className="space-y-3 px-5 py-5">
+              <div className="flex items-center justify-between rounded-2xl border border-orange-100 bg-white px-4 py-3">
+                <span className="text-sm font-semibold text-stone-800">{t.chat.settings.mute}</span>
+                <Switch checked={muteEnabled} onCheckedChange={setMuteEnabled} />
+              </div>
+
+              <div className="flex items-center justify-between rounded-2xl border border-orange-100 bg-white px-4 py-3">
+                <span className="text-sm font-semibold text-stone-800">{t.chat.settings.pin}</span>
+                <Switch checked={pinEnabled} onCheckedChange={setPinEnabled} />
+              </div>
+
+              <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 w-full justify-start rounded-2xl border-orange-200 text-sm font-semibold text-stone-800 hover:bg-orange-50"
+              >
+                {t.chat.settings.background}
+              </Button>
+
+              <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 w-full justify-start rounded-2xl border-red-200 text-sm font-semibold text-red-600 hover:bg-red-50 hover:text-red-700"
+              >
+                {t.chat.settings.delete}
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
 
         {profileOpen && targetUser ? (
             <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-4 sm:items-center sm:pb-0">
