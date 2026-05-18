@@ -582,6 +582,20 @@ function truncateNotificationBody(content) {
   return `${text.slice(0, 80)}...`
 }
 
+async function getActivePushTokens(userId) {
+  const { data: tokenRows, error: tokenError } = await supabase
+    .from("push_tokens")
+    .select("token")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+
+  if (tokenError) {
+    throw tokenError
+  }
+
+  return [...new Set((tokenRows || []).map((row) => String(row.token || "").trim()).filter(Boolean))]
+}
+
 async function sendNewMessagePushNotification({
   conversationId,
   senderId,
@@ -594,17 +608,7 @@ async function sendNewMessagePushNotification({
   }
 
   try {
-    const { data: tokenRows, error: tokenError } = await supabase
-      .from("push_tokens")
-      .select("token")
-      .eq("user_id", otherUserId)
-      .eq("is_active", true)
-
-    if (tokenError) {
-      throw tokenError
-    }
-
-    const tokens = [...new Set((tokenRows || []).map((row) => String(row.token || "").trim()).filter(Boolean))]
+    const tokens = await getActivePushTokens(otherUserId)
 
     if (tokens.length === 0) {
       return
@@ -632,6 +636,51 @@ async function sendNewMessagePushNotification({
     })
   } catch (error) {
     console.warn("Send chat message push failed:", error?.message || error)
+  }
+}
+
+async function sendLikePushNotification({
+  fromUser,
+  toUserId,
+  isMutualMatch,
+}) {
+  if (!firebaseMessaging) {
+    return
+  }
+
+  try {
+    const tokens = await getActivePushTokens(toUserId)
+
+    if (tokens.length === 0) {
+      return
+    }
+
+    const senderDisplayName =
+      String(fromUser?.pet_name || "").trim() ||
+      String(fromUser?.username || "").trim() ||
+      "Someone"
+
+    const title = isMutualMatch ? "You have a new match!" : "Someone liked you!"
+
+    await firebaseMessaging.sendEachForMulticast({
+      tokens,
+      notification: {
+        title,
+        body: `${senderDisplayName} liked your pet`,
+      },
+      android: {
+        priority: "high",
+        notification: {
+          priority: "high",
+          channelId: "chat_messages",
+        },
+      },
+      data: {
+        type: "pet_like",
+      },
+    })
+  } catch (error) {
+    console.warn("Send pet like push failed:", error?.message || error)
   }
 }
 
@@ -1474,6 +1523,12 @@ app.post("/match/like", authMiddleware, async (req, res) => {
 
     const isMutualMatch = await hasLiked(targetUserId, String(currentUser.id))
     const latestQuota = await getLikeQuota(String(currentUser.id))
+
+    void sendLikePushNotification({
+      fromUser: currentUser,
+      toUserId: targetUserId,
+      isMutualMatch,
+    })
 
     return toDataResponse(res, {
       alreadyLiked: false,
