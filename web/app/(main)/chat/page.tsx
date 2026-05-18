@@ -1,22 +1,26 @@
 "use client"
 
-import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react"
+import { type ChangeEvent, type MouseEvent, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Send, ChevronLeft, Heart, Settings } from "lucide-react"
+import { Send, ChevronLeft, Heart, Settings, ImagePlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Switch } from "@/components/ui/switch"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { useLanguage } from "@/lib/i18n/language-context"
 import { useAuth } from "@/lib/auth-context"
 import { apiRequest, ApiError, getAccessToken } from "@/lib/api-client"
+import { supabase } from "@/lib/supabase"
 
 type ChatMessage = {
   id: string
   conversation_id: string
   sender_id: string
   content: string | null
+  message_type?: "text" | "image"
+  image_url?: string | null
   is_read?: number
   is_deleted?: boolean | number
   deleted_at?: string | null
@@ -51,10 +55,12 @@ type ConversationSummary = {
   other_membership_active?: boolean
   last_message: string | null
   last_message_time: string | null
+  is_pinned?: boolean
   liked_by_me?: number
   liked_me?: number
   is_match?: number
   single_message_used_by_me?: number
+  last_message_type?: "text" | "image" | null
 }
 
 type ConversationsResponse = {
@@ -103,6 +109,10 @@ type DeleteMessageResponse = {
   }
 }
 
+type DeleteConversationResponse = {
+  success: true
+}
+
 type MatchLikeResponse = {
   success: true
   data: {
@@ -110,6 +120,48 @@ type MatchLikeResponse = {
     isMatch?: boolean
     matched?: boolean
   }
+}
+
+type ChatSettings = {
+  background_key?: string | null
+  is_muted?: boolean | number | null
+  is_pinned?: boolean | number | null
+}
+
+type ChatSettingsResponse = {
+  success?: boolean
+  data?: ChatSettings | null
+  background_key?: string | null
+  is_muted?: boolean | number | null
+  is_pinned?: boolean | number | null
+}
+
+type ChatBackgroundKey = "default" | "orange" | "green" | "blue"
+
+const CHAT_BACKGROUND_OPTIONS: ChatBackgroundKey[] = ["default", "orange", "green", "blue"]
+
+function parseBackgroundKey(value: unknown): ChatBackgroundKey {
+  if (value === "orange" || value === "green" || value === "blue" || value === "default") {
+    return value
+  }
+  return "default"
+}
+
+function normalizeBoolean(value: unknown): boolean {
+  return value === true || value === 1 || value === "1"
+}
+
+function getChatBackgroundClass(backgroundKey: ChatBackgroundKey) {
+  if (backgroundKey === "orange") {
+    return "bg-gradient-to-br from-orange-50/55 via-amber-50/45 to-stone-50"
+  }
+  if (backgroundKey === "green") {
+    return "bg-gradient-to-br from-emerald-50/55 via-lime-50/45 to-stone-50"
+  }
+  if (backgroundKey === "blue") {
+    return "bg-gradient-to-br from-sky-50/60 via-blue-50/45 to-stone-50"
+  }
+  return "bg-gradient-to-b from-[#fffaf5] via-[#f8f7f4] to-[#f5f6f8]"
 }
 
 function isUserOnline(lastSeen?: string | null) {
@@ -148,12 +200,22 @@ export default function ChatPage() {
   const [chatMatched, setChatMatched] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [muteEnabled, setMuteEnabled] = useState(false)
-  const [pinEnabled, setPinEnabled] = useState(false)
+  const [background_key, setBackgroundKey] = useState<ChatBackgroundKey>("default")
+  const [is_muted, setIsMuted] = useState(false)
+  const [is_pinned, setIsPinned] = useState(false)
   const [messageMenu, setMessageMenu] = useState<ChatMessage | null>(null)
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null)
+  const [deletingConversation, setDeletingConversation] = useState(false)
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const imageInputRef = useRef<HTMLInputElement | null>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasToken = Boolean(getAccessToken())
+
+  const chatBackgroundClass = useMemo(
+      () => getChatBackgroundClass(background_key),
+      [background_key]
+  )
 
   const headerName = useMemo(() => {
     if (!targetUserId) return t.chat.title
@@ -204,6 +266,95 @@ export default function ChatPage() {
     return safeConversations
   }
 
+  const loadChatSettings = async (convId: string) => {
+    try {
+      const data = await apiRequest<ChatSettingsResponse>(`/chat/settings?conversation_id=${encodeURIComponent(convId)}`, {
+        cache: "no-store",
+        auth: true,
+      })
+
+      const source = data?.data && typeof data.data === "object" ? data.data : data
+
+      setBackgroundKey(parseBackgroundKey(source?.background_key))
+      setIsMuted(normalizeBoolean(source?.is_muted))
+      setIsPinned(normalizeBoolean(source?.is_pinned))
+    } catch (error) {
+      console.warn("Failed to load chat settings:", error)
+    }
+  }
+
+  const saveChatSettings = async (next: Partial<{ background_key: ChatBackgroundKey; is_muted: boolean; is_pinned: boolean }>) => {
+    if (!conversationId) return
+
+    try {
+      await apiRequest<ChatSettingsResponse>("/chat/settings", {
+        method: "PUT",
+        auth: true,
+        body: JSON.stringify({
+          conversation_id: conversationId,
+          ...next,
+        }),
+      })
+    } catch (error) {
+      console.warn("Failed to save chat settings:", error)
+    }
+  }
+
+  const handleMuteChange = (checked: boolean) => {
+    setIsMuted(checked)
+    saveChatSettings({ is_muted: checked })
+  }
+
+  const handlePinChange = (checked: boolean) => {
+    setIsPinned(checked)
+    saveChatSettings({ is_pinned: checked })
+  }
+
+  const handleBackgroundChange = (nextBackgroundKey: ChatBackgroundKey) => {
+    setBackgroundKey(nextBackgroundKey)
+    saveChatSettings({ background_key: nextBackgroundKey })
+  }
+
+  const handleDeleteConversation = async () => {
+    if (!conversationId || deletingConversation) return
+
+    const confirmed = window.confirm(t.chat.settings.delete)
+    if (!confirmed) return
+
+    try {
+      setDeletingConversation(true)
+
+      await apiRequest<DeleteConversationResponse>(`/chat/conversations/${conversationId}`, {
+        method: "DELETE",
+        auth: true,
+      })
+
+      setSettingsOpen(false)
+      setProfileOpen(false)
+      setConversationId(null)
+      setTargetUser(null)
+      setMessages([])
+      setInputText("")
+      setInlineNotice(false)
+      setIntroLocked(false)
+      setChatLiked(false)
+      setChatMatched(false)
+      setBackgroundKey("default")
+      setIsMuted(false)
+      setIsPinned(false)
+      setMessageMenu(null)
+      setDeletingMessageId(null)
+
+      await loadConversations()
+      router.push("/chat")
+      router.refresh()
+    } catch (error) {
+      console.warn("Failed to delete conversation:", error)
+    } finally {
+      setDeletingConversation(false)
+    }
+  }
+
   useEffect(() => {
     if (loading) return
     if (!hasToken) return
@@ -222,6 +373,9 @@ export default function ChatPage() {
         setChatMatched(false)
         setProfileOpen(false)
         setSettingsOpen(false)
+        setBackgroundKey("default")
+        setIsMuted(false)
+        setIsPinned(false)
         setMessageMenu(null)
         setDeletingMessageId(null)
 
@@ -259,6 +413,8 @@ export default function ChatPage() {
 
         setConversationId(data.data.conversationId)
         setTargetUser(data.data.targetUser)
+
+        await loadChatSettings(data.data.conversationId)
 
         const loadedMessages = await loadMessages(data.data.conversationId)
         const latestConversations = await loadConversations()
@@ -299,6 +455,17 @@ export default function ChatPage() {
       cancelled = true
     }
   }, [loading, user, targetUserId, hasToken])
+
+  useEffect(() => {
+    if (!conversationId) {
+      setBackgroundKey("default")
+      setIsMuted(false)
+      setIsPinned(false)
+      return
+    }
+
+    loadChatSettings(conversationId)
+  }, [conversationId])
 
   useEffect(() => {
     if (!conversationId) return
@@ -451,6 +618,85 @@ export default function ChatPage() {
     }
   }
 
+  const handlePickImage = () => {
+    if (!targetUserId || !conversationId || introLocked || sending || uploadingImage) return
+    imageInputRef.current?.click()
+  }
+
+  const handleImageSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ""
+
+    if (!file || !conversationId || sending || uploadingImage || introLocked) return
+
+    try {
+      setUploadingImage(true)
+      setInlineNotice(false)
+      setPageError("")
+
+      const filePath = `chat-${Date.now()}-${file.name}`
+      const { error: uploadError } = await supabase.storage
+        .from("chat-images")
+        .upload(filePath, file)
+
+      if (uploadError) {
+        throw new Error(uploadError.message)
+      }
+
+      const { data: publicData } = supabase.storage.from("chat-images").getPublicUrl(filePath)
+      const publicUrl = publicData.publicUrl
+
+      if (!publicUrl) {
+        throw new Error("Failed to resolve uploaded image URL")
+      }
+
+      const data = await apiRequest<SendMessageResponse>("/chat/messages", {
+        method: "POST",
+        auth: true,
+        body: JSON.stringify({
+          conversationId,
+          message_type: "image",
+          image_url: publicUrl,
+          content: null,
+        }),
+      })
+
+      await loadMessages(conversationId)
+
+      if (!data.data.access?.isMatch) {
+        setInlineNotice(true)
+        setIntroLocked(true)
+      } else {
+        setInlineNotice(false)
+        setIntroLocked(false)
+      }
+    } catch (error: unknown) {
+      if (
+        error instanceof ApiError &&
+        (error.code === "INTRO_MESSAGE_LIMIT_REACHED" ||
+          error.code === "LIKE_REQUIRED" ||
+          error.code === "MESSAGE_NOT_ALLOWED")
+      ) {
+        setInlineNotice(error.code)
+
+        if (error.code === "INTRO_MESSAGE_LIMIT_REACHED") {
+          setIntroLocked(true)
+        }
+
+        await loadMessages(conversationId)
+        return
+      }
+
+      if (error instanceof Error) {
+        setPageError(error.message)
+      } else {
+        setPageError(t.chat.sendFailed)
+      }
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
   const formatTime = (time: string) => {
     const date = new Date(time)
     if (Number.isNaN(date.getTime())) return ""
@@ -587,7 +833,7 @@ export default function ChatPage() {
   }
 
   return (
-      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-gradient-to-b from-orange-50 via-stone-50 to-white">
+      <div className={`flex h-full min-h-0 flex-col overflow-hidden ${chatBackgroundClass}`}>
         <div className="flex items-center justify-between gap-3 border-b border-orange-100/80 bg-white/90 px-5 py-4 shadow-sm backdrop-blur-xl">
           <div className="flex min-w-0 items-center gap-3">
             {targetUserId ? (
@@ -686,28 +932,54 @@ export default function ChatPage() {
             <div className="space-y-3 px-5 py-5">
               <div className="flex items-center justify-between rounded-2xl border border-orange-100 bg-white px-4 py-3">
                 <span className="text-sm font-semibold text-stone-800">{t.chat.settings.mute}</span>
-                <Switch checked={muteEnabled} onCheckedChange={setMuteEnabled} />
+                <Switch checked={is_muted} onCheckedChange={handleMuteChange} />
               </div>
 
               <div className="flex items-center justify-between rounded-2xl border border-orange-100 bg-white px-4 py-3">
                 <span className="text-sm font-semibold text-stone-800">{t.chat.settings.pin}</span>
-                <Switch checked={pinEnabled} onCheckedChange={setPinEnabled} />
+                <Switch checked={is_pinned} onCheckedChange={handlePinChange} />
+              </div>
+
+              <div className="rounded-2xl border border-orange-100 bg-white px-4 py-3">
+                <div className="mb-3 text-sm font-semibold text-stone-800">{t.chat.settings.background}</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {CHAT_BACKGROUND_OPTIONS.map((option) => {
+                    const active = background_key === option
+
+                    return (
+                        <button
+                            key={option}
+                            type="button"
+                            onClick={() => handleBackgroundChange(option)}
+                            className={`h-11 rounded-xl border text-sm font-semibold transition ${
+                                active
+                                    ? "border-orange-400 ring-2 ring-orange-200"
+                                    : "border-orange-200 hover:bg-orange-50"
+                            } ${
+                                option === "orange"
+                                    ? "bg-gradient-to-br from-orange-100 to-amber-50"
+                                    : option === "green"
+                                        ? "bg-gradient-to-br from-emerald-100 to-lime-50"
+                                        : option === "blue"
+                                            ? "bg-gradient-to-br from-sky-100 to-blue-50"
+                                            : "bg-white"
+                            } text-stone-800`}
+                        >
+                          {option}
+                        </button>
+                    )
+                  })}
+                </div>
               </div>
 
               <Button
                   type="button"
                   variant="outline"
-                  className="h-11 w-full justify-start rounded-2xl border-orange-200 text-sm font-semibold text-stone-800 hover:bg-orange-50"
-              >
-                {t.chat.settings.background}
-              </Button>
-
-              <Button
-                  type="button"
-                  variant="outline"
+                  onClick={handleDeleteConversation}
+                  disabled={!conversationId || deletingConversation}
                   className="h-11 w-full justify-start rounded-2xl border-red-200 text-sm font-semibold text-red-600 hover:bg-red-50 hover:text-red-700"
               >
-                {t.chat.settings.delete}
+                {deletingConversation ? t.chat.deleting : t.chat.settings.delete}
               </Button>
             </div>
           </SheetContent>
@@ -861,6 +1133,11 @@ export default function ChatPage() {
                                     <div className="truncate text-base font-extrabold tracking-tight text-stone-900">
                                       {item.other_pet_name || item.other_username}
                                     </div>
+                                    {item.is_pinned ? (
+                                        <span className="shrink-0 rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-bold text-stone-600">
+                                          Pinned
+                                        </span>
+                                    ) : null}
                                     {item.other_membership_active ? (
                                         <span className="shrink-0 rounded-full bg-gradient-to-r from-rose-500 to-amber-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
                                           VIP
@@ -899,11 +1176,13 @@ export default function ChatPage() {
                                   </span>
                                 </div>
 
-                                <div className="mt-2 flex min-w-0 items-center justify-between gap-3">
-                                  <div className="truncate text-sm font-medium leading-5 text-stone-600">
-                                    {item.last_message || t.chat.noMessagesYet}
-                                  </div>
-                                  {item.liked_me && !item.is_match ? (
+                                  <div className="mt-2 flex min-w-0 items-center justify-between gap-3">
+                                    <div className="truncate text-sm font-medium leading-5 text-stone-600">
+                                    {item.last_message_type === "image"
+                                      ? "📷 Photo"
+                                      : item.last_message || t.chat.noMessagesYet}
+                                    </div>
+                                    {item.liked_me && !item.is_match ? (
                                       <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-orange-500 px-1.5 text-[10px] font-black text-white shadow-md shadow-orange-500/25">
                                         1
                                       </span>
@@ -964,25 +1243,56 @@ export default function ChatPage() {
                                   )}
                                 </button>
                             ) : null}
-                            <div
-                                className={`max-w-[76%] px-4 py-3 ${
-                                    isDeleted
-                                        ? "rounded-full bg-stone-100 text-xs text-stone-500"
-                                        : isMe
-                                        ? "rounded-[1.35rem] rounded-br-md bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-lg shadow-orange-500/20"
-                                        : "rounded-[1.35rem] rounded-bl-md border border-orange-100/80 bg-white text-stone-800 shadow-md shadow-orange-900/5"
-                                }`}
-                                onContextMenu={
-                                  isDeleted ? undefined : (event) => handleMessageContextMenu(event, msg)
-                                }
-                                onTouchStart={isDeleted ? undefined : () => handleMessageTouchStart(msg)}
-                                onTouchEnd={isDeleted ? undefined : clearLongPressTimer}
-                                onTouchMove={isDeleted ? undefined : clearLongPressTimer}
-                            >
-                              <div className={`break-words whitespace-pre-wrap leading-relaxed ${isDeleted ? "text-xs" : "text-[15px]"}`}>
-                                {isDeleted ? t.chat.messageDeleted : msg.content}
+                            {isDeleted ? (
+                              <div
+                                className="max-w-[76%] rounded-full bg-stone-100 px-4 py-3 text-xs text-stone-500"
+                                onContextMenu={undefined}
+                                onTouchStart={undefined}
+                                onTouchEnd={undefined}
+                                onTouchMove={undefined}
+                              >
+                                <div className="break-words whitespace-pre-wrap leading-relaxed text-xs">
+                                  {t.chat.messageDeleted}
+                                </div>
                               </div>
-                            </div>
+                            ) : msg.message_type === "image" && msg.image_url ? (
+                              <button
+                                type="button"
+                                className={`overflow-hidden rounded-2xl border bg-white p-1 shadow-[0_3px_12px_rgba(15,23,42,0.08)] ${
+                                  isMe
+                                    ? "border-orange-300/70"
+                                    : "border-stone-200/80"
+                                }`}
+                                style={{ maxWidth: 220 }}
+                                onClick={() => setPreviewImageUrl(msg.image_url || null)}
+                                onContextMenu={(event) => handleMessageContextMenu(event, msg)}
+                                onTouchStart={() => handleMessageTouchStart(msg)}
+                                onTouchEnd={clearLongPressTimer}
+                                onTouchMove={clearLongPressTimer}
+                              >
+                                <img
+                                  src={msg.image_url}
+                                  alt="Chat image"
+                                  className="h-auto w-full rounded-xl object-cover"
+                                />
+                              </button>
+                            ) : (
+                              <div
+                                className={`max-w-[76%] px-4 py-3 ${
+                                  isMe
+                                    ? "rounded-[1.35rem] rounded-br-[0.45rem] bg-gradient-to-br from-orange-500 via-orange-400 to-amber-400 text-white shadow-[0_8px_18px_rgba(251,146,60,0.32)]"
+                                    : "rounded-[1.35rem] rounded-bl-[0.45rem] border border-stone-200/80 bg-white text-stone-800 shadow-[0_3px_12px_rgba(15,23,42,0.08)]"
+                                }`}
+                                onContextMenu={(event) => handleMessageContextMenu(event, msg)}
+                                onTouchStart={() => handleMessageTouchStart(msg)}
+                                onTouchEnd={clearLongPressTimer}
+                                onTouchMove={clearLongPressTimer}
+                              >
+                                <div className="break-words whitespace-pre-wrap text-[15px] leading-relaxed">
+                                  {msg.content}
+                                </div>
+                              </div>
+                            )}
                             {showLikeButton ? (
                                 <button
                                     type="button"
@@ -1059,6 +1369,25 @@ export default function ChatPage() {
             ) : null}
 
             <div className="flex items-center gap-2 rounded-[1.6rem] border border-orange-100 bg-stone-50/90 px-3 py-2 shadow-inner">
+              <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageSelect}
+              />
+
+              <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  onClick={handlePickImage}
+                  disabled={!targetUserId || !conversationId || introLocked || sending || uploadingImage}
+                  className="h-10 w-10 shrink-0 rounded-full text-stone-600 hover:bg-orange-100/70 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ImagePlus className="h-5 w-5" />
+              </Button>
+
               <Input
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
@@ -1087,6 +1416,7 @@ export default function ChatPage() {
                       !inputText.trim() ||
                       !conversationId ||
                       sending ||
+                      uploadingImage ||
                       introLocked
                   }
                   className="h-10 w-10 shrink-0 rounded-full bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-lg shadow-orange-500/25 transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
@@ -1096,6 +1426,30 @@ export default function ChatPage() {
             </div>
           </div>
         </div>
+
+        <Dialog open={Boolean(previewImageUrl)} onOpenChange={(open) => !open && setPreviewImageUrl(null)}>
+          <DialogContent
+            showCloseButton={false}
+            className="max-w-[92vw] border-0 bg-transparent p-0 shadow-none"
+          >
+            <DialogTitle className="sr-only">Image preview</DialogTitle>
+            <div className="flex items-center justify-center">
+              {previewImageUrl ? (
+                <button
+                  type="button"
+                  className="cursor-zoom-out"
+                  onClick={() => setPreviewImageUrl(null)}
+                >
+                  <img
+                    src={previewImageUrl}
+                    alt="Preview"
+                    className="max-h-[80vh] max-w-[92vw] rounded-2xl object-contain"
+                  />
+                </button>
+              ) : null}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
   )
 }

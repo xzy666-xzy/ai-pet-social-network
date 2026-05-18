@@ -553,13 +553,15 @@ async function getConversationMessages(conversationId) {
   return data || []
 }
 
-async function createMessage(conversationId, senderId, content) {
+async function createMessage(conversationId, senderId, content, messageType = "text", imageUrl = null) {
   const { data, error } = await supabase
     .from("messages")
     .insert({
       conversation_id: conversationId,
       sender_id: senderId,
       content,
+      message_type: messageType,
+      image_url: imageUrl,
       created_at: new Date().toISOString(),
     })
     .select("*")
@@ -596,6 +598,33 @@ async function getActivePushTokens(userId) {
   return [...new Set((tokenRows || []).map((row) => String(row.token || "").trim()).filter(Boolean))]
 }
 
+async function isConversationMutedForUser(conversationId, userId) {
+  try {
+    const { data: settings, error } = await supabase
+      .from("chat_settings")
+      .select("is_muted")
+      .eq("user_id", userId)
+      .eq("conversation_id", conversationId)
+      .maybeSingle()
+
+    if (error) {
+      console.warn(
+        "Chat mute check failed, fallback to send push:",
+        error?.message || error
+      )
+      return false
+    }
+
+    return settings?.is_muted === true
+  } catch (error) {
+    console.warn(
+      "Chat mute check exception, fallback to send push:",
+      error?.message || error
+    )
+    return false
+  }
+}
+
 async function sendNewMessagePushNotification({
   conversationId,
   senderId,
@@ -608,6 +637,15 @@ async function sendNewMessagePushNotification({
   }
 
   try {
+    const isMuted = await isConversationMutedForUser(conversationId, otherUserId)
+
+    if (isMuted) {
+      console.log(
+        `Skip chat message push: user ${otherUserId} muted conversation ${conversationId}`
+      )
+      return
+    }
+
     const tokens = await getActivePushTokens(otherUserId)
 
     if (tokens.length === 0) {
@@ -2249,6 +2287,176 @@ app.post("/membership/checkout", authMiddleware, async (req, res) => {
   }
 })
 
+app.get("/chat/settings", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = req.user?.userId
+    const conversationId = String(req.query?.conversation_id || "").trim()
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    if (!conversationId) {
+      return res.status(400).json({
+        success: false,
+        error: "conversation_id is required",
+      })
+    }
+
+    const conversation = await getConversationById(conversationId)
+
+    if (
+      !conversation ||
+      (conversation.user1_id !== currentUserId && conversation.user2_id !== currentUserId)
+    ) {
+      return res.status(404).json({
+        success: false,
+        error: "Conversation not found",
+      })
+    }
+
+    const { data: settings, error } = await supabase
+      .from("chat_settings")
+      .select("conversation_id, background_key, is_pinned, is_muted")
+      .eq("user_id", currentUserId)
+      .eq("conversation_id", conversationId)
+      .maybeSingle()
+
+    if (error) {
+      throw error
+    }
+
+    return toDataResponse(res, {
+      conversation_id: conversationId,
+      background_key: settings?.background_key ?? "",
+      is_pinned: settings?.is_pinned ?? false,
+      is_muted: settings?.is_muted ?? false,
+    })
+  } catch (error) {
+    console.error("Chat settings get error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load chat settings",
+    })
+  }
+})
+
+app.put("/chat/settings", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = req.user?.userId
+    const conversationId = String(req.body?.conversation_id || "").trim()
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    if (!conversationId) {
+      return res.status(400).json({
+        success: false,
+        error: "conversation_id is required",
+      })
+    }
+
+    const conversation = await getConversationById(conversationId)
+
+    if (
+      !conversation ||
+      (conversation.user1_id !== currentUserId && conversation.user2_id !== currentUserId)
+    ) {
+      return res.status(404).json({
+        success: false,
+        error: "Conversation not found",
+      })
+    }
+
+    const updates = {}
+
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "background_key")) {
+      const backgroundKey = req.body.background_key
+
+      if (backgroundKey !== null && typeof backgroundKey !== "string") {
+        return res.status(400).json({
+          success: false,
+          error: "background_key must be a string",
+        })
+      }
+
+      updates.background_key = String(backgroundKey || "")
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "is_pinned")) {
+      if (typeof req.body.is_pinned !== "boolean") {
+        return res.status(400).json({
+          success: false,
+          error: "is_pinned must be a boolean",
+        })
+      }
+
+      updates.is_pinned = req.body.is_pinned
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "is_muted")) {
+      if (typeof req.body.is_muted !== "boolean") {
+        return res.status(400).json({
+          success: false,
+          error: "is_muted must be a boolean",
+        })
+      }
+
+      updates.is_muted = req.body.is_muted
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "No chat setting fields to update",
+      })
+    }
+
+    const now = new Date().toISOString()
+    const payload = {
+      user_id: currentUserId,
+      conversation_id: conversationId,
+      updated_at: now,
+      ...updates,
+    }
+
+    const { error: upsertError } = await supabase
+      .from("chat_settings")
+      .upsert(payload, { onConflict: "user_id,conversation_id" })
+
+    if (upsertError) {
+      throw upsertError
+    }
+
+    const { data: latestSettings, error: latestError } = await supabase
+      .from("chat_settings")
+      .select("conversation_id, background_key, is_pinned, is_muted")
+      .eq("user_id", currentUserId)
+      .eq("conversation_id", conversationId)
+      .maybeSingle()
+
+    if (latestError) {
+      throw latestError
+    }
+
+    return toDataResponse(res, {
+      conversation_id: conversationId,
+      background_key: latestSettings?.background_key ?? "",
+      is_pinned: latestSettings?.is_pinned ?? false,
+      is_muted: latestSettings?.is_muted ?? false,
+    })
+  } catch (error) {
+    console.error("Chat settings put error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to save chat settings",
+    })
+  }
+})
+
 app.get("/chat/conversations", authMiddleware, async (req, res) => {
   try {
     const currentUserId = req.user?.userId
@@ -2266,6 +2474,21 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
     if (error) {
       throw error
     }
+
+    const { data: chatSettings, error: chatSettingsError } = await supabase
+      .from("chat_settings")
+      .select("conversation_id, is_pinned")
+      .eq("user_id", currentUserId)
+
+    if (chatSettingsError) {
+      throw chatSettingsError
+    }
+
+    const pinnedConversationIds = new Set(
+      (chatSettings || [])
+        .filter((item) => item?.is_pinned)
+        .map((item) => String(item.conversation_id))
+    )
 
     const enriched = await Promise.all(
       (conversations || []).map(async (conversation) => {
@@ -2312,6 +2535,9 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
           other_membership_active: Boolean(otherMembership),
           last_message: lastMessage?.content ?? null,
           last_message_time: lastMessage?.created_at ?? null,
+          updated_at: conversation.updated_at ?? null,
+          created_at: conversation.created_at ?? null,
+          is_pinned: pinnedConversationIds.has(String(conversation.id)),
           liked_by_me: likedByMe ? 1 : 0,
           liked_me: likedMe ? 1 : 0,
           is_match: likedByMe && likedMe ? 1 : 0,
@@ -2320,8 +2546,39 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
       })
     )
 
+    const sortedConversations = enriched
+      .filter(Boolean)
+      .sort((a, b) => {
+        const aPinned = Boolean(a?.is_pinned)
+        const bPinned = Boolean(b?.is_pinned)
+
+        if (aPinned !== bPinned) {
+          return bPinned ? 1 : -1
+        }
+
+        const aTime = Date.parse(a?.last_message_time || "")
+        const bTime = Date.parse(b?.last_message_time || "")
+
+        if (!Number.isNaN(aTime) || !Number.isNaN(bTime)) {
+          if (Number.isNaN(aTime)) return 1
+          if (Number.isNaN(bTime)) return -1
+          if (aTime !== bTime) return bTime - aTime
+        }
+
+        const aFallback = Date.parse(a?.updated_at || a?.created_at || "")
+        const bFallback = Date.parse(b?.updated_at || b?.created_at || "")
+
+        if (!Number.isNaN(aFallback) || !Number.isNaN(bFallback)) {
+          if (Number.isNaN(aFallback)) return 1
+          if (Number.isNaN(bFallback)) return -1
+          if (aFallback !== bFallback) return bFallback - aFallback
+        }
+
+        return 0
+      })
+
     return toDataResponse(res, {
-      conversations: enriched.filter(Boolean),
+      conversations: sortedConversations,
     })
   } catch (error) {
     console.error("Chat conversations error:", error)
@@ -2385,6 +2642,75 @@ app.post("/chat/conversations", authMiddleware, async (req, res) => {
     return res.status(500).json({
       success: false,
       error: "Failed to create conversation",
+    })
+  }
+})
+
+app.delete("/chat/conversations/:conversationId", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = req.user?.userId
+    const conversationId = String(req.params?.conversationId || "").trim()
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    if (!conversationId) {
+      return res.status(400).json({
+        success: false,
+        error: "conversationId is required",
+      })
+    }
+
+    const conversation = await getConversationById(conversationId)
+
+    if (
+      !conversation ||
+      (conversation.user1_id !== currentUserId && conversation.user2_id !== currentUserId)
+    ) {
+      return res.status(404).json({
+        success: false,
+        error: "Conversation not found",
+      })
+    }
+
+    const { error: deleteMessagesError } = await supabase
+      .from("messages")
+      .delete()
+      .eq("conversation_id", conversationId)
+
+    if (deleteMessagesError) {
+      throw deleteMessagesError
+    }
+
+    const { error: deleteSettingsError } = await supabase
+      .from("chat_settings")
+      .delete()
+      .eq("conversation_id", conversationId)
+
+    if (deleteSettingsError) {
+      throw deleteSettingsError
+    }
+
+    const { error: deleteConversationError } = await supabase
+      .from("conversations")
+      .delete()
+      .eq("id", conversationId)
+
+    if (deleteConversationError) {
+      throw deleteConversationError
+    }
+
+    return res.json({ success: true })
+  } catch (error) {
+    console.error("Chat delete conversation error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete conversation",
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
     })
   }
 })
@@ -2525,6 +2851,8 @@ app.post("/chat/messages", authMiddleware, async (req, res) => {
 
     const conversationId = String(req.body?.conversationId || "").trim()
     const content = String(req.body?.content || "").trim()
+    const messageType = String(req.body?.message_type || "text").trim().toLowerCase() || "text"
+    const imageUrl = String(req.body?.image_url || "").trim()
 
     if (!conversationId) {
       return res.status(400).json({
@@ -2533,10 +2861,24 @@ app.post("/chat/messages", authMiddleware, async (req, res) => {
       })
     }
 
-    if (!content) {
+    if (messageType !== "text" && messageType !== "image") {
+      return res.status(400).json({
+        success: false,
+        error: "message_type must be text or image",
+      })
+    }
+
+    if (messageType === "text" && !content) {
       return res.status(400).json({
         success: false,
         error: "content is required",
+      })
+    }
+
+    if (messageType === "image" && !imageUrl) {
+      return res.status(400).json({
+        success: false,
+        error: "image_url is required when message_type is image",
       })
     }
 
@@ -2585,18 +2927,25 @@ app.post("/chat/messages", authMiddleware, async (req, res) => {
       })
     }
 
-    const message = await createMessage(conversationId, String(currentUser.id), content)
+    const message = await createMessage(
+      conversationId,
+      String(currentUser.id),
+      content || null,
+      messageType,
+      imageUrl || null
+    )
     const latestAccess = await getConversationAccess(conversationId, String(currentUser.id))
     const otherUserId =
       conversation.user1_id === currentUser.id ? conversation.user2_id : conversation.user1_id
     const senderDisplayName = currentUser.pet_name || currentUser.username || "New message"
+    const notificationBody = messageType === "image" ? "📷 Photo" : content
 
     void sendNewMessagePushNotification({
       conversationId,
       senderId: String(currentUser.id),
       senderDisplayName,
       otherUserId: String(otherUserId),
-      content,
+      content: notificationBody,
     })
 
     return toDataResponse(res, {
