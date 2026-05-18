@@ -992,7 +992,7 @@ app.post("/auth/register", async (req, res) => {
       .select("id")
       .eq("email", email)
       .eq("code", verificationCode)
-      .gt("expires_at", now)
+      .not("used_at", "is", null)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -1156,6 +1156,15 @@ app.post("/auth/verify-code", async (req, res) => {
         success: false,
         error: "Invalid or expired verification code",
       })
+    }
+
+    const { error: updateError } = await supabase
+      .from("email_verification_codes")
+      .update({ used_at: now })
+      .eq("id", verificationCode.id)
+
+    if (updateError) {
+      throw updateError
     }
 
     return res.json({

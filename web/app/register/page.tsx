@@ -76,6 +76,10 @@ export default function RegisterPage() {
       sent: "验证码已发送",
       enterEmailFirst: "请先输入邮箱",
       invalidOrExpired: "验证码错误或已过期",
+      verifyButton: "验证",
+      emailVerified: "邮箱验证成功",
+      pleaseVerifyFirst: "请先验证邮箱验证码",
+      enterVerificationCode: "请输入验证码",
     },
     en: {
       label: "Verification code",
@@ -84,6 +88,10 @@ export default function RegisterPage() {
       sent: "Code sent",
       enterEmailFirst: "Please enter email first",
       invalidOrExpired: "Verification code is invalid or expired",
+      verifyButton: "Verify",
+      emailVerified: "Email verified",
+      pleaseVerifyFirst: "Please verify your email code first",
+      enterVerificationCode: "Enter verification code",
     },
     ko: {
       label: "인증번호",
@@ -92,6 +100,10 @@ export default function RegisterPage() {
       sent: "인증번호를 보냈습니다",
       enterEmailFirst: "먼저 이메일을 입력하세요",
       invalidOrExpired: "인증번호가 잘못되었거나 만료되었습니다",
+      verifyButton: "확인",
+      emailVerified: "이메일 인증 완료",
+      pleaseVerifyFirst: "먼저 이메일 인증번호를 확인하세요",
+      enterVerificationCode: "인증번호를 입력하세요",
     },
   } as const
 
@@ -147,6 +159,7 @@ export default function RegisterPage() {
   const [codeMessage, setCodeMessage] = useState("")
   const [sendingCode, setSendingCode] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [emailCodeVerified, setEmailCodeVerified] = useState(false)
 
   const handleCityChange = (value: string) => {
     const selectedCity = registerCityOptions.find((option) => option.city === value)
@@ -179,6 +192,37 @@ export default function RegisterPage() {
       setError(e instanceof Error ? e.message : (t.auth?.registerFailed || "Registration failed"))
     } finally {
       setSendingCode(false)
+    }
+  }
+
+  const handleVerifyCode = async () => {
+    setError("")
+    setCodeMessage("")
+
+    if (!email.trim()) {
+      setError(verificationI18n.enterEmailFirst)
+      return
+    }
+
+    if (!verificationCode.trim()) {
+      setError(verificationI18n.enterVerificationCode)
+      return
+    }
+
+    try {
+      await apiRequest<{ success: true }>("/auth/verify-code", {
+        method: "POST",
+        body: JSON.stringify({
+          email,
+          code: verificationCode,
+        }),
+      })
+
+      setEmailCodeVerified(true)
+      setCodeMessage(verificationI18n.emailVerified)
+    } catch (e) {
+      setEmailCodeVerified(false)
+      setError(e instanceof Error ? e.message : (t.auth?.registerFailed || "Registration failed"))
     }
   }
 
@@ -233,22 +277,12 @@ export default function RegisterPage() {
         return
       }
 
-      setError("")
-
-      try {
-        await apiRequest<{ success: true }>("/auth/verify-code", {
-          method: "POST",
-          body: JSON.stringify({
-            email,
-            code: verificationCode,
-          }),
-        })
-
-        setError("")
-      } catch {
-        setError(verificationI18n.invalidOrExpired)
+      if (!emailCodeVerified) {
+        setError(verificationI18n.pleaseVerifyFirst)
         return
       }
+
+      setError("")
     } catch (e) {
 
       setError(
@@ -414,7 +448,10 @@ export default function RegisterPage() {
                               placeholder={t.auth?.emailPlaceholder || "Enter your email"}
                               className="h-13 w-full rounded-2xl border border-stone-200 bg-white py-3 pl-12 pr-4 text-sm outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
                               value={email}
-                              onChange={(e) => setEmail(e.target.value)}
+                              onChange={(e) => {
+                                setEmail(e.target.value)
+                                setEmailCodeVerified(false)
+                              }}
                           />
                         </div>
                       </div>
@@ -429,7 +466,10 @@ export default function RegisterPage() {
                             placeholder={verificationI18n.placeholder}
                             className="h-13 flex-1 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
                             value={verificationCode}
-                            onChange={(e) => setVerificationCode(e.target.value)}
+                            onChange={(e) => {
+                              setVerificationCode(e.target.value)
+                              setEmailCodeVerified(false)
+                            }}
                           />
                           <button
                             type="button"
@@ -438,6 +478,13 @@ export default function RegisterPage() {
                             className="shrink-0 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-600 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-70"
                           >
                             {verificationI18n.sendButton}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleVerifyCode}
+                            className="shrink-0 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-200 transition hover:from-orange-600 hover:to-orange-700"
+                          >
+                            {verificationI18n.verifyButton}
                           </button>
                         </div>
                         {codeMessage && (
