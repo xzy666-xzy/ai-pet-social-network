@@ -1138,10 +1138,9 @@ app.post("/auth/verify-code", async (req, res) => {
 
     const { data: verificationCode, error: selectError } = await supabase
       .from("email_verification_codes")
-      .select("id")
+      .select("id, used_at")
       .eq("email", email)
       .eq("code", code)
-      .is("used_at", null)
       .gt("expires_at", now)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -1158,13 +1157,15 @@ app.post("/auth/verify-code", async (req, res) => {
       })
     }
 
-    const { error: updateError } = await supabase
-      .from("email_verification_codes")
-      .update({ used_at: now })
-      .eq("id", verificationCode.id)
+    if (!verificationCode.used_at) {
+      const { error: updateError } = await supabase
+        .from("email_verification_codes")
+        .update({ used_at: now })
+        .eq("id", verificationCode.id)
 
-    if (updateError) {
-      throw updateError
+      if (updateError) {
+        throw updateError
+      }
     }
 
     return res.json({
