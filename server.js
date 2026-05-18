@@ -193,17 +193,17 @@ function getPreferredUserLocation(user) {
   const currentLng = toFiniteNumber(user?.current_lng)
 
   if (isValidCoordinatePair(currentLat, currentLng)) {
-    return { lat: currentLat, lng: currentLng }
+    return { lat: currentLat, lng: currentLng, source: "current" }
   }
 
   const cityLat = toFiniteNumber(user?.city_lat)
   const cityLng = toFiniteNumber(user?.city_lng)
 
   if (isValidCoordinatePair(cityLat, cityLng)) {
-    return { lat: cityLat, lng: cityLng }
+    return { lat: cityLat, lng: cityLng, source: "city" }
   }
 
-  return { lat: null, lng: null }
+  return { lat: null, lng: null, source: null }
 }
 
 const STATIC_EVENT_PEOPLE = {
@@ -1335,12 +1335,30 @@ app.get("/match/recommend", authMiddleware, async (req, res) => {
       .map((candidate) => {
         const currentLocation = getPreferredUserLocation(currentUser)
         const candidateLocation = getPreferredUserLocation(candidate)
-        const distanceKm = calculateDistanceKm(
-          currentLocation.lat,
-          currentLocation.lng,
-          candidateLocation.lat,
-          candidateLocation.lng
-        )
+        const normalizeCity = (value) => String(value || "").trim().toLowerCase()
+        const currentCity = normalizeCity(currentUser?.city)
+        const candidateCity = normalizeCity(candidate?.city)
+        const isBothUsingCityLocation =
+          currentLocation.source === "city" && candidateLocation.source === "city"
+        const isCityNameSame = currentCity !== "" && currentCity === candidateCity
+        const isCityCoordinateSame =
+          currentLocation.lat !== null &&
+          currentLocation.lng !== null &&
+          candidateLocation.lat !== null &&
+          candidateLocation.lng !== null &&
+          currentLocation.lat === candidateLocation.lat &&
+          currentLocation.lng === candidateLocation.lng
+
+        const useSameCityLabel = isBothUsingCityLocation && (isCityNameSame || isCityCoordinateSame)
+
+        const distanceKm = useSameCityLabel
+          ? null
+          : calculateDistanceKm(
+              currentLocation.lat,
+              currentLocation.lng,
+              candidateLocation.lat,
+              candidateLocation.lng
+            )
 
         return {
           ...toSafeUser(candidate),
@@ -1348,6 +1366,7 @@ app.get("/match/recommend", authMiddleware, async (req, res) => {
           matchScore: buildMatchScore(currentUser, candidate),
           matchReasons: buildMatchReasons(currentUser, candidate),
           distance_km: distanceKm,
+          distance_label: useSameCityLabel ? "same_city" : null,
         }
       })
       .sort((a, b) => {

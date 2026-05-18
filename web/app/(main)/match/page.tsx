@@ -27,6 +27,7 @@ type MatchUser = {
   created_at?: string | null
   membership_active?: boolean
   distance_km?: number | null
+  distance_label?: string | null
   matchScore?: number
   matchReasons?: string[]
   liked?: boolean
@@ -88,7 +89,7 @@ type MembershipCheckoutResponse = {
 }
 
 export default function MatchPage() {
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
   const { loading } = useAuth()
 
   const [users, setUsers] = useState<MatchUser[]>([])
@@ -304,6 +305,13 @@ export default function MatchPage() {
       typeof currentPet?.distance_km === "number" && Number.isFinite(currentPet.distance_km)
           ? currentPet.distance_km
           : null
+  const isSameCityLocationOff = currentPet?.distance_label === "same_city"
+  const sameCityLocationOffText =
+      locale === "zh"
+          ? "同城（未开启定位）"
+          : locale === "ko"
+              ? "같은 지역 (위치 비활성화)"
+              : "Same city (location off)"
   const distanceDisplayText =
       distanceKm !== null
           ? `${t.match.distanceLabel} ${Math.round(distanceKm)} ${t.match.distanceUnit}`
@@ -424,6 +432,12 @@ export default function MatchPage() {
                       <Badge variant="secondary" className={`rounded-full border border-orange-100 bg-white px-3 py-1 shadow-sm ${distanceClassName}`}>
                         <MapPin className="mr-1 h-3 w-3" />
                         {distanceDisplayText}
+                      </Badge>
+                  ) : null}
+                  {isSameCityLocationOff ? (
+                      <Badge variant="secondary" className="rounded-full border border-orange-100 bg-white px-3 py-1 text-stone-600 shadow-sm">
+                        <MapPin className="mr-1 h-3 w-3" />
+                        {sameCityLocationOffText}
                       </Badge>
                   ) : null}
                 </div>
@@ -578,6 +592,15 @@ export default function MatchPage() {
                                   >
                                     <MapPin className="h-3.5 w-3.5" />
                                     <span className="leading-none">{distanceDisplayText}</span>
+                                  </Badge>
+                              ) : null}
+                              {isSameCityLocationOff ? (
+                                  <Badge
+                                      variant="secondary"
+                                      className="inline-flex items-center gap-1 rounded-full border border-orange-100 bg-white px-2.5 py-1 text-xs font-semibold leading-none text-stone-600 shadow-sm"
+                                  >
+                                    <MapPin className="h-3.5 w-3.5" />
+                                    <span className="leading-none">{sameCityLocationOffText}</span>
                                   </Badge>
                               ) : null}
 
