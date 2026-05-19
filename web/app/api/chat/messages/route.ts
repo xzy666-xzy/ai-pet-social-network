@@ -24,6 +24,14 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const conversationId = String(body?.conversationId || "").trim()
     const content = String(body?.content || "").trim()
+    const messageTypeInput = String(
+        body?.message_type ?? body?.messageType ?? "text"
+    ).trim()
+    const messageType =
+        messageTypeInput === "text" || messageTypeInput === "image"
+            ? messageTypeInput
+            : null
+    const imageUrl = String(body?.image_url || "").trim()
 
     if (!conversationId) {
       return NextResponse.json(
@@ -32,9 +40,23 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    if (!content) {
+    if (!messageType) {
       return NextResponse.json(
-          { error: "content is required" },
+          { error: "message_type must be text or image" },
+          { status: 400 }
+      )
+    }
+
+    if (messageType === "text" && !content) {
+      return NextResponse.json(
+          { error: "content is required for text message" },
+          { status: 400 }
+      )
+    }
+
+    if (messageType === "image" && !imageUrl) {
+      return NextResponse.json(
+          { error: "image_url is required for image message" },
           { status: 400 }
       )
     }
@@ -102,7 +124,9 @@ export async function POST(req: NextRequest) {
     const message = await createMessage(
         conversationId,
         currentUser.id,
-        content
+        content,
+        messageType,
+        imageUrl || null
     )
 
     if (!access.is_match && access.can_send_one_intro_message) {
@@ -111,15 +135,17 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message,
-      access: {
-        likedByMe: access.liked_by_me,
-        likedMe: access.liked_me,
-        isMatch: access.is_match,
-        canSendUnlimited: access.can_send_unlimited,
-        singleMessageUsedByMe: !access.is_match
-            ? true
-            : access.single_message_used_by_me,
+      data: {
+        message,
+        access: {
+          likedByMe: access.liked_by_me,
+          likedMe: access.liked_me,
+          isMatch: access.is_match,
+          canSendUnlimited: access.can_send_unlimited,
+          singleMessageUsedByMe: !access.is_match
+              ? true
+              : access.single_message_used_by_me,
+        },
       },
     })
   } catch (error: unknown) {

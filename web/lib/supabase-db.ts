@@ -509,7 +509,9 @@ export async function getConversationMessages(conversationId: string) {
 export async function createMessage(
     conversationId: string,
     senderId: string,
-    content: string
+    content: string,
+    message_type: "text" | "image" = "text",
+    image_url: string | null = null
 ) {
     const { data, error } = await supabase
         .from("messages")
@@ -517,6 +519,8 @@ export async function createMessage(
             conversation_id: conversationId,
             sender_id: senderId,
             content,
+            message_type,
+            image_url,
             created_at: new Date().toISOString(),
         })
         .select("*")
