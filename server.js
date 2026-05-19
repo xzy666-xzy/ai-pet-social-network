@@ -1688,7 +1688,7 @@ app.get("/profile/stats", authMiddleware, async (req, res) => {
       return sendUnauthorized(res)
     }
 
-    const [likesSentResult, likesReceivedResult, conversationsResult, membership] =
+    const [likesSentResult, likesReceivedResult, conversationsResult, profileLikesResult, membership] =
       await Promise.all([
         supabase
           .from("likes")
@@ -1702,18 +1702,24 @@ app.get("/profile/stats", authMiddleware, async (req, res) => {
           .from("conversations")
           .select("*", { count: "exact", head: true })
           .or(`user1_id.eq.${currentUserId},user2_id.eq.${currentUserId}`),
+        supabase
+          .from("profile_likes")
+          .select("*", { count: "exact", head: true })
+          .eq("to_user_id", currentUserId),
         getActiveMembership(currentUserId),
       ])
 
     if (likesSentResult.error) throw likesSentResult.error
     if (likesReceivedResult.error) throw likesReceivedResult.error
     if (conversationsResult.error) throw conversationsResult.error
+    if (profileLikesResult.error) throw profileLikesResult.error
 
     return toDataResponse(res, {
       stats: {
         likesSent: likesSentResult.count ?? 0,
         likesReceived: likesReceivedResult.count ?? 0,
         conversations: conversationsResult.count ?? 0,
+        profileLikesReceived: profileLikesResult.count ?? 0,
       },
       membership: membership
         ? {

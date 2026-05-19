@@ -6,6 +6,7 @@ import {
     getSessionUser,
     getUserConversations,
 } from "@/lib/supabase-db"
+import { supabase } from "@/lib/supabase"
 
 export async function GET(req: NextRequest) {
     try {
@@ -21,18 +22,23 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
-        const [likesSent, likesReceived, conversations, membership] =
+        const [likesSent, likesReceived, conversations, membership, profileLikesResult] =
             await Promise.all([
                 getLikesSentByUser(currentUser.id),
                 getLikesReceivedByUser(currentUser.id),
                 getUserConversations(currentUser.id),
                 getActiveMembership(currentUser.id),
+                supabase
+                    .from("profile_likes")
+                    .select("*", { count: "exact", head: true })
+                    .eq("to_user_id", currentUser.id),
             ])
 
         const stats = {
             likesSent: likesSent.length,
             likesReceived: likesReceived.length,
             conversations: conversations.length,
+            profileLikesReceived: profileLikesResult.count ?? 0,
         }
 
         return NextResponse.json({

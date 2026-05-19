@@ -273,6 +273,7 @@ export default function ChatPage() {
   const [profileLiked, setProfileLiked] = useState(false)
   const [profileLikeCount, setProfileLikeCount] = useState(0)
   const [profileLikeLoading, setProfileLikeLoading] = useState(false)
+  const [profileLikeInitialized, setProfileLikeInitialized] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [background_key, setBackgroundKey] = useState<ChatBackgroundKey>("default")
   const [background_url, setBackgroundUrl] = useState("")
@@ -798,8 +799,12 @@ export default function ChatPage() {
 
         setProfileLiked(data.data.liked)
         setProfileLikeCount(data.data.count)
+        setProfileLikeInitialized(true)
       } catch (error) {
         console.warn("Failed to fetch profile like status:", error)
+        if (!cancelled) {
+          setProfileLikeInitialized(true)
+        }
       }
     }
 
@@ -811,7 +816,7 @@ export default function ChatPage() {
   }, [profileOpen, targetUserId, user])
 
   const handleProfileLike = async () => {
-    if (!targetUserId || !user || profileLikeLoading) return
+    if (!targetUserId || !user || profileLikeLoading || !profileLikeInitialized) return
 
     // 自己不能给自己点赞
     if (targetUserId === user.id) return
@@ -1313,9 +1318,13 @@ export default function ChatPage() {
                 {targetUserId && user && targetUserId !== user.id ? (
                     <button
                         type="button"
-                        disabled={profileLikeLoading}
+                        disabled={profileLikeLoading || !profileLikeInitialized}
                         onClick={handleProfileLike}
-                        className="absolute right-14 top-3 z-20 flex h-8 items-center gap-1 rounded-full bg-black/20 px-3 text-white backdrop-blur-sm hover:bg-black/30 disabled:cursor-not-allowed disabled:opacity-60"
+                        className={`absolute right-14 top-3 z-20 flex h-8 items-center gap-1 rounded-full px-3 text-white backdrop-blur-sm ${
+                          !profileLikeInitialized
+                            ? "bg-black/10 cursor-not-allowed opacity-50"
+                            : "bg-black/20 hover:bg-black/30 disabled:cursor-not-allowed disabled:opacity-60"
+                        }`}
                     >
                       {profileLikeLoading ? (
                           <span className="text-xs">...</span>

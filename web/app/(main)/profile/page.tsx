@@ -15,6 +15,7 @@ type ProfileStatsResponse = {
       likesSent: number
       likesReceived: number
       conversations: number
+      profileLikesReceived: number
     }
     membership: {
       isActive: boolean
@@ -51,6 +52,7 @@ export default function ProfilePage() {
     likesSent: 0,
     likesReceived: 0,
     conversations: 0,
+    profileLikesReceived: 0,
   })
   const [membership, setMembership] = useState({
     isActive: false,
@@ -473,7 +475,7 @@ export default function ProfilePage() {
             {statsError ? (
               <p className="text-sm text-red-600">{statsError}</p>
             ) : (
-              <div className="grid grid-cols-3 gap-2 text-center text-sm">
+              <div className="grid grid-cols-4 gap-2 text-center text-sm">
                 <div className="rounded-[1.4rem] border border-orange-100 bg-gradient-to-br from-orange-50 to-white px-2 py-4 shadow-sm">
                   <p className="min-h-[2rem] text-[11px] font-bold leading-4 text-stone-500">{t.profile.likesSent}</p>
                   <p className="mt-2 text-2xl font-black text-orange-600">{stats.likesSent}</p>
@@ -487,6 +489,11 @@ export default function ProfilePage() {
                 <div className="rounded-[1.4rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white px-2 py-4 shadow-sm">
                   <p className="min-h-[2rem] text-[11px] font-bold leading-4 text-stone-500">{t.profile.conversations}</p>
                   <p className="mt-2 text-2xl font-black text-amber-600">{stats.conversations}</p>
+                </div>
+
+                <div className="rounded-[1.4rem] border border-purple-100 bg-gradient-to-br from-purple-50 to-white px-2 py-4 shadow-sm">
+                  <p className="min-h-[2rem] text-[11px] font-bold leading-4 text-stone-500">{t.profile.profileLikesReceived}</p>
+                  <p className="mt-2 text-2xl font-black text-purple-500">{stats.profileLikesReceived}</p>
                 </div>
               </div>
             )}
