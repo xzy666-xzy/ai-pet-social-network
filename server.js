@@ -489,6 +489,34 @@ async function hasLiked(fromUserId, toUserId) {
   return Boolean(data)
 }
 
+async function hasProfileLiked(fromUserId, toUserId) {
+  const { data, error } = await supabase
+    .from("profile_likes")
+    .select("id")
+    .eq("from_user_id", fromUserId)
+    .eq("to_user_id", toUserId)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  return Boolean(data)
+}
+
+async function getProfileLikeCount(toUserId) {
+  const { count, error } = await supabase
+    .from("profile_likes")
+    .select("*", { count: "exact", head: true })
+    .eq("to_user_id", toUserId)
+
+  if (error) {
+    throw error
+  }
+
+  return count ?? 0
+}
+
 async function getOrCreateConversation(currentUserId, targetUserId) {
   const user1Id = currentUserId < targetUserId ? currentUserId : targetUserId
   const user2Id = currentUserId < targetUserId ? targetUserId : currentUserId
@@ -1668,6 +1696,154 @@ app.get("/profile/stats", authMiddleware, async (req, res) => {
   }
 })
 
+app.post("/profile/like", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = String(req.user?.userId || "").trim()
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    const targetUserId = String(req.body?.targetUserId || "").trim()
+
+    if (!targetUserId) {
+      return res.status(400).json({
+        success: false,
+        error: "targetUserId is required",
+      })
+    }
+
+    if (currentUserId === targetUserId) {
+      return res.status(400).json({
+        success: false,
+        error: "You cannot like yourself",
+      })
+    }
+
+    const targetUser = await getCurrentUserById(targetUserId)
+
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        error: "Target user not found",
+      })
+    }
+
+    const { error: upsertError } = await supabase
+      .from("profile_likes")
+      .upsert(
+        {
+          from_user_id: currentUserId,
+          to_user_id: targetUserId,
+        },
+        {
+          onConflict: "from_user_id,to_user_id",
+          ignoreDuplicates: true,
+        }
+      )
+
+    if (upsertError) {
+      throw upsertError
+    }
+
+    const count = await getProfileLikeCount(targetUserId)
+
+    return res.json({
+      success: true,
+      liked: true,
+      count,
+    })
+  } catch (error) {
+    console.error("Profile like error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to like profile",
+    })
+  }
+})
+
+app.delete("/profile/like/:targetUserId", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = String(req.user?.userId || "").trim()
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    const targetUserId = String(req.params?.targetUserId || "").trim()
+
+    if (!targetUserId) {
+      return res.status(400).json({
+        success: false,
+        error: "targetUserId is required",
+      })
+    }
+
+    const { error: deleteError } = await supabase
+      .from("profile_likes")
+      .delete()
+      .eq("from_user_id", currentUserId)
+      .eq("to_user_id", targetUserId)
+
+    if (deleteError) {
+      throw deleteError
+    }
+
+    const count = await getProfileLikeCount(targetUserId)
+
+    return res.json({
+      success: true,
+      liked: false,
+      count,
+    })
+  } catch (error) {
+    console.error("Profile unlike error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to unlike profile",
+    })
+  }
+})
+
+app.get("/profile/like/:targetUserId", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = String(req.user?.userId || "").trim()
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    const targetUserId = String(req.params?.targetUserId || "").trim()
+
+    if (!targetUserId) {
+      return res.status(400).json({
+        success: false,
+        error: "targetUserId is required",
+      })
+    }
+
+    const [liked, count] = await Promise.all([
+      hasProfileLiked(currentUserId, targetUserId),
+      getProfileLikeCount(targetUserId),
+    ])
+
+    return res.json({
+      success: true,
+      liked,
+      count,
+    })
+  } catch (error) {
+    console.error("Profile like status error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load profile like status",
+    })
+  }
+})
+
 app.put("/profile", authMiddleware, async (req, res) => {
   try {
     const currentUserId = req.user?.userId
@@ -2317,7 +2493,7 @@ app.get("/chat/settings", authMiddleware, async (req, res) => {
 
     const { data: settings, error } = await supabase
       .from("chat_settings")
-      .select("conversation_id, background_key, is_pinned, is_muted")
+      .select("conversation_id, background_key, background_url, is_pinned, is_muted")
       .eq("user_id", currentUserId)
       .eq("conversation_id", conversationId)
       .maybeSingle()
@@ -2329,6 +2505,7 @@ app.get("/chat/settings", authMiddleware, async (req, res) => {
     return toDataResponse(res, {
       conversation_id: conversationId,
       background_key: settings?.background_key ?? "",
+      background_url: settings?.background_url ?? "",
       is_pinned: settings?.is_pinned ?? false,
       is_muted: settings?.is_muted ?? false,
     })
@@ -2385,6 +2562,19 @@ app.put("/chat/settings", authMiddleware, async (req, res) => {
       updates.background_key = String(backgroundKey || "")
     }
 
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "background_url")) {
+      const backgroundUrl = req.body.background_url
+
+      if (backgroundUrl !== null && typeof backgroundUrl !== "string") {
+        return res.status(400).json({
+          success: false,
+          error: "background_url must be a string or null",
+        })
+      }
+
+      updates.background_url = String(backgroundUrl || "")
+    }
+
     if (Object.prototype.hasOwnProperty.call(req.body || {}, "is_pinned")) {
       if (typeof req.body.is_pinned !== "boolean") {
         return res.status(400).json({
@@ -2432,7 +2622,7 @@ app.put("/chat/settings", authMiddleware, async (req, res) => {
 
     const { data: latestSettings, error: latestError } = await supabase
       .from("chat_settings")
-      .select("conversation_id, background_key, is_pinned, is_muted")
+      .select("conversation_id, background_key, background_url, is_pinned, is_muted")
       .eq("user_id", currentUserId)
       .eq("conversation_id", conversationId)
       .maybeSingle()
@@ -2444,6 +2634,7 @@ app.put("/chat/settings", authMiddleware, async (req, res) => {
     return toDataResponse(res, {
       conversation_id: conversationId,
       background_key: latestSettings?.background_key ?? "",
+      background_url: latestSettings?.background_url ?? "",
       is_pinned: latestSettings?.is_pinned ?? false,
       is_muted: latestSettings?.is_muted ?? false,
     })
@@ -2477,17 +2668,21 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
 
     const { data: chatSettings, error: chatSettingsError } = await supabase
       .from("chat_settings")
-      .select("conversation_id, is_pinned")
+      .select("conversation_id, is_pinned, is_muted")
       .eq("user_id", currentUserId)
 
     if (chatSettingsError) {
       throw chatSettingsError
     }
 
-    const pinnedConversationIds = new Set(
-      (chatSettings || [])
-        .filter((item) => item?.is_pinned)
-        .map((item) => String(item.conversation_id))
+    const conversationSettingsById = new Map(
+      (chatSettings || []).map((item) => [
+        String(item.conversation_id),
+        {
+          is_pinned: Boolean(item?.is_pinned),
+          is_muted: Boolean(item?.is_muted),
+        },
+      ])
     )
 
     const enriched = await Promise.all(
@@ -2524,6 +2719,12 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
           getActiveMembership(String(otherUserId)),
         ])
 
+        const settings = conversationSettingsById.get(String(conversation.id))
+        const rawUnreadCount = Number(conversation.unread_count ?? 0)
+        const unreadCount = Number.isFinite(rawUnreadCount)
+          ? Math.max(0, rawUnreadCount)
+          : 0
+
         return {
           id: conversation.id,
           other_user_id: otherUser.id,
@@ -2537,11 +2738,13 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
           last_message_time: lastMessage?.created_at ?? null,
           updated_at: conversation.updated_at ?? null,
           created_at: conversation.created_at ?? null,
-          is_pinned: pinnedConversationIds.has(String(conversation.id)),
+          is_pinned: settings?.is_pinned ?? false,
+          is_muted: settings?.is_muted ?? false,
           liked_by_me: likedByMe ? 1 : 0,
           liked_me: likedMe ? 1 : 0,
           is_match: likedByMe && likedMe ? 1 : 0,
           single_message_used_by_me: (sentCount || 0) >= 1 ? 1 : 0,
+          unread_count: unreadCount,
         }
       })
     )
@@ -2642,6 +2845,63 @@ app.post("/chat/conversations", authMiddleware, async (req, res) => {
     return res.status(500).json({
       success: false,
       error: "Failed to create conversation",
+    })
+  }
+})
+
+app.patch("/chat/conversations/:conversationId/read", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = req.user?.userId
+    const conversationId = String(req.params?.conversationId || "").trim()
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    if (!conversationId) {
+      return res.status(400).json({
+        success: false,
+        error: "conversationId is required",
+      })
+    }
+
+    const conversation = await getConversationById(conversationId)
+
+    if (
+      !conversation ||
+      (conversation.user1_id !== currentUserId && conversation.user2_id !== currentUserId)
+    ) {
+      return res.status(404).json({
+        success: false,
+        error: "Conversation not found",
+      })
+    }
+
+    const { error: updateError } = await supabase
+      .from("conversations")
+      .update({
+        unread_count: 0,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", conversationId)
+
+    if (updateError) {
+      throw updateError
+    }
+
+    return toDataResponse(res, {
+      conversationId,
+      unread_count: 0,
+    })
+  } catch (error) {
+    console.error("Chat mark conversation read error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to mark conversation as read",
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
     })
   }
 })
@@ -2937,6 +3197,25 @@ app.post("/chat/messages", authMiddleware, async (req, res) => {
     const latestAccess = await getConversationAccess(conversationId, String(currentUser.id))
     const otherUserId =
       conversation.user1_id === currentUser.id ? conversation.user2_id : conversation.user1_id
+
+    if (String(otherUserId) !== String(currentUser.id)) {
+      const rawUnreadCount = Number(conversation.unread_count ?? 0)
+      const currentUnreadCount = Number.isFinite(rawUnreadCount) ? rawUnreadCount : 0
+      const nextUnreadCount = currentUnreadCount + 1
+
+      const { error: unreadUpdateError } = await supabase
+        .from("conversations")
+        .update({
+          unread_count: nextUnreadCount,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", conversationId)
+
+      if (unreadUpdateError) {
+        throw unreadUpdateError
+      }
+    }
+
     const senderDisplayName = currentUser.pet_name || currentUser.username || "New message"
     const notificationBody = messageType === "image" ? "📷 Photo" : content
 
