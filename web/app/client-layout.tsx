@@ -135,14 +135,12 @@ export default function ClientLayout({
               const senderUserId = String(data.senderUserId || "").trim()
               const type = String(data.type || "").trim()
   
-              if (!senderUserId) {
-                return
-              }
-  
-              console.log("[Push] navigating to chat", senderUserId, "type:", type)
-  
+              console.log("[Push] navigating", "senderUserId:", senderUserId, "type:", type)
+
               if (type === "profile_like") {
-                router.push(`/chat?userId=${senderUserId}&showProfile=true`)
+                router.push("/profile")
+              } else if (!senderUserId) {
+                return
               } else {
                 router.push(`/chat?userId=${senderUserId}`)
               }
