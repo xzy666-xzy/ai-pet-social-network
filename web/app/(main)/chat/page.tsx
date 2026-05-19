@@ -797,8 +797,12 @@ export default function ChatPage() {
 
         if (cancelled) return
 
-        setProfileLiked(data.data.liked)
-        setProfileLikeCount(data.data.count)
+        // 兼容两种返回格式：
+        //   { success: true, data: { liked: true, count: 1 } }
+        //   { success: true, liked: true, count: 1 }
+        const likeData = data.data ?? data
+        setProfileLiked(Boolean(likeData.liked))
+        setProfileLikeCount(Number(likeData.count ?? 0))
         setProfileLikeInitialized(true)
       } catch (error) {
         console.warn("Failed to fetch profile like status:", error)
@@ -1320,20 +1324,26 @@ export default function ChatPage() {
                         type="button"
                         disabled={profileLikeLoading || !profileLikeInitialized}
                         onClick={handleProfileLike}
-                        className={`absolute right-14 top-3 z-20 flex h-8 items-center gap-1 rounded-full px-3 text-white backdrop-blur-sm ${
+                        className={`absolute right-14 top-3 z-20 flex h-8 items-center gap-1 rounded-full px-3 backdrop-blur-sm transition-all duration-200 ${
                           !profileLikeInitialized
-                            ? "bg-black/10 cursor-not-allowed opacity-50"
-                            : "bg-black/20 hover:bg-black/30 disabled:cursor-not-allowed disabled:opacity-60"
+                            ? "bg-black/10 cursor-not-allowed opacity-50 text-white"
+                            : profileLikeLoading
+                              ? "bg-black/10 cursor-not-allowed opacity-50 text-white"
+                              : profileLiked
+                                ? "bg-red-500/20 text-red-500 hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+                                : "bg-black/20 text-white hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
                         }`}
                     >
                       {profileLikeLoading ? (
-                          <span className="text-xs">...</span>
+                          <span className="text-xs font-bold">...</span>
                       ) : profileLiked ? (
-                          <span className="text-sm">❤️</span>
+                          <span className="text-sm scale-110 transition-transform duration-200">❤️</span>
                       ) : (
                           <span className="text-sm">♡</span>
                       )}
-                      <span className="text-xs font-bold">{profileLikeCount}</span>
+                      <span className={`text-xs font-bold ${profileLiked && profileLikeInitialized ? "text-red-500" : "text-inherit"}`}>
+                        {profileLikeCount}
+                      </span>
                     </button>
                 ) : null}
 
