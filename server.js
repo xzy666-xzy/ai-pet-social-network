@@ -1775,7 +1775,7 @@ app.get("/profile/conversations", authMiddleware, async (req, res) => {
 
         return {
           id: otherUser.id,
-          name: otherUser.name ?? null,
+          name: otherUser.pet_name ?? otherUser.username ?? null,
           username: otherUser.username ?? null,
           email: otherUser.email ?? null,
           avatar_url: otherUser.avatar_url ?? null,
@@ -1832,7 +1832,7 @@ app.get("/profile/likes/match-received", authMiddleware, async (req, res) => {
 
     const { data: users, error: usersError } = await supabase
       .from("users")
-      .select("id, name, username, email, avatar_url, pet_name, pet_type, pet_age, pet_gender, created_at")
+      .select("id, username, email, avatar_url, pet_name, pet_type, pet_age, pet_gender, created_at")
       .in("id", fromUserIds)
 
     if (usersError) {
@@ -1845,7 +1845,7 @@ app.get("/profile/likes/match-received", authMiddleware, async (req, res) => {
       const user = usersById.get(like.from_user_id) || {}
       return {
         id: like.id,
-        name: user.name || null,
+        name: user.pet_name || user.username || null,
         username: user.username || null,
         email: user.email || null,
         avatar_url: user.avatar_url || null,
@@ -1899,7 +1899,7 @@ app.get("/profile/likes/match-sent", authMiddleware, async (req, res) => {
 
     const { data: users, error: usersError } = await supabase
       .from("users")
-      .select("id, name, username, email, avatar_url, pet_name, pet_type, pet_age, pet_gender, created_at")
+      .select("id, username, email, avatar_url, pet_name, pet_type, pet_age, pet_gender, created_at")
       .in("id", toUserIds)
 
     if (usersError) {
@@ -1912,7 +1912,7 @@ app.get("/profile/likes/match-sent", authMiddleware, async (req, res) => {
       const user = usersById.get(like.to_user_id) || {}
       return {
         id: like.id,
-        name: user.name || null,
+        name: user.pet_name || user.username || null,
         username: user.username || null,
         email: user.email || null,
         avatar_url: user.avatar_url || null,
@@ -1966,7 +1966,7 @@ app.get("/profile/likes/profile-received", authMiddleware, async (req, res) => {
 
     const { data: users, error: usersError } = await supabase
       .from("users")
-      .select("id, name, username, email, avatar_url, pet_name, pet_type, pet_age, pet_gender, created_at")
+      .select("id, username, email, avatar_url, pet_name, pet_type, pet_age, pet_gender, created_at")
       .in("id", fromUserIds)
 
     if (usersError) {
@@ -1979,7 +1979,7 @@ app.get("/profile/likes/profile-received", authMiddleware, async (req, res) => {
       const user = usersById.get(like.from_user_id) || {}
       return {
         id: like.id,
-        name: user.name || null,
+        name: user.pet_name || user.username || null,
         username: user.username || null,
         email: user.email || null,
         avatar_url: user.avatar_url || null,
