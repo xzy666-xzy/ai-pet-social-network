@@ -254,6 +254,7 @@ export default function ChatPage() {
   const searchParams = useSearchParams()
 
   const targetUserId = searchParams.get("userId")
+  const showProfile = searchParams.get("showProfile")
 
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [targetUser, setTargetUser] = useState<TargetUser | null>(null)
@@ -287,6 +288,7 @@ export default function ChatPage() {
   const imageInputRef = useRef<HTMLInputElement | null>(null)
   const backgroundImageInputRef = useRef<HTMLInputElement | null>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const autoProfileOpenedRef = useRef(false)
   const hasToken = Boolean(getAccessToken())
 
   const hasCustomBackground = Boolean(background_url)
@@ -546,6 +548,7 @@ export default function ChatPage() {
         setIsPinned(false)
         setMessageMenu(null)
         setDeletingMessageId(null)
+        autoProfileOpenedRef.current = false
 
         if (!targetUserId) {
           setLoadingConversations(true)
@@ -623,6 +626,19 @@ export default function ChatPage() {
       cancelled = true
     }
   }, [loading, user, targetUserId, hasToken])
+
+  // 自动打开资料弹窗（来自 profile_like 通知）
+  useEffect(() => {
+    if (
+      showProfile === "true" &&
+      targetUser &&
+      targetUserId &&
+      !autoProfileOpenedRef.current
+    ) {
+      autoProfileOpenedRef.current = true
+      setProfileOpen(true)
+    }
+  }, [showProfile, targetUser, targetUserId])
 
   useEffect(() => {
     if (!conversationId) {

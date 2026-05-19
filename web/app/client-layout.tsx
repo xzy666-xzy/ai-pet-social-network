@@ -130,17 +130,22 @@ export default function ClientLayout({
             "pushNotificationActionPerformed",
             (notification) => {
               console.log("[Push] notification tapped", notification)
-
-              const senderUserId = String(
-                notification?.notification?.data?.senderUserId || ""
-              ).trim()
-
+  
+              const data = notification?.notification?.data || {}
+              const senderUserId = String(data.senderUserId || "").trim()
+              const type = String(data.type || "").trim()
+  
               if (!senderUserId) {
                 return
               }
-
-              console.log("[Push] navigating to chat", senderUserId)
-              router.push(`/chat?userId=${senderUserId}`)
+  
+              console.log("[Push] navigating to chat", senderUserId, "type:", type)
+  
+              if (type === "profile_like") {
+                router.push(`/chat?userId=${senderUserId}&showProfile=true`)
+              } else {
+                router.push(`/chat?userId=${senderUserId}`)
+              }
             }
           )
         } catch (error) {
