@@ -2,7 +2,7 @@
 
 import { type ChangeEvent, type MouseEvent, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Send, ChevronLeft, Heart, Settings, ImagePlus } from "lucide-react"
+import { Send, ChevronLeft, Heart, Settings, ImagePlus, Pin, BellOff, Upload, Loader2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -42,6 +42,12 @@ type TargetUser = {
   description?: string | null
   last_seen?: string | null
   is_ai?: boolean | number | null
+  cover_url?: string | null
+  coverImage?: string | null
+  cover_image_url?: string | null
+  email?: string | null
+  pet_gender?: string | null
+  tagline?: string | null
 }
 
 type ConversationSummary = {
@@ -55,12 +61,14 @@ type ConversationSummary = {
   other_membership_active?: boolean
   last_message: string | null
   last_message_time: string | null
-  is_pinned?: boolean
+  is_pinned?: boolean | number | null
+  is_muted?: boolean | number | null
   liked_by_me?: number
   liked_me?: number
   is_match?: number
   single_message_used_by_me?: number
   last_message_type?: "text" | "image" | null
+  unread_count?: number | null
 }
 
 type ConversationsResponse = {
@@ -113,6 +121,14 @@ type DeleteConversationResponse = {
   success: true
 }
 
+type MarkConversationReadResponse = {
+  success: true
+  data: {
+    conversationId: string
+    unread_count: number
+  }
+}
+
 type MatchLikeResponse = {
   success: true
   data: {
@@ -122,8 +138,17 @@ type MatchLikeResponse = {
   }
 }
 
+type ProfileLikeResponse = {
+  success: true
+  data: {
+    liked: boolean
+    count: number
+  }
+}
+
 type ChatSettings = {
   background_key?: string | null
+  background_url?: string | null
   is_muted?: boolean | number | null
   is_pinned?: boolean | number | null
 }
@@ -132,6 +157,7 @@ type ChatSettingsResponse = {
   success?: boolean
   data?: ChatSettings | null
   background_key?: string | null
+  background_url?: string | null
   is_muted?: boolean | number | null
   is_pinned?: boolean | number | null
 }
@@ -145,6 +171,50 @@ function parseBackgroundKey(value: unknown): ChatBackgroundKey {
     return value
   }
   return "default"
+}
+
+function parseBackgroundUrl(value: unknown): string {
+  if (typeof value !== "string") {
+    return ""
+  }
+
+  return value.trim()
+}
+
+function sanitizeStorageToken(value: string): string {
+  const cleaned = value
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "")
+
+  return cleaned || "file"
+}
+
+function resolveImageExtension(file: File): string {
+  const typeMap: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+    "image/bmp": "bmp",
+    "image/svg+xml": "svg",
+    "image/avif": "avif",
+  }
+
+  if (typeMap[file.type]) {
+    return typeMap[file.type]
+  }
+
+  const nameExt = file.name.split(".").pop()?.toLowerCase() || ""
+  const safeExt = nameExt.replace(/[^a-z0-9]/g, "")
+  const allowList = new Set(["jpg", "jpeg", "png", "webp", "gif", "bmp", "svg", "avif"])
+
+  if (allowList.has(safeExt)) {
+    return safeExt === "jpeg" ? "jpg" : safeExt
+  }
+
+  return "jpg"
 }
 
 function normalizeBoolean(value: unknown): boolean {
@@ -199,8 +269,12 @@ export default function ChatPage() {
   const [chatLiked, setChatLiked] = useState(false)
   const [chatMatched, setChatMatched] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [profileLiked, setProfileLiked] = useState(false)
+  const [profileLikeCount, setProfileLikeCount] = useState(0)
+  const [profileLikeLoading, setProfileLikeLoading] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [background_key, setBackgroundKey] = useState<ChatBackgroundKey>("default")
+  const [background_url, setBackgroundUrl] = useState("")
   const [is_muted, setIsMuted] = useState(false)
   const [is_pinned, setIsPinned] = useState(false)
   const [messageMenu, setMessageMenu] = useState<ChatMessage | null>(null)
@@ -208,14 +282,32 @@ export default function ChatPage() {
   const [deletingConversation, setDeletingConversation] = useState(false)
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadingBackground, setUploadingBackground] = useState(false)
+  const [backgroundUploadError, setBackgroundUploadError] = useState("")
   const imageInputRef = useRef<HTMLInputElement | null>(null)
+  const backgroundImageInputRef = useRef<HTMLInputElement | null>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasToken = Boolean(getAccessToken())
+
+  const hasCustomBackground = Boolean(background_url)
 
   const chatBackgroundClass = useMemo(
       () => getChatBackgroundClass(background_key),
       [background_key]
   )
+
+  const chatBackgroundStyle = useMemo(() => {
+    if (!hasCustomBackground) {
+      return undefined
+    }
+
+    return {
+      backgroundImage: `url("${background_url}")`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+      backgroundRepeat: "no-repeat",
+    } as const
+  }, [background_url, hasCustomBackground])
 
   const headerName = useMemo(() => {
     if (!targetUserId) return t.chat.title
@@ -266,6 +358,24 @@ export default function ChatPage() {
     return safeConversations
   }
 
+  const markConversationAsRead = async (convId: string) => {
+    await apiRequest<MarkConversationReadResponse>(`/chat/conversations/${convId}/read`, {
+      method: "PATCH",
+      auth: true,
+    })
+
+    setConversations((prev) =>
+      prev.map((item) =>
+        item.id === convId
+          ? {
+              ...item,
+              unread_count: 0,
+            }
+          : item
+      )
+    )
+  }
+
   const loadChatSettings = async (convId: string) => {
     try {
       const data = await apiRequest<ChatSettingsResponse>(`/chat/settings?conversation_id=${encodeURIComponent(convId)}`, {
@@ -276,6 +386,7 @@ export default function ChatPage() {
       const source = data?.data && typeof data.data === "object" ? data.data : data
 
       setBackgroundKey(parseBackgroundKey(source?.background_key))
+      setBackgroundUrl(parseBackgroundUrl(source?.background_url))
       setIsMuted(normalizeBoolean(source?.is_muted))
       setIsPinned(normalizeBoolean(source?.is_pinned))
     } catch (error) {
@@ -283,7 +394,7 @@ export default function ChatPage() {
     }
   }
 
-  const saveChatSettings = async (next: Partial<{ background_key: ChatBackgroundKey; is_muted: boolean; is_pinned: boolean }>) => {
+  const saveChatSettings = async (next: Partial<{ background_key: ChatBackgroundKey; background_url: string | null; is_muted: boolean; is_pinned: boolean }>) => {
     if (!conversationId) return
 
     try {
@@ -312,7 +423,60 @@ export default function ChatPage() {
 
   const handleBackgroundChange = (nextBackgroundKey: ChatBackgroundKey) => {
     setBackgroundKey(nextBackgroundKey)
-    saveChatSettings({ background_key: nextBackgroundKey })
+    setBackgroundUrl("")
+    setBackgroundUploadError("")
+    saveChatSettings({ background_key: nextBackgroundKey, background_url: "" })
+  }
+
+  const handlePickBackgroundImage = () => {
+    if (!conversationId || uploadingBackground) return
+    backgroundImageInputRef.current?.click()
+  }
+
+  const handleBackgroundImageSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ""
+
+    if (!file || !conversationId || !user?.id || uploadingBackground) return
+
+    if (!file.type.startsWith("image/")) {
+      setBackgroundUploadError("Only image files are allowed")
+      return
+    }
+
+    try {
+      setUploadingBackground(true)
+      setBackgroundUploadError("")
+
+      const ext = resolveImageExtension(file)
+      const safeConversationId = sanitizeStorageToken(conversationId)
+      const safeUserId = sanitizeStorageToken(String(user.id))
+      const filePath = `${safeConversationId}/${safeUserId}-${Date.now()}.${ext}`
+
+      const { error: uploadError } = await supabase.storage
+        .from("chat-backgrounds")
+        .upload(filePath, file, { contentType: file.type, upsert: false })
+
+      if (uploadError) {
+        throw new Error(uploadError.message)
+      }
+
+      const { data: publicData } = supabase.storage
+        .from("chat-backgrounds")
+        .getPublicUrl(filePath)
+      const publicUrl = publicData.publicUrl
+
+      if (!publicUrl) {
+        throw new Error("Failed to resolve uploaded background URL")
+      }
+
+      setBackgroundUrl(publicUrl)
+      await saveChatSettings({ background_url: publicUrl })
+    } catch (error) {
+      setBackgroundUploadError(error instanceof Error ? error.message : "Failed to upload background")
+    } finally {
+      setUploadingBackground(false)
+    }
   }
 
   const handleDeleteConversation = async () => {
@@ -340,6 +504,8 @@ export default function ChatPage() {
       setChatLiked(false)
       setChatMatched(false)
       setBackgroundKey("default")
+      setBackgroundUrl("")
+      setBackgroundUploadError("")
       setIsMuted(false)
       setIsPinned(false)
       setMessageMenu(null)
@@ -374,6 +540,8 @@ export default function ChatPage() {
         setProfileOpen(false)
         setSettingsOpen(false)
         setBackgroundKey("default")
+        setBackgroundUrl("")
+        setBackgroundUploadError("")
         setIsMuted(false)
         setIsPinned(false)
         setMessageMenu(null)
@@ -459,6 +627,8 @@ export default function ChatPage() {
   useEffect(() => {
     if (!conversationId) {
       setBackgroundKey("default")
+      setBackgroundUrl("")
+      setBackgroundUploadError("")
       setIsMuted(false)
       setIsPinned(false)
       return
@@ -466,6 +636,42 @@ export default function ChatPage() {
 
     loadChatSettings(conversationId)
   }, [conversationId])
+
+  useEffect(() => {
+    if (!targetUserId || !conversationId) return
+
+    let cancelled = false
+
+    const run = async () => {
+      try {
+        await apiRequest<MarkConversationReadResponse>(`/chat/conversations/${conversationId}/read`, {
+          method: "PATCH",
+          auth: true,
+        })
+
+        if (cancelled) return
+
+        setConversations((prev) =>
+          prev.map((item) =>
+            item.id === conversationId
+              ? {
+                  ...item,
+                  unread_count: 0,
+                }
+              : item
+          )
+        )
+      } catch (error) {
+        console.warn("Failed to mark conversation as read:", error)
+      }
+    }
+
+    run()
+
+    return () => {
+      cancelled = true
+    }
+  }, [targetUserId, conversationId])
 
   useEffect(() => {
     if (!conversationId) return
@@ -556,6 +762,71 @@ export default function ChatPage() {
       alert("Failed to like this pet. Please try again.")
     } finally {
       setChatLikeLoading(false)
+    }
+  }
+
+  // 打开弹窗时获取点赞状态
+  useEffect(() => {
+    if (!profileOpen || !targetUserId || !user) return
+
+    let cancelled = false
+
+    const fetchProfileLike = async () => {
+      try {
+        const data = await apiRequest<ProfileLikeResponse>(`/profile/like/${targetUserId}`, {
+          cache: "no-store",
+          auth: true,
+        })
+
+        if (cancelled) return
+
+        setProfileLiked(data.data.liked)
+        setProfileLikeCount(data.data.count)
+      } catch (error) {
+        console.warn("Failed to fetch profile like status:", error)
+      }
+    }
+
+    fetchProfileLike()
+
+    return () => {
+      cancelled = true
+    }
+  }, [profileOpen, targetUserId, user])
+
+  const handleProfileLike = async () => {
+    if (!targetUserId || !user || profileLikeLoading) return
+
+    // 自己不能给自己点赞
+    if (targetUserId === user.id) return
+
+    try {
+      setProfileLikeLoading(true)
+
+      if (profileLiked) {
+        // 取消点赞
+        await apiRequest(`/profile/like/${targetUserId}`, {
+          method: "DELETE",
+          auth: true,
+        })
+
+        setProfileLiked(false)
+        setProfileLikeCount((prev) => Math.max(0, prev - 1))
+      } else {
+        // 点赞
+        await apiRequest("/profile/like", {
+          method: "POST",
+          auth: true,
+          body: JSON.stringify({ targetUserId }),
+        })
+
+        setProfileLiked(true)
+        setProfileLikeCount((prev) => prev + 1)
+      }
+    } catch (error) {
+      console.warn("Failed to toggle profile like:", error)
+    } finally {
+      setProfileLikeLoading(false)
     }
   }
 
@@ -833,7 +1104,10 @@ export default function ChatPage() {
   }
 
   return (
-      <div className={`flex h-full min-h-0 flex-col overflow-hidden ${chatBackgroundClass}`}>
+      <div
+        className={`flex h-full min-h-0 flex-col overflow-hidden ${hasCustomBackground ? "bg-stone-100" : chatBackgroundClass}`}
+        style={chatBackgroundStyle}
+      >
         <div className="flex items-center justify-between gap-3 border-b border-orange-100/80 bg-white/90 px-5 py-4 shadow-sm backdrop-blur-xl">
           <div className="flex min-w-0 items-center gap-3">
             {targetUserId ? (
@@ -942,6 +1216,13 @@ export default function ChatPage() {
 
               <div className="rounded-2xl border border-orange-100 bg-white px-4 py-3">
                 <div className="mb-3 text-sm font-semibold text-stone-800">{t.chat.settings.background}</div>
+                <input
+                  ref={backgroundImageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleBackgroundImageSelect}
+                />
                 <div className="grid grid-cols-2 gap-2">
                   {CHAT_BACKGROUND_OPTIONS.map((option) => {
                     const active = background_key === option
@@ -970,6 +1251,30 @@ export default function ChatPage() {
                     )
                   })}
                 </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handlePickBackgroundImage}
+                  disabled={!conversationId || uploadingBackground}
+                  className="mt-3 h-11 w-full justify-start rounded-xl border-orange-200 text-sm font-semibold text-stone-700 hover:bg-orange-50"
+                >
+                  {uploadingBackground ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload custom background
+                    </>
+                  )}
+                </Button>
+                {backgroundUploadError ? (
+                  <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+                    {backgroundUploadError}
+                  </div>
+                ) : null}
               </div>
 
               <Button
@@ -987,73 +1292,122 @@ export default function ChatPage() {
 
         {profileOpen && targetUser ? (
             <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-4 sm:items-center sm:pb-0">
-              <div className="w-full max-w-sm rounded-3xl bg-white p-4 shadow-xl">
-                <div className="mb-3 flex justify-end">
-                  <button
-                      type="button"
-                      onClick={() => setProfileOpen(false)}
-                      className="rounded-full px-2 py-1 text-sm text-stone-500 hover:bg-stone-100"
-                  >
-                    ×
-                  </button>
+              <div className="relative w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl">
+                {/* 点赞按钮 - 右上角，不挡关闭按钮 */}
+                {targetUserId && user && targetUserId !== user.id ? (
+                    <button
+                        type="button"
+                        disabled={profileLikeLoading}
+                        onClick={handleProfileLike}
+                        className="absolute right-14 top-3 z-20 flex h-8 items-center gap-1 rounded-full bg-black/20 px-3 text-white backdrop-blur-sm hover:bg-black/30 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {profileLikeLoading ? (
+                          <span className="text-xs">...</span>
+                      ) : profileLiked ? (
+                          <span className="text-sm">❤️</span>
+                      ) : (
+                          <span className="text-sm">♡</span>
+                      )}
+                      <span className="text-xs font-bold">{profileLikeCount}</span>
+                    </button>
+                ) : null}
+
+                {/* 关闭按钮 */}
+                <button
+                    type="button"
+                    onClick={() => setProfileOpen(false)}
+                    className="absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-black/20 text-white backdrop-blur-sm hover:bg-black/30"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+
+                {/* 封面背景 */}
+                <div className="relative h-44 overflow-hidden bg-gradient-to-br from-orange-200 via-amber-100 to-rose-100">
+                  {(() => {
+                    const coverSrc = targetUser.cover_url || targetUser.coverImage || targetUser.cover_image_url
+                    return coverSrc ? (
+                        <img
+                            src={coverSrc}
+                            alt=""
+                            className="absolute inset-0 h-full w-full object-cover"
+                        />
+                    ) : null
+                  })()}
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-orange-950/35" />
                 </div>
 
-                <div className="space-y-4">
-                  <div className="rounded-3xl border border-orange-100 bg-white p-4 shadow-sm">
-                    <div className="flex items-center gap-4">
-                      <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border-4 border-white bg-orange-100 shadow-md">
-                        {targetUser.avatar_url ? (
-                            <img
-                                src={targetUser.avatar_url || "/placeholder.svg"}
-                                alt={headerName}
-                                className="h-full w-full object-cover"
-                            />
-                        ) : (
-                            <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-orange-600">
-                              {profilePetName.charAt(0).toUpperCase()}
-                            </div>
-                        )}
-                      </div>
+                <div className="relative z-10 -mt-12 px-5 pb-5">
+                  {/* 头像压在封面下方 */}
+                  <div className="mb-4 flex justify-center">
+                    <div className="h-24 w-24 overflow-hidden rounded-[1.75rem] border-4 border-white bg-gradient-to-br from-orange-100 to-amber-100 shadow-xl shadow-orange-900/15">
+                      {targetUser.avatar_url ? (
+                          <img
+                              src={targetUser.avatar_url || "/placeholder.svg"}
+                              alt={headerName}
+                              className="h-full w-full object-cover"
+                          />
+                      ) : (
+                          <div className="flex h-full w-full items-center justify-center text-3xl font-black text-orange-600">
+                            {profilePetName.charAt(0).toUpperCase()}
+                          </div>
+                      )}
+                    </div>
+                  </div>
 
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-xl font-bold text-stone-900">
-                          {profilePetName}
-                        </div>
-                        <div className="mt-1 truncate text-xs text-stone-500">
-                          {targetUser.username || "-"}
-                        </div>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700 shadow-sm">
-                            {profilePetAge}
-                          </span>
-                          <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700 shadow-sm">
-                            {profilePetType}
-                          </span>
-                          <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-600">
-                            {hasProfileDescription ? t.profile.profileReady : t.profile.noDescriptionYet}
-                          </span>
-                          {targetUser.is_ai ? (
-                              <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-600">
-                                AI
-                              </span>
+                  {/* 用户资料卡片 */}
+                  <div className="mb-4 rounded-[2rem] border border-orange-100/80 bg-white/95 p-5 shadow-xl shadow-orange-900/5">
+                    <div className="text-center">
+                      <div className="truncate text-2xl font-black tracking-tight text-stone-900">
+                        {profilePetName}
+                      </div>
+                      <div className="mt-1 truncate text-sm font-semibold text-stone-500">
+                        {targetUser.username || "-"}
+                      </div>
+                      <div className="mt-0.5 truncate text-xs text-stone-400">
+                        {targetUser.email || ""}
+                      </div>
+                      <div className="mt-3 flex flex-wrap justify-center gap-2">
+                        <span className="rounded-full border border-orange-100 bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-700 shadow-sm">
+                          {profilePetType}
+                        </span>
+                        <span className="rounded-full border border-stone-100 bg-white px-3 py-1.5 text-xs font-bold text-stone-600 shadow-sm">
+                          {profilePetAge}
+                          {targetUser.pet_gender === "male" ? (
+                              <span className="ml-0.5 text-blue-500">♂</span>
+                          ) : targetUser.pet_gender === "female" ? (
+                              <span className="ml-0.5 text-pink-500">♀</span>
                           ) : null}
-                        </div>
+                        </span>
+                        {targetUser.is_ai ? (
+                            <span className="rounded-full bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-700 shadow-sm">
+                              AI
+                            </span>
+                        ) : null}
                       </div>
                     </div>
                   </div>
 
-                  <div className="rounded-3xl border border-orange-100 bg-white p-4 shadow-sm">
-                    <h2 className="mb-4 text-lg font-bold text-stone-900">🐾 {t.profile.myPet}</h2>
-                    <div className="space-y-2 rounded-2xl bg-stone-50 p-4 text-sm">
-                      <p className="font-medium text-stone-900">{t.profile.nameLabel}: {profilePetName}</p>
-                      <p className="font-medium text-stone-900">{t.profile.typeLabel}: {profilePetType}</p>
-                      <p className="font-medium text-stone-900">{t.profile.ageLabel}: {profilePetAge}</p>
+                  {/* 我的宠物卡片 */}
+                  <div className="mb-4 rounded-[2rem] border border-orange-100/80 bg-white/95 p-5 shadow-xl shadow-orange-900/5">
+                    <h2 className="mb-4 text-lg font-black tracking-tight text-stone-900">🐾 {t.profile.myPet}</h2>
+                    <div className="space-y-2 rounded-[1.5rem] border border-orange-100 bg-orange-50/70 p-4 text-sm">
+                      <p className="font-semibold text-stone-900">{t.profile.nameLabel}: {profilePetName}</p>
+                      <p className="font-semibold text-stone-900">{t.profile.typeLabel}: {profilePetType}</p>
+                      <p className="font-semibold text-stone-900">
+                        {t.profile.ageLabel}: {profilePetAge}
+                        {targetUser.pet_gender === "male" ? (
+                            <span className="ml-0.5 text-blue-500">♂</span>
+                        ) : targetUser.pet_gender === "female" ? (
+                            <span className="ml-0.5 text-pink-500">♀</span>
+                        ) : null}
+                      </p>
                     </div>
                   </div>
 
-                  <div className="rounded-3xl border border-orange-100 bg-white p-4 shadow-sm">
+                  {/* 关于它卡片 */}
+                  <div className="rounded-[2rem] border border-orange-100/80 bg-white/95 p-5 shadow-xl shadow-orange-900/5">
                     <p className="mb-2 font-bold text-stone-900">✨ {t.profile.aboutPet}:</p>
-                    <p className="rounded-2xl bg-stone-50 p-4 text-sm leading-6 text-stone-700">
+                    <p className="rounded-[1.4rem] bg-stone-50 p-4 text-sm leading-6 text-stone-700">
                       {profileDescription}
                     </p>
                   </div>
@@ -1096,11 +1450,21 @@ export default function ChatPage() {
                         </Button>
                       </div>
                   ) : (
-                      conversations.map((item) => (
+                      conversations.map((item) => {
+                        const unreadCount = Number(item.unread_count || 0)
+                        const showUnreadBadge = Number.isFinite(unreadCount) && unreadCount > 0
+                        const unreadBadgeText = unreadCount > 99 ? "99+" : String(unreadCount)
+
+                        return (
                           <button
                               key={item.id}
-                              onClick={() => {
+                              onClick={async () => {
                                 if (!item.other_user_id) return
+                                try {
+                                  await markConversationAsRead(item.id)
+                                } catch (error) {
+                                  console.warn("Failed to mark conversation as read:", error)
+                                }
                                 router.push(`/chat?userId=${item.other_user_id}`)
                               }}
                               className="w-full rounded-[1.65rem] border border-orange-100/70 bg-white/95 px-4 py-3.5 text-left shadow-lg shadow-orange-900/5 ring-1 ring-white/70 transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-900/10 active:translate-y-0 active:scale-[0.985]"
@@ -1144,10 +1508,23 @@ export default function ChatPage() {
                                         </span>
                                     ) : null}
                                   </div>
-                                  <div className="shrink-0 pt-0.5 text-[11px] font-semibold text-stone-400">
-                                    {item.last_message_time
-                                        ? formatTime(item.last_message_time)
-                                        : ""}
+                                  <div className="flex shrink-0 items-center gap-1.5 pt-0.5 text-[11px] font-semibold text-stone-400">
+                                    {normalizeBoolean(item.is_pinned) ? (
+                                        <Pin className="h-3.5 w-3.5 text-orange-500" />
+                                    ) : null}
+                                    {normalizeBoolean(item.is_muted) ? (
+                                        <BellOff className="h-3.5 w-3.5 text-stone-400" />
+                                    ) : null}
+                                    <span>
+                                      {item.last_message_time
+                                          ? formatTime(item.last_message_time)
+                                          : ""}
+                                    </span>
+                                    {showUnreadBadge ? (
+                                      <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-black leading-none text-white">
+                                        {unreadBadgeText}
+                                      </span>
+                                    ) : null}
                                   </div>
                                 </div>
 
@@ -1191,7 +1568,8 @@ export default function ChatPage() {
                               </div>
                             </div>
                           </button>
-                      ))
+                        )
+                      })
                   )
               ) : messages.length === 0 ? (
                   <div className="flex items-center justify-center py-16 text-sm text-stone-400">

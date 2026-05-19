@@ -751,6 +751,49 @@ async function sendLikePushNotification({
   }
 }
 
+async function sendProfileLikePushNotification({
+  fromUser,
+  toUserId,
+}) {
+  if (!firebaseMessaging) {
+    return
+  }
+
+  try {
+    const tokens = await getActivePushTokens(toUserId)
+
+    if (tokens.length === 0) {
+      return
+    }
+
+    const senderDisplayName =
+      String(fromUser?.pet_name || "").trim() ||
+      String(fromUser?.username || "").trim() ||
+      "Someone"
+
+    await firebaseMessaging.sendEachForMulticast({
+      tokens,
+      notification: {
+        title: "你收到一个新的点赞",
+        body: `${senderDisplayName} 给你的主页点了爱心`,
+      },
+      android: {
+        priority: "high",
+        notification: {
+          priority: "high",
+          channelId: "profile_likes",
+        },
+      },
+      data: {
+        type: "profile_like",
+        senderUserId: String(fromUser.id),
+      },
+    })
+  } catch (error) {
+    console.warn("Send profile like push failed:", error?.message || error)
+  }
+}
+
 async function getConversationAccess(conversationId, currentUserId) {
   const conversation = await getConversationById(conversationId)
 
@@ -1729,21 +1772,35 @@ app.post("/profile/like", authMiddleware, async (req, res) => {
       })
     }
 
-    const { error: upsertError } = await supabase
+    // Check if like already exists to avoid duplicate notifications
+    const { data: existingLike } = await supabase
       .from("profile_likes")
-      .upsert(
-        {
+      .select("id")
+      .eq("from_user_id", currentUserId)
+      .eq("to_user_id", targetUserId)
+      .maybeSingle()
+
+    if (!existingLike) {
+      const { error: insertError } = await supabase
+        .from("profile_likes")
+        .insert({
           from_user_id: currentUserId,
           to_user_id: targetUserId,
-        },
-        {
-          onConflict: "from_user_id,to_user_id",
-          ignoreDuplicates: true,
-        }
-      )
+        })
 
-    if (upsertError) {
-      throw upsertError
+      if (insertError) {
+        throw insertError
+      }
+
+      // Only send notification on new like (not on repeat)
+      const currentUser = await getCurrentUserById(currentUserId)
+
+      if (currentUser) {
+        void sendProfileLikePushNotification({
+          fromUser: currentUser,
+          toUserId: targetUserId,
+        })
+      }
     }
 
     const count = await getProfileLikeCount(targetUserId)

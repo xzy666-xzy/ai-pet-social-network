@@ -62,7 +62,6 @@ export default function ProfilePage() {
   const [showMembershipModal, setShowMembershipModal] = useState(false)
   const [checkingOut, setCheckingOut] = useState(false)
   const [membershipError, setMembershipError] = useState("")
-  const [coverLiked, setCoverLiked] = useState(false)
   const [isCoverExpanded, setIsCoverExpanded] = useState(false)
   const [coverImageUrl, setCoverImageUrl] = useState("")
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState("")
@@ -357,21 +356,6 @@ export default function ProfilePage() {
           />
 
           <div className="absolute bottom-14 right-5 flex items-center gap-2 z-50">
-            {isCoverExpanded === false ? (
-                <button
-                    type="button"
-                    aria-pressed={coverLiked}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setCoverLiked((liked) => !liked)
-                    }}
-                    className={`pointer-events-auto rounded-full border-2 border-white/90 bg-white/95 px-4 py-2.5 text-sm font-bold shadow-xl shadow-black/20 backdrop-blur-sm hover:bg-white active:scale-95 ${
-                        coverLiked ? "text-rose-500" : "text-stone-800"
-                    }`}
-                >
-                  {coverLiked ? "❤️" : "♡"} {coverLiked ? 2 : 1}
-                </button>
-            ) : null}
             {isCoverExpanded === true ? (
                 <button
                     type="button"
