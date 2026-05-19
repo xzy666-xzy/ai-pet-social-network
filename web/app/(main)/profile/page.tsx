@@ -1,9 +1,10 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { ChevronLeft, MoreHorizontal, Settings, Sparkles, X } from "lucide-react"
+import { ChevronLeft, MoreHorizontal, Settings, Sparkles, X, MessageCircle } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/lib/auth-context"
 import { apiRequest } from "@/lib/api-client"
 import { useLanguage } from "@/lib/i18n/language-context"
@@ -24,6 +25,24 @@ type ProfileStatsResponse = {
       startedAt: string | null
     }
   }
+}
+
+type LikeUser = {
+  id: string
+  name: string | null
+  username: string | null
+  email: string | null
+  avatar_url: string | null
+  pet_name: string | null
+  pet_type: string | null
+  pet_age: number | null
+  pet_gender: string | null
+  created_at: string | null
+}
+
+type LikesListResponse = {
+  success: true
+  data: LikeUser[]
 }
 
 type MembershipCheckoutResponse = {
@@ -69,6 +88,15 @@ export default function ProfilePage() {
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState("")
   const [isAvatarPreviewOpen, setIsAvatarPreviewOpen] = useState(false)
   const [isAvatarActionsOpen, setIsAvatarActionsOpen] = useState(false)
+  const [likesModal, setLikesModal] = useState<{
+    type: "match-received" | "profile-received" | "match-sent"
+    title: string
+  } | null>(null)
+  const [likesUsers, setLikesUsers] = useState<LikeUser[]>([])
+  const [likesLoading, setLikesLoading] = useState(false)
+  const [conversationsModal, setConversationsModal] = useState(false)
+  const [conversationsUsers, setConversationsUsers] = useState<LikeUser[]>([])
+  const [conversationsLoading, setConversationsLoading] = useState(false)
   const profileRootRef = useRef<HTMLDivElement>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
   const avatarInputRef = useRef<HTMLInputElement>(null)
@@ -182,6 +210,53 @@ export default function ProfilePage() {
     })
 
     return response.data
+  }
+
+  async function openLikesModal(type: "match-received" | "profile-received" | "match-sent", title: string) {
+    setLikesModal({ type, title })
+    setLikesUsers([])
+    setLikesLoading(true)
+
+    try {
+      const endpoint =
+        type === "match-received"
+          ? "/profile/likes/match-received"
+          : type === "match-sent"
+            ? "/profile/likes/match-sent"
+            : "/profile/likes/profile-received"
+
+      const response = await apiRequest<LikesListResponse>(endpoint, {
+        auth: true,
+      })
+
+      setLikesUsers(response.data)
+    } catch {
+      setLikesUsers([])
+    } finally {
+      setLikesLoading(false)
+    }
+  }
+
+  async function openConversationsModal() {
+    setConversationsModal(true)
+    setConversationsUsers([])
+    setConversationsLoading(true)
+
+    try {
+      const response = await apiRequest<LikesListResponse>("/profile/conversations", {
+        auth: true,
+      })
+
+      setConversationsUsers(response.data)
+    } catch {
+      setConversationsUsers([])
+    } finally {
+      setConversationsLoading(false)
+    }
+  }
+
+  function handleChatNavigation(userId: string) {
+    window.location.href = `/chat?userId=${userId}`
   }
 
   async function handleCheckoutMembership(plan: "monthly" | "annual") {
@@ -476,25 +551,41 @@ export default function ProfilePage() {
               <p className="text-sm text-red-600">{statsError}</p>
             ) : (
               <div className="grid grid-cols-4 gap-2 text-center text-sm">
-                <div className="rounded-[1.4rem] border border-orange-100 bg-gradient-to-br from-orange-50 to-white px-2 py-4 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => openLikesModal("match-sent", "发出的喜欢")}
+                  className="w-full rounded-[1.4rem] border border-orange-100 bg-gradient-to-br from-orange-50 to-white px-2 py-4 shadow-sm text-center transition hover:shadow-md active:scale-[0.97]"
+                >
                   <p className="min-h-[2rem] text-[11px] font-bold leading-4 text-stone-500">{t.profile.likesSent}</p>
                   <p className="mt-2 text-2xl font-black text-orange-600">{stats.likesSent}</p>
-                </div>
+                </button>
 
-                <div className="rounded-[1.4rem] border border-rose-100 bg-gradient-to-br from-rose-50 to-white px-2 py-4 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => openLikesModal("match-received", t.profile.likesReceived)}
+                  className="w-full rounded-[1.4rem] border border-rose-100 bg-gradient-to-br from-rose-50 to-white px-2 py-4 shadow-sm text-center transition hover:shadow-md active:scale-[0.97]"
+                >
                   <p className="min-h-[2rem] text-[11px] font-bold leading-4 text-stone-500">{t.profile.likesReceived}</p>
                   <p className="mt-2 text-2xl font-black text-rose-500">{stats.likesReceived}</p>
-                </div>
+                </button>
 
-                <div className="rounded-[1.4rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white px-2 py-4 shadow-sm">
+                <button
+                  type="button"
+                  onClick={openConversationsModal}
+                  className="w-full rounded-[1.4rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white px-2 py-4 shadow-sm text-center transition hover:shadow-md active:scale-[0.97]"
+                >
                   <p className="min-h-[2rem] text-[11px] font-bold leading-4 text-stone-500">{t.profile.conversations}</p>
                   <p className="mt-2 text-2xl font-black text-amber-600">{stats.conversations}</p>
-                </div>
+                </button>
 
-                <div className="rounded-[1.4rem] border border-purple-100 bg-gradient-to-br from-purple-50 to-white px-2 py-4 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => openLikesModal("profile-received", t.profile.profileLikesReceived)}
+                  className="w-full rounded-[1.4rem] border border-purple-100 bg-gradient-to-br from-purple-50 to-white px-2 py-4 shadow-sm text-center transition hover:shadow-md active:scale-[0.97]"
+                >
                   <p className="min-h-[2rem] text-[11px] font-bold leading-4 text-stone-500">{t.profile.profileLikesReceived}</p>
                   <p className="mt-2 text-2xl font-black text-purple-500">{stats.profileLikesReceived}</p>
-                </div>
+                </button>
               </div>
             )}
           </Card>
@@ -636,6 +727,132 @@ export default function ProfilePage() {
                   >
                     {t.match.membership.later}
                   </Button>
+                </div>
+              </div>
+            </div>
+        ) : null}
+
+        {likesModal ? (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+              <div className="flex max-h-[80vh] w-full max-w-sm flex-col rounded-3xl bg-white shadow-2xl">
+                <div className="flex items-center justify-between border-b border-stone-100 px-5 py-4">
+                  <h2 className="text-lg font-bold text-stone-900">{likesModal.title}</h2>
+                  <button
+                      type="button"
+                      onClick={() => setLikesModal(null)}
+                      className="rounded-full p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-600"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-5 py-3">
+                  {likesLoading ? (
+                    <div className="flex items-center justify-center py-10">
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
+                      <span className="ml-3 text-sm text-stone-500">加载中...</span>
+                    </div>
+                  ) : likesUsers.length === 0 ? (
+                    <div className="py-10 text-center text-sm text-stone-400">
+                      暂时还没有记录
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {likesUsers.map((likeUser) => (
+                        <button
+                          key={likeUser.id}
+                          type="button"
+                          onClick={() => {
+                            const userId = likeUser.id
+                            setLikesModal(null)
+                            handleChatNavigation(userId)
+                          }}
+                          className="flex w-full items-center gap-3 rounded-2xl border border-stone-100 p-3 text-left transition hover:bg-stone-50 active:scale-[0.98]"
+                        >
+                          <Avatar className="h-12 w-12 shrink-0 rounded-xl">
+                            <AvatarImage src={likeUser.avatar_url || undefined} alt={likeUser.pet_name || ""} />
+                            <AvatarFallback className="rounded-xl bg-orange-100 text-orange-700">
+                              {(likeUser.pet_name || "U").charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-bold text-stone-900">
+                              {likeUser.pet_name || likeUser.username || "Unknown"}
+                            </p>
+                            <p className="truncate text-xs text-stone-500">
+                              {[likeUser.pet_type, likeUser.pet_age !== null ? `${likeUser.pet_age}岁` : null]
+                                .filter(Boolean)
+                                .join(" · ") || "未知"}
+                            </p>
+                          </div>
+                          <MessageCircle className="h-5 w-5 shrink-0 text-stone-400" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+        ) : null}
+
+        {conversationsModal ? (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+              <div className="flex max-h-[80vh] w-full max-w-sm flex-col rounded-3xl bg-white shadow-2xl">
+                <div className="flex items-center justify-between border-b border-stone-100 px-5 py-4">
+                  <h2 className="text-lg font-bold text-stone-900">历史对话</h2>
+                  <button
+                      type="button"
+                      onClick={() => setConversationsModal(false)}
+                      className="rounded-full p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-600"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-5 py-3">
+                  {conversationsLoading ? (
+                    <div className="flex items-center justify-center py-10">
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
+                      <span className="ml-3 text-sm text-stone-500">加载中...</span>
+                    </div>
+                  ) : conversationsUsers.length === 0 ? (
+                    <div className="py-10 text-center text-sm text-stone-400">
+                      暂时还没有历史对话
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {conversationsUsers.map((convUser) => (
+                        <button
+                          key={convUser.id}
+                          type="button"
+                          onClick={() => {
+                            const userId = convUser.id
+                            setConversationsModal(false)
+                            handleChatNavigation(userId)
+                          }}
+                          className="flex w-full items-center gap-3 rounded-2xl border border-stone-100 p-3 text-left transition hover:bg-stone-50 active:scale-[0.98]"
+                        >
+                          <Avatar className="h-12 w-12 shrink-0 rounded-xl">
+                            <AvatarImage src={convUser.avatar_url || undefined} alt={convUser.pet_name || ""} />
+                            <AvatarFallback className="rounded-xl bg-orange-100 text-orange-700">
+                              {(convUser.pet_name || "U").charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-bold text-stone-900">
+                              {convUser.pet_name || convUser.username || "Unknown"}
+                            </p>
+                            <p className="truncate text-xs text-stone-500">
+                              {[convUser.pet_type, convUser.pet_age !== null ? `${convUser.pet_age}岁` : null]
+                                .filter(Boolean)
+                                .join(" · ") || "未知"}
+                            </p>
+                          </div>
+                          <MessageCircle className="h-5 w-5 shrink-0 text-stone-400" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

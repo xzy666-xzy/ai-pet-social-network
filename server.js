@@ -1745,6 +1745,263 @@ app.get("/profile/stats", authMiddleware, async (req, res) => {
   }
 })
 
+app.get("/profile/conversations", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = req.user?.userId
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    const { data: conversations, error } = await supabase
+      .from("conversations")
+      .select("*")
+      .or(`user1_id.eq.${currentUserId},user2_id.eq.${currentUserId}`)
+      .order("updated_at", { ascending: false })
+
+    if (error) {
+      throw error
+    }
+
+    const enriched = await Promise.all(
+      (conversations || []).map(async (conversation) => {
+        const otherUserId =
+          conversation.user1_id === currentUserId ? conversation.user2_id : conversation.user1_id
+        const otherUser = await getCurrentUserById(otherUserId)
+
+        if (!otherUser) {
+          return null
+        }
+
+        return {
+          id: otherUser.id,
+          name: otherUser.name ?? null,
+          username: otherUser.username ?? null,
+          email: otherUser.email ?? null,
+          avatar_url: otherUser.avatar_url ?? null,
+          pet_name: otherUser.pet_name ?? null,
+          pet_type: otherUser.pet_type ?? null,
+          pet_age: otherUser.pet_age ?? null,
+          pet_gender: otherUser.pet_gender ?? null,
+          updated_at: conversation.updated_at ?? null,
+        }
+      })
+    )
+
+    const data = enriched.filter(Boolean)
+
+    return toDataResponse(res, data)
+  } catch (error) {
+    console.error("Profile conversations error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load conversations",
+    })
+  }
+})
+
+app.get("/profile/likes/match-received", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = req.user?.userId
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    const { data: likes, error } = await supabase
+      .from("likes")
+      .select(`
+        id,
+        created_at,
+        from_user_id,
+        to_user_id
+      `)
+      .eq("to_user_id", currentUserId)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      throw error
+    }
+
+    if (!likes || likes.length === 0) {
+      return toDataResponse(res, [])
+    }
+
+    const fromUserIds = [...new Set(likes.map((like) => like.from_user_id))]
+
+    const { data: users, error: usersError } = await supabase
+      .from("users")
+      .select("id, name, username, email, avatar_url, pet_name, pet_type, pet_age, pet_gender, created_at")
+      .in("id", fromUserIds)
+
+    if (usersError) {
+      throw usersError
+    }
+
+    const usersById = new Map((users || []).map((u) => [u.id, u]))
+
+    const result = likes.map((like) => {
+      const user = usersById.get(like.from_user_id) || {}
+      return {
+        id: like.id,
+        name: user.name || null,
+        username: user.username || null,
+        email: user.email || null,
+        avatar_url: user.avatar_url || null,
+        pet_name: user.pet_name || null,
+        pet_type: user.pet_type || null,
+        pet_age: user.pet_age ?? null,
+        pet_gender: user.pet_gender || null,
+        created_at: like.created_at || null,
+      }
+    })
+
+    return toDataResponse(res, result)
+  } catch (error) {
+    console.error("Profile likes match-received error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load match received likes",
+    })
+  }
+})
+
+app.get("/profile/likes/match-sent", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = req.user?.userId
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    const { data: likes, error } = await supabase
+      .from("likes")
+      .select(`
+        id,
+        created_at,
+        from_user_id,
+        to_user_id
+      `)
+      .eq("from_user_id", currentUserId)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      throw error
+    }
+
+    if (!likes || likes.length === 0) {
+      return toDataResponse(res, [])
+    }
+
+    const toUserIds = [...new Set(likes.map((like) => like.to_user_id))]
+
+    const { data: users, error: usersError } = await supabase
+      .from("users")
+      .select("id, name, username, email, avatar_url, pet_name, pet_type, pet_age, pet_gender, created_at")
+      .in("id", toUserIds)
+
+    if (usersError) {
+      throw usersError
+    }
+
+    const usersById = new Map((users || []).map((u) => [u.id, u]))
+
+    const result = likes.map((like) => {
+      const user = usersById.get(like.to_user_id) || {}
+      return {
+        id: like.id,
+        name: user.name || null,
+        username: user.username || null,
+        email: user.email || null,
+        avatar_url: user.avatar_url || null,
+        pet_name: user.pet_name || null,
+        pet_type: user.pet_type || null,
+        pet_age: user.pet_age ?? null,
+        pet_gender: user.pet_gender || null,
+        created_at: like.created_at || null,
+      }
+    })
+
+    return toDataResponse(res, result)
+  } catch (error) {
+    console.error("Profile likes match-sent error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load match sent likes",
+    })
+  }
+})
+
+app.get("/profile/likes/profile-received", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = req.user?.userId
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    const { data: profileLikes, error } = await supabase
+      .from("profile_likes")
+      .select(`
+        id,
+        created_at,
+        from_user_id,
+        to_user_id
+      `)
+      .eq("to_user_id", currentUserId)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      throw error
+    }
+
+    if (!profileLikes || profileLikes.length === 0) {
+      return toDataResponse(res, [])
+    }
+
+    const fromUserIds = [...new Set(profileLikes.map((like) => like.from_user_id))]
+
+    const { data: users, error: usersError } = await supabase
+      .from("users")
+      .select("id, name, username, email, avatar_url, pet_name, pet_type, pet_age, pet_gender, created_at")
+      .in("id", fromUserIds)
+
+    if (usersError) {
+      throw usersError
+    }
+
+    const usersById = new Map((users || []).map((u) => [u.id, u]))
+
+    const result = profileLikes.map((like) => {
+      const user = usersById.get(like.from_user_id) || {}
+      return {
+        id: like.id,
+        name: user.name || null,
+        username: user.username || null,
+        email: user.email || null,
+        avatar_url: user.avatar_url || null,
+        pet_name: user.pet_name || null,
+        pet_type: user.pet_type || null,
+        pet_age: user.pet_age ?? null,
+        pet_gender: user.pet_gender || null,
+        created_at: like.created_at || null,
+      }
+    })
+
+    return toDataResponse(res, result)
+  } catch (error) {
+    console.error("Profile likes profile-received error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load profile received likes",
+    })
+  }
+})
+
 app.post("/profile/like", authMiddleware, async (req, res) => {
   try {
     const currentUserId = String(req.user?.userId || "").trim()
