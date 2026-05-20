@@ -553,7 +553,7 @@ async function getOrCreateConversation(currentUserId, targetUserId) {
   return conversation
 }
 
-async function getOrCreateEventGroupConversation(eventId) {
+async function getOrCreateEventGroupConversation(eventId, creatorUserId) {
   // Check if an event group conversation already exists
   const { data: existingConversation, error: existingError } = await supabase
     .from("conversations")
@@ -570,14 +570,29 @@ async function getOrCreateEventGroupConversation(eventId) {
     return existingConversation
   }
 
+  // Find another real user (not the creator) to satisfy the foreign key constraint
+  const { data: otherUser, error: otherUserError } = await supabase
+    .from("users")
+    .select("id")
+    .neq("id", creatorUserId)
+    .limit(1)
+    .maybeSingle()
+
+  if (otherUserError) {
+    throw otherUserError
+  }
+
+  const user1Id = creatorUserId
+  const user2Id = otherUser ? otherUser.id : creatorUserId
+
   // Create a new event group conversation
   const { data: conversation, error: insertError } = await supabase
     .from("conversations")
     .insert({
       type: "event_group",
       event_id: eventId,
-      user1_id: "00000000-0000-0000-0000-000000000001",
-      user2_id: "00000000-0000-0000-0000-000000000002",
+      user1_id: user1Id,
+      user2_id: user2Id,
       created_at: new Date().toISOString(),
     })
     .select("*")
@@ -2916,7 +2931,7 @@ app.post("/events/:eventId/group-chat/join", authMiddleware, async (req, res) =>
     }
 
     // Find or create event group conversation
-    const conversation = await getOrCreateEventGroupConversation(eventId)
+    const conversation = await getOrCreateEventGroupConversation(eventId, userId)
 
     // Add user to conversation members
     await addUserToEventGroupConversation(conversation.id, userId)
