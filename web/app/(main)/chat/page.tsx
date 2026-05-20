@@ -306,6 +306,24 @@ export default function ChatPage() {
     [conversations, conversationIdParam]
   )
 
+  const activeConversationMemberCount = useMemo(() => {
+    if (!isConversationMode) {
+      return null
+    }
+
+    const rawCount = Number(activeConversationSummary?.member_count)
+
+    if (Number.isFinite(rawCount) && rawCount > 0) {
+      return Math.floor(rawCount)
+    }
+
+    if (activeConversationSummary) {
+      return 1
+    }
+
+    return null
+  }, [activeConversationSummary, isConversationMode])
+
   const chatBackgroundClass = useMemo(
       () => getChatBackgroundClass(background_key),
       [background_key]
@@ -326,12 +344,25 @@ export default function ChatPage() {
 
   const headerName = useMemo(() => {
     if (isConversationMode) {
-      return activeConversationSummary?.event_title?.trim() || "活动群聊"
+      const eventTitle = activeConversationSummary?.event_title?.trim() || "活动群聊"
+
+      if (activeConversationMemberCount === null) {
+        return eventTitle
+      }
+
+      return `${eventTitle} · ${activeConversationMemberCount}人`
     }
     if (!targetUserId) return t.chat.title
     if (!targetUser) return t.chat.title
     return targetUser.petName?.trim() || targetUser.pet_name?.trim() || targetUser.username || t.chat.title
-  }, [activeConversationSummary?.event_title, isConversationMode, targetUser, targetUserId, t.chat.title])
+  }, [
+    activeConversationMemberCount,
+    activeConversationSummary?.event_title,
+    isConversationMode,
+    targetUser,
+    targetUserId,
+    t.chat.title,
+  ])
 
   const profilePetName = targetUser?.petName || targetUser?.pet_name || targetUser?.username || "-"
   const profilePetAge = targetUser?.petAge ?? targetUser?.pet_age ?? "Age not set"
@@ -1699,9 +1730,19 @@ export default function ChatPage() {
 
                                 <div className="mt-1.5 flex items-center gap-2">
                                   {item.type === "event_group" ? (
+                                    (() => {
+                                      const rawCount = Number(item.member_count)
+                                      const displayMemberCount =
+                                        Number.isFinite(rawCount) && rawCount > 0
+                                          ? Math.floor(rawCount)
+                                          : 1
+
+                                      return (
                                     <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-bold text-orange-600">
-                                      👥 {item.member_count ?? 0} 人
+                                      👥 {displayMemberCount} 人
                                     </span>
+                                      )
+                                    })()
                                   ) : (
                                     <>
                                       <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-bold text-orange-600">

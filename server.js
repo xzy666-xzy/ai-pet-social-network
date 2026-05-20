@@ -3318,11 +3318,11 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
 
         if (isEventGroup) {
           // Event group conversation
-          const [eventTitle, { count: memberCount }, { data: lastMessage }] = await Promise.all([
+          const [eventTitle, memberCountResult, { data: lastMessage }] = await Promise.all([
             resolveEventTitleByEventId(conversation.event_id),
             supabase
               .from("conversation_members")
-              .select("*", { count: "exact", head: true })
+              .select("user_id", { count: "exact", head: true })
               .eq("conversation_id", conversation.id),
             supabase
               .from("messages")
@@ -3332,6 +3332,13 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
               .limit(1)
               .maybeSingle(),
           ])
+
+          if (memberCountResult?.error) {
+            throw memberCountResult.error
+          }
+
+          const rawMemberCount = Number(memberCountResult?.count ?? 0)
+          const memberCount = Number.isFinite(rawMemberCount) ? Math.max(0, rawMemberCount) : 0
 
           const settings = conversationSettingsById.get(String(conversation.id))
           const rawUnreadCount = Number(conversation.unread_count ?? 0)
@@ -3344,7 +3351,7 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
             type: "event_group",
             event_id: conversation.event_id ?? null,
             event_title: eventTitle,
-            member_count: memberCount ?? 0,
+            member_count: memberCount,
             other_user_id: "",
             other_username: "",
             other_pet_name: "",
