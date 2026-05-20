@@ -241,28 +241,41 @@ function isMissingEventsTableError(error) {
 
 async function resolveEventTitleByEventId(eventId) {
   const safeEventId = String(eventId || "").trim()
+  const fallbackTitle = STATIC_EVENT_TITLES[safeEventId] || "活动群聊"
 
   if (!safeEventId) {
-    return null
+    return "活动群聊"
   }
 
-  const { data: event, error } = await supabase
-    .from("events")
-    .select("title, name")
-    .eq("id", safeEventId)
-    .maybeSingle()
+  try {
+    const { data: event, error } = await supabase
+      .from("events")
+      .select("title")
+      .eq("id", safeEventId)
+      .maybeSingle()
 
-  if (error && !isMissingEventsTableError(error)) {
-    throw error
+    if (error) {
+      console.warn(
+        "Resolve event title failed, fallback to default:",
+        error?.message || error
+      )
+      return fallbackTitle
+    }
+
+    const dbTitle = String(event?.title || "").trim()
+
+    if (dbTitle) {
+      return dbTitle
+    }
+
+    return fallbackTitle
+  } catch (error) {
+    console.warn(
+      "Resolve event title exception, fallback to default:",
+      error?.message || error
+    )
+    return fallbackTitle
   }
-
-  const dbTitle = String(event?.title || event?.name || "").trim()
-
-  if (dbTitle) {
-    return dbTitle
-  }
-
-  return STATIC_EVENT_TITLES[safeEventId] || null
 }
 
 async function listEventsWithOrganizers() {
