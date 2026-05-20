@@ -2784,28 +2784,66 @@ app.post("/events/join", authMiddleware, async (req, res) => {
       })
     }
 
-    const currentPeople = event ? Number(event.current_people || 0) : STATIC_EVENT_PEOPLE[eventId]
-    const maxPeople = event?.max_people == null ? null : Number(event.max_people)
-    const state = getEventParticipationState(eventId, currentPeople, maxPeople)
+    // 查 event_participants 是否已有该用户
+    const { data: existingParticipant, error: existingParticipantError } = await supabase
+      .from("event_participants")
+      .select("id")
+      .eq("event_id", eventId)
+      .eq("user_id", userId)
+      .maybeSingle()
 
-    if (state.participants.has(userId)) {
+    if (existingParticipantError) {
+      throw existingParticipantError
+    }
+
+    if (existingParticipant) {
+      // 已参加，同步 state 后返回
+      const { count: participantCount, error: countError } = await supabase
+        .from("event_participants")
+        .select("*", { count: "exact", head: true })
+        .eq("event_id", eventId)
+
+      if (countError) {
+        throw countError
+      }
+
+      const currentPeople = event ? Number(event.current_people || 0) : STATIC_EVENT_PEOPLE[eventId]
+      const maxPeople = event?.max_people == null ? null : Number(event.max_people)
+      const state = getEventParticipationState(eventId, currentPeople, maxPeople)
+      state.participants.add(userId)
+      state.currentPeople = participantCount
+
       return toDataResponse(res, {
         ...(event || { id: eventId }),
-        current_people: state.currentPeople,
+        current_people: participantCount,
         joined: true,
       })
     }
 
-    if (Number.isFinite(state.maxPeople) && state.currentPeople >= state.maxPeople) {
+    // 用 event_participants count 判断是否满员
+    const { count: participantCount, error: countError } = await supabase
+      .from("event_participants")
+      .select("*", { count: "exact", head: true })
+      .eq("event_id", eventId)
+
+    if (countError) {
+      throw countError
+    }
+
+    const maxPeople = event?.max_people == null ? null : Number(event.max_people)
+
+    if (Number.isFinite(maxPeople) && participantCount >= maxPeople) {
       return res.status(400).json({
         success: false,
         error: "Event is full",
       })
     }
 
-    const nextPeople = state.currentPeople + 1
+    const nextPeople = participantCount + 1
 
     if (!event) {
+      // 无 events 表时只更新内存
+      const state = getEventParticipationState(eventId, STATIC_EVENT_PEOPLE[eventId], null)
       state.participants.add(userId)
       state.currentPeople = nextPeople
 
@@ -2816,6 +2854,41 @@ app.post("/events/join", authMiddleware, async (req, res) => {
       })
     }
 
+    // 插入 event_participants
+    const { error: insertError } = await supabase
+      .from("event_participants")
+      .insert({
+        event_id: eventId,
+        user_id: userId,
+      })
+
+    if (insertError) {
+      // 唯一约束冲突 => 已存在，视为成功
+      if (insertError.code === "23505") {
+        const { count: finalCount, error: finalCountError } = await supabase
+          .from("event_participants")
+          .select("*", { count: "exact", head: true })
+          .eq("event_id", eventId)
+
+        if (finalCountError) {
+          throw finalCountError
+        }
+
+        const state = getEventParticipationState(eventId, Number(event.current_people || 0), maxPeople)
+        state.participants.add(userId)
+        state.currentPeople = finalCount
+
+        return toDataResponse(res, {
+          ...event,
+          current_people: finalCount,
+          joined: true,
+        })
+      }
+
+      throw insertError
+    }
+
+    // 更新 events.current_people
     const { data: updatedEvent, error: updateError } = await supabase
       .from("events")
       .update({
@@ -2829,6 +2902,8 @@ app.post("/events/join", authMiddleware, async (req, res) => {
       throw updateError
     }
 
+    // 同步 eventParticipationState
+    const state = getEventParticipationState(eventId, Number(event.current_people || 0), maxPeople)
     state.participants.add(userId)
     state.currentPeople = Number(updatedEvent.current_people || nextPeople)
 
@@ -2886,14 +2961,31 @@ app.post("/events/leave", authMiddleware, async (req, res) => {
       })
     }
 
-    const currentPeople = event ? Number(event.current_people || 0) : STATIC_EVENT_PEOPLE[eventId]
-    const maxPeople = event?.max_people == null ? null : Number(event.max_people)
-    const state = getEventParticipationState(eventId, currentPeople, maxPeople)
-    const nextPeople = state.participants.has(userId)
-      ? Math.max(0, state.currentPeople - 1)
-      : Math.max(0, state.currentPeople)
+    // 删除 event_participants 记录
+    const { error: deleteError } = await supabase
+      .from("event_participants")
+      .delete()
+      .eq("event_id", eventId)
+      .eq("user_id", userId)
+
+    if (deleteError) {
+      throw deleteError
+    }
+
+    // 重新 count
+    const { count: participantCount, error: countError } = await supabase
+      .from("event_participants")
+      .select("*", { count: "exact", head: true })
+      .eq("event_id", eventId)
+
+    if (countError) {
+      throw countError
+    }
+
+    const nextPeople = participantCount
 
     if (!event) {
+      const state = getEventParticipationState(eventId, STATIC_EVENT_PEOPLE[eventId], null)
       state.participants.delete(userId)
       state.currentPeople = nextPeople
 
@@ -2904,6 +2996,7 @@ app.post("/events/leave", authMiddleware, async (req, res) => {
       })
     }
 
+    // 更新 events.current_people
     const { data: updatedEvent, error: updateError } = await supabase
       .from("events")
       .update({
@@ -2917,8 +3010,35 @@ app.post("/events/leave", authMiddleware, async (req, res) => {
       throw updateError
     }
 
+    // 同步 eventParticipationState
+    const maxPeople = event?.max_people == null ? null : Number(event.max_people)
+    const state = getEventParticipationState(eventId, Number(event.current_people || 0), maxPeople)
     state.participants.delete(userId)
     state.currentPeople = Number(updatedEvent.current_people || nextPeople)
+
+    // 从活动群聊 conversation_members 删除该用户
+    const { data: conversation, error: convError } = await supabase
+      .from("conversations")
+      .select("id")
+      .eq("type", "event_group")
+      .eq("event_id", eventId)
+      .maybeSingle()
+
+    if (convError) {
+      throw convError
+    }
+
+    if (conversation) {
+      const { error: removeMemberError } = await supabase
+        .from("conversation_members")
+        .delete()
+        .eq("conversation_id", conversation.id)
+        .eq("user_id", userId)
+
+      if (removeMemberError) {
+        throw removeMemberError
+      }
+    }
 
     return toDataResponse(res, {
       ...updatedEvent,
