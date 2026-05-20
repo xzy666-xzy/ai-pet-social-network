@@ -53,7 +53,9 @@ type TargetUser = {
 type ConversationSummary = {
   id: string
   type?: string | null
+  event_id?: string | null
   event_title?: string | null
+  member_count?: number
   other_user_id: string
   other_username: string
   other_pet_name: string
@@ -366,12 +368,18 @@ export default function ChatPage() {
 
     const safeConversations = Array.isArray(data.data.conversations)
         ? data.data.conversations.filter(
-            (item: ConversationSummary) =>
-                item &&
+            (item: ConversationSummary) => {
+              if (!item) return false
+              // event_group conversations don't have other_user_id
+              if (item.type === "event_group") return true
+              // direct conversations must have a valid other_user_id
+              return (
                 typeof item.other_user_id === "string" &&
                 item.other_user_id.trim() !== "" &&
                 item.other_user_id !== "undefined" &&
                 item.other_user_id !== "null"
+              )
+            }
         )
         : []
 
@@ -1616,7 +1624,7 @@ export default function ChatPage() {
                           <button
                               key={item.id}
                               onClick={async () => {
-                                if (!item.other_user_id) return
+                                if (item.type !== "event_group" && !item.other_user_id) return
                                 try {
                                   await markConversationAsRead(item.id)
                                 } catch (error) {
@@ -1690,28 +1698,36 @@ export default function ChatPage() {
                                 </div>
 
                                 <div className="mt-1.5 flex items-center gap-2">
-                                  <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-bold text-orange-600">
-                                    {getConversationStatusText(item)}
-                                  </span>
-                                  {item.liked_me && !item.is_match ? (
-                                      <span className="rounded-full bg-gradient-to-r from-orange-500 to-amber-400 px-2.5 py-1 text-[10px] font-extrabold text-white shadow-sm shadow-orange-500/20">
-                                        New
-                                      </span>
-                                  ) : null}
-                                  <span className="flex items-center gap-1 text-[11px] font-semibold text-stone-400">
-                                    <span
-                                        className={`h-1.5 w-1.5 rounded-full ${
-                                            isUserOnline(item.other_last_seen)
-                                                ? "bg-emerald-500"
-                                                : "bg-stone-300"
-                                        }`}
-                                    />
-                                    <span>
-                                      {isUserOnline(item.other_last_seen)
-                                          ? t.chat.activeNow
-                                          : t.chat.offline}
+                                  {item.type === "event_group" ? (
+                                    <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-bold text-orange-600">
+                                      👥 {item.member_count ?? 0} 人
                                     </span>
-                                  </span>
+                                  ) : (
+                                    <>
+                                      <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-bold text-orange-600">
+                                        {getConversationStatusText(item)}
+                                      </span>
+                                      {item.liked_me && !item.is_match ? (
+                                          <span className="rounded-full bg-gradient-to-r from-orange-500 to-amber-400 px-2.5 py-1 text-[10px] font-extrabold text-white shadow-sm shadow-orange-500/20">
+                                            New
+                                          </span>
+                                      ) : null}
+                                      <span className="flex items-center gap-1 text-[11px] font-semibold text-stone-400">
+                                        <span
+                                            className={`h-1.5 w-1.5 rounded-full ${
+                                                isUserOnline(item.other_last_seen)
+                                                    ? "bg-emerald-500"
+                                                    : "bg-stone-300"
+                                            }`}
+                                        />
+                                        <span>
+                                          {isUserOnline(item.other_last_seen)
+                                              ? t.chat.activeNow
+                                              : t.chat.offline}
+                                        </span>
+                                      </span>
+                                    </>
+                                  )}
                                 </div>
 
                                   <div className="mt-2 flex min-w-0 items-center justify-between gap-3">

@@ -3221,15 +3221,64 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
       return sendUnauthorized(res)
     }
 
-    const { data: conversations, error } = await supabase
+    // Get conversations where user is user1/user2 (direct) OR member via conversation_members (event_group)
+    const { data: directConversations, error: directError } = await supabase
       .from("conversations")
       .select("*")
       .or(`user1_id.eq.${currentUserId},user2_id.eq.${currentUserId}`)
-      .order("created_at", { ascending: false })
 
-    if (error) {
-      throw error
+    if (directError) {
+      throw directError
     }
+
+    // Get event_group conversations where user is in conversation_members
+    const { data: memberConversations, error: memberError } = await supabase
+      .from("conversation_members")
+      .select("conversation_id")
+      .eq("user_id", currentUserId)
+
+    if (memberError) {
+      throw memberError
+    }
+
+    const memberConversationIds = (memberConversations || []).map((m) => m.conversation_id)
+
+    let eventGroupConversations = []
+    if (memberConversationIds.length > 0) {
+      const { data: egConversations, error: egError } = await supabase
+        .from("conversations")
+        .select("*")
+        .in("id", memberConversationIds)
+        .eq("type", "event_group")
+
+      if (egError) {
+        throw egError
+      }
+
+      eventGroupConversations = egConversations || []
+    }
+
+    // Merge and deduplicate by id
+    const conversationMap = new Map()
+    for (const c of directConversations || []) {
+      conversationMap.set(c.id, c)
+    }
+    for (const c of eventGroupConversations) {
+      if (!conversationMap.has(c.id)) {
+        conversationMap.set(c.id, c)
+      }
+    }
+    const conversations = Array.from(conversationMap.values())
+
+    // Sort by created_at descending
+    conversations.sort((a, b) => {
+      const aTime = Date.parse(a.created_at || "")
+      const bTime = Date.parse(b.created_at || "")
+      if (!Number.isNaN(aTime) && !Number.isNaN(bTime)) {
+        return bTime - aTime
+      }
+      return 0
+    })
 
     const { data: chatSettings, error: chatSettingsError } = await supabase
       .from("chat_settings")
@@ -3252,6 +3301,59 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
 
     const enriched = await Promise.all(
       (conversations || []).map(async (conversation) => {
+        const isEventGroup = conversation.type === "event_group"
+
+        if (isEventGroup) {
+          // Event group conversation
+          const [eventTitle, { count: memberCount }, { data: lastMessage }] = await Promise.all([
+            resolveEventTitleByEventId(conversation.event_id),
+            supabase
+              .from("conversation_members")
+              .select("*", { count: "exact", head: true })
+              .eq("conversation_id", conversation.id),
+            supabase
+              .from("messages")
+              .select("content, created_at")
+              .eq("conversation_id", conversation.id)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle(),
+          ])
+
+          const settings = conversationSettingsById.get(String(conversation.id))
+          const rawUnreadCount = Number(conversation.unread_count ?? 0)
+          const unreadCount = Number.isFinite(rawUnreadCount)
+            ? Math.max(0, rawUnreadCount)
+            : 0
+
+          return {
+            id: conversation.id,
+            type: "event_group",
+            event_id: conversation.event_id ?? null,
+            event_title: eventTitle,
+            member_count: memberCount ?? 0,
+            other_user_id: "",
+            other_username: "",
+            other_pet_name: "",
+            other_avatar_url: "",
+            other_user_is_ai: 0,
+            other_last_seen: null,
+            other_membership_active: false,
+            last_message: lastMessage?.content ?? null,
+            last_message_time: lastMessage?.created_at ?? null,
+            updated_at: conversation.updated_at ?? null,
+            created_at: conversation.created_at ?? null,
+            is_pinned: settings?.is_pinned ?? false,
+            is_muted: settings?.is_muted ?? false,
+            liked_by_me: 0,
+            liked_me: 0,
+            is_match: 0,
+            single_message_used_by_me: 0,
+            unread_count: unreadCount,
+          }
+        }
+
+        // Direct conversation
         const otherUserId =
           conversation.user1_id === currentUserId ? conversation.user2_id : conversation.user1_id
         const otherUser = await getCurrentUserById(otherUserId)
@@ -3266,7 +3368,6 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
           likedMe,
           { count: sentCount },
           otherMembership,
-          eventTitle,
         ] = await Promise.all([
           supabase
             .from("messages")
@@ -3283,9 +3384,6 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
             .eq("conversation_id", conversation.id)
             .eq("sender_id", currentUserId),
           getActiveMembership(String(otherUserId)),
-          conversation.type === "event_group"
-            ? resolveEventTitleByEventId(conversation.event_id)
-            : Promise.resolve(null),
         ])
 
         const settings = conversationSettingsById.get(String(conversation.id))
@@ -3296,12 +3394,11 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
 
         return {
           id: conversation.id,
-          type: conversation.type ?? null,
+          type: "direct",
           other_user_id: otherUser.id,
           other_username: otherUser.username ?? "",
           other_pet_name: otherUser.pet_name ?? "",
           other_avatar_url: otherUser.avatar_url ?? "",
-          ...(conversation.type === "event_group" ? { event_title: eventTitle } : {}),
           other_user_is_ai: otherUser.is_ai ? 1 : 0,
           other_last_seen: otherUser.last_seen ?? null,
           other_membership_active: Boolean(otherMembership),
