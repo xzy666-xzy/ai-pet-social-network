@@ -6,6 +6,7 @@ import {
   CalendarDays,
   ChevronRight,
   MapPin,
+  MessageCircle,
   Navigation,
   Search,
   Users,
@@ -14,6 +15,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { useLanguage } from "@/lib/i18n/language-context"
 import GoogleMap, { type MapPlace } from "@/components/google-map"
 import { ApiError, apiRequest } from "@/lib/api-client"
@@ -336,6 +345,10 @@ const copy = {
     countSuffix: (n: number) => `${n} 个附近活动`,
     back: "返回",
     searchNotFound: "未找到相关位置",
+    groupChat: "群聊",
+    groupChatTitle: "加入活动群聊",
+    groupChatDesc: "确定要加入这个活动的群聊吗？",
+    groupChatConfirm: "确定",
   },
   ko: {
     title: "탐색",
@@ -359,6 +372,10 @@ const copy = {
     countSuffix: (n: number) => `주변 활동 ${n}개`,
     back: "뒤로",
     searchNotFound: "관련 위치를 찾을 수 없습니다",
+    groupChat: "단체 채팅",
+    groupChatTitle: "활동 단체 채팅 참가",
+    groupChatDesc: "이 활동의 단체 채팅에 참가하시겠습니까?",
+    groupChatConfirm: "확인",
   },
   en: {
     title: "Explore",
@@ -382,6 +399,10 @@ const copy = {
     countSuffix: (n: number) => `${n} nearby events`,
     back: "Back",
     searchNotFound: "Location not found",
+    groupChat: "Group Chat",
+    groupChatTitle: "Join Group Chat",
+    groupChatDesc: "Are you sure you want to join this event's group chat?",
+    groupChatConfirm: "Confirm",
   },
 } as const
 
@@ -413,6 +434,8 @@ export default function ExplorePage() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [detailEventId, setDetailEventId] = useState<number | null>(null)
   const [detailApiEvent, setDetailApiEvent] = useState<ApiEvent | null>(null)
+  const [groupChatDialogId, setGroupChatDialogId] = useState<number | null>(null)
+  const [joiningGroupChat, setJoiningGroupChat] = useState(false)
   const userPreferredCenter = userLocation || userCurrentCenter || userCityCenter
 
   const cardRefs = useRef<Record<number, HTMLDivElement | null>>({})
@@ -567,6 +590,35 @@ export default function ExplorePage() {
       alert(message)
     } finally {
       setJoiningMap((prev) => ({ ...prev, [id]: false }))
+    }
+  }
+
+  const handleJoinGroupChat = async () => {
+    const id = groupChatDialogId
+    if (id === null || joiningGroupChat) return
+
+    const eventItem = filteredEvents.find((e) => e.id === id)
+    const eventId = eventItem?.event_id || String(id)
+
+    setJoiningGroupChat(true)
+
+    try {
+      const response = await apiRequest<{
+        success: true
+        data: { conversationId: string; eventId: string; type: string }
+      }>(`/events/${encodeURIComponent(eventId)}/group-chat/join`, {
+        method: "POST",
+        auth: true,
+      })
+
+      setGroupChatDialogId(null)
+      router.push(`/chat?conversationId=${response.data.conversationId}`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error("Failed to join group chat", { error, message })
+      alert(message)
+    } finally {
+      setJoiningGroupChat(false)
     }
   }
 
@@ -945,6 +997,16 @@ export default function ExplorePage() {
                             <ChevronRight className="h-4 w-4" />
                             <span className="ml-1">{c.detail}</span>
                           </Button>
+
+                          {joined && (
+                            <Button
+                                variant="outline"
+                                className="rounded-full border-orange-100 bg-white px-3 font-bold text-stone-700 shadow-sm hover:bg-orange-50"
+                                onClick={() => setGroupChatDialogId(item.id)}
+                            >
+                              <MessageCircle className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </Card>
@@ -964,6 +1026,47 @@ export default function ExplorePage() {
             ))}
           </div>
         </section>
+
+        <Dialog
+            open={groupChatDialogId !== null}
+            onOpenChange={(open) => {
+              if (!open) setGroupChatDialogId(null)
+            }}
+        >
+          <DialogContent className="sm:max-w-[360px] rounded-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-center text-lg">
+                {c.groupChatTitle}
+              </DialogTitle>
+              <DialogDescription className="text-center text-sm text-stone-500">
+                {c.groupChatDesc}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex-row justify-center gap-3 sm:justify-center">
+              <Button
+                  variant="outline"
+                  className="rounded-full border-orange-100 px-6 font-bold text-stone-600"
+                  onClick={() => setGroupChatDialogId(null)}
+              >
+                {c.cancel}
+              </Button>
+              <Button
+                  className="rounded-full bg-gradient-to-br from-orange-500 to-amber-400 px-6 font-bold text-white shadow-lg shadow-orange-500/20"
+                  disabled={joiningGroupChat}
+                  onClick={handleJoinGroupChat}
+              >
+                {joiningGroupChat ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    {c.groupChatConfirm}
+                  </span>
+                ) : (
+                  c.groupChatConfirm
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
   )
 }

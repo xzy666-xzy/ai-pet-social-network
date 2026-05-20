@@ -553,6 +553,75 @@ async function getOrCreateConversation(currentUserId, targetUserId) {
   return conversation
 }
 
+async function getOrCreateEventGroupConversation(eventId) {
+  // Check if an event group conversation already exists
+  const { data: existingConversation, error: existingError } = await supabase
+    .from("conversations")
+    .select("*")
+    .eq("type", "event_group")
+    .eq("event_id", eventId)
+    .maybeSingle()
+
+  if (existingError) {
+    throw existingError
+  }
+
+  if (existingConversation) {
+    return existingConversation
+  }
+
+  // Create a new event group conversation
+  const { data: conversation, error: insertError } = await supabase
+    .from("conversations")
+    .insert({
+      type: "event_group",
+      event_id: eventId,
+      user1_id: "00000000-0000-0000-0000-000000000000",
+      user2_id: "00000000-0000-0000-0000-000000000000",
+      created_at: new Date().toISOString(),
+    })
+    .select("*")
+    .single()
+
+  if (insertError) {
+    throw insertError
+  }
+
+  return conversation
+}
+
+async function addUserToEventGroupConversation(conversationId, userId) {
+  const { data: existingMember, error: existingError } = await supabase
+    .from("conversation_members")
+    .select("id")
+    .eq("conversation_id", conversationId)
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  if (existingError) {
+    throw existingError
+  }
+
+  if (existingMember) {
+    return existingMember
+  }
+
+  const { data: member, error: insertError } = await supabase
+    .from("conversation_members")
+    .insert({
+      conversation_id: conversationId,
+      user_id: userId,
+    })
+    .select("*")
+    .single()
+
+  if (insertError) {
+    throw insertError
+  }
+
+  return member
+}
+
 async function getConversationById(conversationId) {
   const { data, error } = await supabase
     .from("conversations")
@@ -565,6 +634,47 @@ async function getConversationById(conversationId) {
   }
 
   return data
+}
+
+async function checkConversationAccess(conversationId, userId) {
+  const conversation = await getConversationById(conversationId)
+
+  if (!conversation) {
+    return null
+  }
+
+  const isGroup = conversation.type === "event_group"
+
+  if (isGroup) {
+    const { data: member, error } = await supabase
+      .from("conversation_members")
+      .select("id")
+      .eq("conversation_id", conversationId)
+      .eq("user_id", userId)
+      .maybeSingle()
+
+    if (error) {
+      throw error
+    }
+
+    if (!member) {
+      return null
+    }
+
+    return {
+      conversation,
+      isGroup: true,
+    }
+  }
+
+  if (conversation.user1_id !== userId && conversation.user2_id !== userId) {
+    return null
+  }
+
+  return {
+    conversation,
+    isGroup: false,
+  }
 }
 
 async function getConversationMessages(conversationId) {
@@ -2754,6 +2864,81 @@ app.post("/events/leave", authMiddleware, async (req, res) => {
   }
 })
 
+app.post("/events/:eventId/group-chat/join", authMiddleware, async (req, res) => {
+  try {
+    const currentUser = await getCurrentUserById(req.user?.userId)
+
+    if (!currentUser) {
+      return sendUnauthorized(res)
+    }
+
+    const eventId = String(req.params?.eventId || "").trim()
+
+    if (!eventId) {
+      return res.status(400).json({
+        success: false,
+        error: "eventId is required",
+      })
+    }
+
+    const userId = String(currentUser.id)
+
+    // Check if event exists
+    const { data: event, error: eventError } = await supabase
+      .from("events")
+      .select("*")
+      .eq("id", eventId)
+      .maybeSingle()
+
+    if (eventError) {
+      if (!isMissingEventsTableError(eventError)) {
+        throw eventError
+      }
+    }
+
+    if (!event && STATIC_EVENT_PEOPLE[eventId] === undefined) {
+      return res.status(404).json({
+        success: false,
+        error: "Event not found",
+      })
+    }
+
+    // Check if user has joined the event
+    const currentPeople = event ? Number(event.current_people || 0) : STATIC_EVENT_PEOPLE[eventId]
+    const maxPeople = event?.max_people == null ? null : Number(event.max_people)
+    const state = getEventParticipationState(eventId, currentPeople, maxPeople)
+
+    if (!state.participants.has(userId)) {
+      return res.status(403).json({
+        success: false,
+        error: "You must join the event before joining the group chat",
+      })
+    }
+
+    // Find or create event group conversation
+    const conversation = await getOrCreateEventGroupConversation(eventId)
+
+    // Add user to conversation members
+    await addUserToEventGroupConversation(conversation.id, userId)
+
+    return toDataResponse(res, {
+      conversationId: conversation.id,
+      eventId: eventId,
+      type: "event_group",
+    })
+  } catch (error) {
+    console.error("Event group chat join error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to join event group chat",
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
+    })
+  }
+})
+
 app.post("/membership/checkout", authMiddleware, async (req, res) => {
   try {
     const currentUser = await getCurrentUserById(req.user?.userId)
@@ -3295,6 +3480,55 @@ app.delete("/chat/conversations/:conversationId", authMiddleware, async (req, re
   }
 })
 
+app.get("/chat/messages", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = String(req.user?.userId || "").trim()
+    const conversationId = String(req.query?.conversationId || req.query?.conversation_id || "").trim()
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    if (!conversationId) {
+      return res.status(400).json({
+        success: false,
+        error: "conversationId is required",
+      })
+    }
+
+    const access = await checkConversationAccess(conversationId, currentUserId)
+
+    if (!access) {
+      const conversation = await getConversationById(conversationId)
+
+      if (conversation?.type === "event_group") {
+        return res.status(403).json({
+          success: false,
+          error: "Forbidden",
+        })
+      }
+
+      return res.status(404).json({
+        success: false,
+        error: "Conversation not found",
+      })
+    }
+
+    const messages = await getConversationMessages(conversationId)
+
+    return toDataResponse(res, {
+      messages,
+    })
+  } catch (error) {
+    console.error("Chat messages query error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load messages",
+    })
+  }
+})
+
 app.get("/chat/messages/:conversationId", authMiddleware, async (req, res) => {
   try {
     const currentUserId = req.user?.userId
@@ -3311,12 +3545,18 @@ app.get("/chat/messages/:conversationId", authMiddleware, async (req, res) => {
       })
     }
 
-    const conversation = await getConversationById(conversationId)
+    const access = await checkConversationAccess(conversationId, String(currentUserId))
 
-    if (
-      !conversation ||
-      (conversation.user1_id !== currentUserId && conversation.user2_id !== currentUserId)
-    ) {
+    if (!access) {
+      const conversation = await getConversationById(conversationId)
+
+      if (conversation?.type === "event_group") {
+        return res.status(403).json({
+          success: false,
+          error: "Forbidden",
+        })
+      }
+
       return res.status(404).json({
         success: false,
         error: "Conversation not found",
@@ -3429,7 +3669,7 @@ app.post("/chat/messages", authMiddleware, async (req, res) => {
       return sendUnauthorized(res)
     }
 
-    const conversationId = String(req.body?.conversationId || "").trim()
+    const conversationId = String(req.body?.conversationId || req.body?.conversation_id || "").trim()
     const content = String(req.body?.content || "").trim()
     const messageType = String(req.body?.message_type || "text").trim().toLowerCase() || "text"
     const imageUrl = String(req.body?.image_url || "").trim()
@@ -3462,49 +3702,60 @@ app.post("/chat/messages", authMiddleware, async (req, res) => {
       })
     }
 
-    const conversation = await getConversationById(conversationId)
+    const checked = await checkConversationAccess(conversationId, String(currentUser.id))
 
-    if (
-      !conversation ||
-      (conversation.user1_id !== currentUser.id && conversation.user2_id !== currentUser.id)
-    ) {
+    if (!checked) {
+      const conversation = await getConversationById(conversationId)
+
+      if (conversation?.type === "event_group") {
+        return res.status(403).json({
+          success: false,
+          error: "Forbidden",
+        })
+      }
+
       return res.status(404).json({
         success: false,
         error: "Conversation not found",
       })
     }
 
-    const access = await getConversationAccess(conversationId, String(currentUser.id))
+    const { conversation, isGroup } = checked
+    let latestAccess = null
 
-    if (!access) {
-      return res.status(404).json({
-        success: false,
-        error: "Conversation access not found",
-      })
-    }
+    if (!isGroup) {
+      const access = await getConversationAccess(conversationId, String(currentUser.id))
 
-    if (!access.liked_by_me) {
-      return res.status(403).json({
-        success: false,
-        error: "LIKE_REQUIRED",
-        code: "LIKE_REQUIRED",
-      })
-    }
-
-    if (!access.can_send_message) {
-      if (access.single_message_used_by_me && !access.is_match) {
-        return res.status(403).json({
+      if (!access) {
+        return res.status(404).json({
           success: false,
-          error: "INTRO_MESSAGE_LIMIT_REACHED",
-          code: "INTRO_MESSAGE_LIMIT_REACHED",
+          error: "Conversation access not found",
         })
       }
 
-      return res.status(403).json({
-        success: false,
-        error: "MESSAGE_NOT_ALLOWED",
-        code: "MESSAGE_NOT_ALLOWED",
-      })
+      if (!access.liked_by_me) {
+        return res.status(403).json({
+          success: false,
+          error: "LIKE_REQUIRED",
+          code: "LIKE_REQUIRED",
+        })
+      }
+
+      if (!access.can_send_message) {
+        if (access.single_message_used_by_me && !access.is_match) {
+          return res.status(403).json({
+            success: false,
+            error: "INTRO_MESSAGE_LIMIT_REACHED",
+            code: "INTRO_MESSAGE_LIMIT_REACHED",
+          })
+        }
+
+        return res.status(403).json({
+          success: false,
+          error: "MESSAGE_NOT_ALLOWED",
+          code: "MESSAGE_NOT_ALLOWED",
+        })
+      }
     }
 
     const message = await createMessage(
@@ -3514,51 +3765,241 @@ app.post("/chat/messages", authMiddleware, async (req, res) => {
       messageType,
       imageUrl || null
     )
-    const latestAccess = await getConversationAccess(conversationId, String(currentUser.id))
-    const otherUserId =
-      conversation.user1_id === currentUser.id ? conversation.user2_id : conversation.user1_id
+    if (!isGroup) {
+      latestAccess = await getConversationAccess(conversationId, String(currentUser.id))
+      const otherUserId =
+        conversation.user1_id === currentUser.id ? conversation.user2_id : conversation.user1_id
 
-    if (String(otherUserId) !== String(currentUser.id)) {
-      const rawUnreadCount = Number(conversation.unread_count ?? 0)
-      const currentUnreadCount = Number.isFinite(rawUnreadCount) ? rawUnreadCount : 0
-      const nextUnreadCount = currentUnreadCount + 1
+      if (String(otherUserId) !== String(currentUser.id)) {
+        const rawUnreadCount = Number(conversation.unread_count ?? 0)
+        const currentUnreadCount = Number.isFinite(rawUnreadCount) ? rawUnreadCount : 0
+        const nextUnreadCount = currentUnreadCount + 1
 
-      const { error: unreadUpdateError } = await supabase
-        .from("conversations")
-        .update({
-          unread_count: nextUnreadCount,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", conversationId)
+        const { error: unreadUpdateError } = await supabase
+          .from("conversations")
+          .update({
+            unread_count: nextUnreadCount,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", conversationId)
 
-      if (unreadUpdateError) {
-        throw unreadUpdateError
+        if (unreadUpdateError) {
+          throw unreadUpdateError
+        }
       }
+
+      const senderDisplayName = currentUser.pet_name || currentUser.username || "New message"
+      const notificationBody = messageType === "image" ? "📷 Photo" : content
+
+      void sendNewMessagePushNotification({
+        conversationId,
+        senderId: String(currentUser.id),
+        senderDisplayName,
+        otherUserId: String(otherUserId),
+        content: notificationBody,
+      })
     }
-
-    const senderDisplayName = currentUser.pet_name || currentUser.username || "New message"
-    const notificationBody = messageType === "image" ? "📷 Photo" : content
-
-    void sendNewMessagePushNotification({
-      conversationId,
-      senderId: String(currentUser.id),
-      senderDisplayName,
-      otherUserId: String(otherUserId),
-      content: notificationBody,
-    })
 
     return toDataResponse(res, {
       message,
       access: {
-        likedByMe: latestAccess?.liked_by_me ?? false,
-        likedMe: latestAccess?.liked_me ?? false,
-        isMatch: latestAccess?.is_match ?? false,
-        canSendUnlimited: latestAccess?.can_send_unlimited ?? false,
-        singleMessageUsedByMe: latestAccess?.single_message_used_by_me ?? false,
+        likedByMe: isGroup ? true : latestAccess?.liked_by_me ?? false,
+        likedMe: isGroup ? true : latestAccess?.liked_me ?? false,
+        isMatch: isGroup ? true : latestAccess?.is_match ?? false,
+        canSendUnlimited: isGroup ? true : latestAccess?.can_send_unlimited ?? false,
+        singleMessageUsedByMe: isGroup ? false : latestAccess?.single_message_used_by_me ?? false,
       },
     })
   } catch (error) {
     console.error("Chat send message error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to send message",
+    })
+  }
+})
+
+app.post("/chat/send", authMiddleware, async (req, res) => {
+  try {
+    const currentUser = await getCurrentUserById(req.user?.userId)
+
+    if (!currentUser) {
+      return sendUnauthorized(res)
+    }
+
+    const conversationIdInput = String(
+      req.body?.conversationId || req.body?.conversation_id || ""
+    ).trim()
+    const targetUserId = String(
+      req.body?.userId || req.body?.user_id || req.body?.targetUserId || ""
+    ).trim()
+    const content = String(req.body?.content || "").trim()
+    const messageType = String(req.body?.message_type || "text").trim().toLowerCase() || "text"
+    const imageUrl = String(req.body?.image_url || "").trim()
+
+    if (messageType !== "text" && messageType !== "image") {
+      return res.status(400).json({
+        success: false,
+        error: "message_type must be text or image",
+      })
+    }
+
+    if (messageType === "text" && !content) {
+      return res.status(400).json({
+        success: false,
+        error: "content is required",
+      })
+    }
+
+    if (messageType === "image" && !imageUrl) {
+      return res.status(400).json({
+        success: false,
+        error: "image_url is required when message_type is image",
+      })
+    }
+
+    let conversationId = conversationIdInput
+
+    if (!conversationId) {
+      if (!targetUserId) {
+        return res.status(400).json({
+          success: false,
+          error: "conversationId or userId is required",
+        })
+      }
+
+      if (targetUserId === String(currentUser.id)) {
+        return res.status(400).json({
+          success: false,
+          error: "You cannot create a conversation with yourself",
+        })
+      }
+
+      const targetUser = await getCurrentUserById(targetUserId)
+
+      if (!targetUser) {
+        return res.status(404).json({
+          success: false,
+          error: "Target user not found",
+        })
+      }
+
+      const conversation = await getOrCreateConversation(String(currentUser.id), targetUserId)
+      conversationId = String(conversation.id)
+    }
+
+    const checked = await checkConversationAccess(conversationId, String(currentUser.id))
+
+    if (!checked) {
+      const conversation = await getConversationById(conversationId)
+
+      if (conversation?.type === "event_group") {
+        return res.status(403).json({
+          success: false,
+          error: "Forbidden",
+        })
+      }
+
+      return res.status(404).json({
+        success: false,
+        error: "Conversation not found",
+      })
+    }
+
+    const { conversation, isGroup } = checked
+    let latestAccess = null
+
+    if (!isGroup) {
+      const access = await getConversationAccess(conversationId, String(currentUser.id))
+
+      if (!access) {
+        return res.status(404).json({
+          success: false,
+          error: "Conversation access not found",
+        })
+      }
+
+      if (!access.liked_by_me) {
+        return res.status(403).json({
+          success: false,
+          error: "LIKE_REQUIRED",
+          code: "LIKE_REQUIRED",
+        })
+      }
+
+      if (!access.can_send_message) {
+        if (access.single_message_used_by_me && !access.is_match) {
+          return res.status(403).json({
+            success: false,
+            error: "INTRO_MESSAGE_LIMIT_REACHED",
+            code: "INTRO_MESSAGE_LIMIT_REACHED",
+          })
+        }
+
+        return res.status(403).json({
+          success: false,
+          error: "MESSAGE_NOT_ALLOWED",
+          code: "MESSAGE_NOT_ALLOWED",
+        })
+      }
+    }
+
+    const message = await createMessage(
+      conversationId,
+      String(currentUser.id),
+      content || null,
+      messageType,
+      imageUrl || null
+    )
+
+    if (!isGroup) {
+      latestAccess = await getConversationAccess(conversationId, String(currentUser.id))
+      const otherUserId =
+        conversation.user1_id === currentUser.id ? conversation.user2_id : conversation.user1_id
+
+      if (String(otherUserId) !== String(currentUser.id)) {
+        const rawUnreadCount = Number(conversation.unread_count ?? 0)
+        const currentUnreadCount = Number.isFinite(rawUnreadCount) ? rawUnreadCount : 0
+        const nextUnreadCount = currentUnreadCount + 1
+
+        const { error: unreadUpdateError } = await supabase
+          .from("conversations")
+          .update({
+            unread_count: nextUnreadCount,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", conversationId)
+
+        if (unreadUpdateError) {
+          throw unreadUpdateError
+        }
+      }
+
+      const senderDisplayName = currentUser.pet_name || currentUser.username || "New message"
+      const notificationBody = messageType === "image" ? "📷 Photo" : content
+
+      void sendNewMessagePushNotification({
+        conversationId,
+        senderId: String(currentUser.id),
+        senderDisplayName,
+        otherUserId: String(otherUserId),
+        content: notificationBody,
+      })
+    }
+
+    return toDataResponse(res, {
+      message,
+      access: {
+        likedByMe: isGroup ? true : latestAccess?.liked_by_me ?? false,
+        likedMe: isGroup ? true : latestAccess?.liked_me ?? false,
+        isMatch: isGroup ? true : latestAccess?.is_match ?? false,
+        canSendUnlimited: isGroup ? true : latestAccess?.can_send_unlimited ?? false,
+        singleMessageUsedByMe: isGroup ? false : latestAccess?.single_message_used_by_me ?? false,
+      },
+    })
+  } catch (error) {
+    console.error("Chat send alias error:", error)
 
     return res.status(500).json({
       success: false,

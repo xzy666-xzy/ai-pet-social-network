@@ -2,7 +2,7 @@
 
 import { type ChangeEvent, type MouseEvent, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Send, ChevronLeft, Heart, Settings, ImagePlus, Pin, BellOff, Upload, Loader2, X } from "lucide-react"
+import { Send, ChevronLeft, Heart, Settings, ImagePlus, Pin, BellOff, Upload, Loader2, X, MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -254,7 +254,9 @@ export default function ChatPage() {
   const searchParams = useSearchParams()
 
   const targetUserId = searchParams.get("userId")
+  const conversationIdParam = searchParams.get("conversationId")
   const showProfile = searchParams.get("showProfile")
+  const isConversationMode = Boolean(conversationIdParam)
 
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [targetUser, setTargetUser] = useState<TargetUser | null>(null)
@@ -313,10 +315,11 @@ export default function ChatPage() {
   }, [background_url, hasCustomBackground])
 
   const headerName = useMemo(() => {
+    if (isConversationMode) return "活动群聊"
     if (!targetUserId) return t.chat.title
     if (!targetUser) return t.chat.title
     return targetUser.petName?.trim() || targetUser.pet_name?.trim() || targetUser.username || t.chat.title
-  }, [targetUser, targetUserId, t.chat.title])
+  }, [isConversationMode, targetUser, targetUserId, t.chat.title])
 
   const profilePetName = targetUser?.petName || targetUser?.pet_name || targetUser?.username || "-"
   const profilePetAge = targetUser?.petAge ?? targetUser?.pet_age ?? "Age not set"
@@ -329,10 +332,15 @@ export default function ChatPage() {
   const targetOnline = isUserOnline(targetUser?.last_seen)
 
   const loadMessages = async (convId: string) => {
-    const data = await apiRequest<MessagesResponse>(`/chat/messages/${convId}`, {
-      cache: "no-store",
-      auth: true,
-    })
+    const data = isConversationMode
+      ? await apiRequest<MessagesResponse>(`/chat/messages?conversationId=${encodeURIComponent(convId)}`, {
+          cache: "no-store",
+          auth: true,
+        })
+      : await apiRequest<MessagesResponse>(`/chat/messages/${convId}`, {
+          cache: "no-store",
+          auth: true,
+        })
 
     const safeMessages = Array.isArray(data.data.messages) ? data.data.messages : []
     setMessages(safeMessages)
@@ -551,6 +559,25 @@ export default function ChatPage() {
         setDeletingMessageId(null)
         autoProfileOpenedRef.current = false
 
+        if (conversationIdParam) {
+          const safeConversationId = String(conversationIdParam).trim()
+
+          if (
+            !safeConversationId ||
+            safeConversationId === "undefined" ||
+            safeConversationId === "null"
+          ) {
+            throw new Error("Invalid conversation ID")
+          }
+
+          setConversationId(safeConversationId)
+          setTargetUser(null)
+
+          await loadChatSettings(safeConversationId)
+          await loadMessages(safeConversationId)
+          return
+        }
+
         if (!targetUserId) {
           setLoadingConversations(true)
           await loadConversations()
@@ -626,10 +653,11 @@ export default function ChatPage() {
     return () => {
       cancelled = true
     }
-  }, [loading, user, targetUserId, hasToken])
+  }, [loading, user, targetUserId, conversationIdParam, hasToken])
 
   // 自动打开资料弹窗（来自 profile_like 通知）
   useEffect(() => {
+    if (isConversationMode) return
     if (
       showProfile === "true" &&
       targetUser &&
@@ -639,7 +667,7 @@ export default function ChatPage() {
       autoProfileOpenedRef.current = true
       setProfileOpen(true)
     }
-  }, [showProfile, targetUser, targetUserId])
+  }, [isConversationMode, showProfile, targetUser, targetUserId])
 
   useEffect(() => {
     if (!conversationId) {
@@ -655,7 +683,8 @@ export default function ChatPage() {
   }, [conversationId])
 
   useEffect(() => {
-    if (!targetUserId || !conversationId) return
+    if (!conversationId) return
+    if (!targetUserId && !isConversationMode) return
 
     let cancelled = false
 
@@ -688,7 +717,7 @@ export default function ChatPage() {
     return () => {
       cancelled = true
     }
-  }, [targetUserId, conversationId])
+  }, [targetUserId, conversationId, isConversationMode])
 
   useEffect(() => {
     if (!conversationId) return
@@ -713,6 +742,7 @@ export default function ChatPage() {
   }, [conversationId, user?.id, introLocked, chatMatched])
 
   useEffect(() => {
+    if (isConversationMode) return
     if (targetUserId) return
     if (loading || !hasToken) return
 
@@ -721,7 +751,7 @@ export default function ChatPage() {
     }, 3000)
 
     return () => clearInterval(timer)
-  }, [targetUserId, loading, hasToken])
+  }, [isConversationMode, targetUserId, loading, hasToken])
 
   const handleMessageLike = async () => {
     if (!targetUserId || chatLikeLoading || chatLiked) return
@@ -865,12 +895,16 @@ export default function ChatPage() {
 
       const text = inputText.trim()
 
-      const data = await apiRequest<SendMessageResponse>("/chat/messages", {
+      const sendPath = isConversationMode ? "/chat/send" : "/chat/messages"
+
+      const data = await apiRequest<SendMessageResponse>(sendPath, {
         method: "POST",
         auth: true,
         body: JSON.stringify({
           conversationId,
           content: text,
+          message_type: "text",
+          image_url: null,
         }),
       })
 
@@ -880,14 +914,25 @@ export default function ChatPage() {
       // 发成功后立刻重新拉取，确保第一条消息显示出来
       await loadMessages(conversationId)
 
-      if (!data.data.access?.isMatch) {
-        setInlineNotice(true)
-        setIntroLocked(true)
-      } else {
-        setInlineNotice(false)
-        setIntroLocked(false)
+      if (!isConversationMode) {
+        if (!data.data.access?.isMatch) {
+          setInlineNotice(true)
+          setIntroLocked(true)
+        } else {
+          setInlineNotice(false)
+          setIntroLocked(false)
+        }
       }
     } catch (error: unknown) {
+      if (isConversationMode) {
+        if (error instanceof Error) {
+          setPageError(error.message)
+        } else {
+          setPageError(t.chat.sendFailed)
+        }
+        return
+      }
+
       if (
           error instanceof ApiError &&
           (error.code === "INTRO_MESSAGE_LIMIT_REACHED" ||
@@ -915,7 +960,8 @@ export default function ChatPage() {
   }
 
   const handlePickImage = () => {
-    if (!targetUserId || !conversationId || introLocked || sending || uploadingImage) return
+    if (!conversationId || introLocked || sending || uploadingImage) return
+    if (!targetUserId && !isConversationMode) return
     imageInputRef.current?.click()
   }
 
@@ -946,7 +992,9 @@ export default function ChatPage() {
         throw new Error("Failed to resolve uploaded image URL")
       }
 
-      const data = await apiRequest<SendMessageResponse>("/chat/messages", {
+      const sendPath = isConversationMode ? "/chat/send" : "/chat/messages"
+
+      const data = await apiRequest<SendMessageResponse>(sendPath, {
         method: "POST",
         auth: true,
         body: JSON.stringify({
@@ -959,14 +1007,25 @@ export default function ChatPage() {
 
       await loadMessages(conversationId)
 
-      if (!data.data.access?.isMatch) {
-        setInlineNotice(true)
-        setIntroLocked(true)
-      } else {
-        setInlineNotice(false)
-        setIntroLocked(false)
+      if (!isConversationMode) {
+        if (!data.data.access?.isMatch) {
+          setInlineNotice(true)
+          setIntroLocked(true)
+        } else {
+          setInlineNotice(false)
+          setIntroLocked(false)
+        }
       }
     } catch (error: unknown) {
+      if (isConversationMode) {
+        if (error instanceof Error) {
+          setPageError(error.message)
+        } else {
+          setPageError(t.chat.sendFailed)
+        }
+        return
+      }
+
       if (
         error instanceof ApiError &&
         (error.code === "INTRO_MESSAGE_LIMIT_REACHED" ||
@@ -1135,7 +1194,7 @@ export default function ChatPage() {
       >
         <div className="flex items-center justify-between gap-3 border-b border-orange-100/80 bg-white/90 px-5 py-4 shadow-sm backdrop-blur-xl">
           <div className="flex min-w-0 items-center gap-3">
-            {targetUserId ? (
+            {targetUserId || isConversationMode ? (
                 <Button
                     variant="ghost"
                     size="icon"
@@ -1147,7 +1206,7 @@ export default function ChatPage() {
             ) : null}
 
             <div className="min-w-0">
-              {!targetUserId ? (
+              {!targetUserId && !isConversationMode ? (
                   <div className="mb-1 flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-orange-500 shadow-[0_0_0_4px_rgba(249,115,22,0.12)]" />
                     <span className="text-xs font-bold uppercase tracking-[0.18em] text-orange-500">
@@ -1155,7 +1214,18 @@ export default function ChatPage() {
                     </span>
                   </div>
               ) : null}
-              {targetUserId ? (
+              {isConversationMode ? (
+                  <div className="flex min-w-0 items-center gap-3 text-left">
+                    <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white bg-gradient-to-br from-orange-100 to-amber-100 shadow-md shadow-orange-900/10">
+                      <MessageCircle className="h-5 w-5 text-orange-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="truncate text-base font-extrabold tracking-tight text-stone-900">
+                        {headerName}
+                      </div>
+                    </div>
+                  </div>
+              ) : targetUserId ? (
                   <button
                       type="button"
                       onClick={() => setProfileOpen(true)}
@@ -1198,7 +1268,7 @@ export default function ChatPage() {
                     {headerName}
                   </div>
               )}
-              {!targetUserId ? (
+              {!targetUserId && !isConversationMode ? (
                   <div className="mt-1 text-sm font-medium text-stone-500">
                     {t.chat.recentMessages}
                   </div>
@@ -1452,10 +1522,10 @@ export default function ChatPage() {
         ) : null}
 
         <ScrollArea className="min-h-0 flex-1 px-5 py-5">
-          <div className="mx-auto max-w-2xl">
-            <div className="mb-4 text-center text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">
-              {targetUserId ? t.chat.today : t.chat.recentMessages}
-            </div>
+            <div className="mx-auto max-w-2xl">
+              <div className="mb-4 text-center text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">
+              {targetUserId || isConversationMode ? t.chat.today : t.chat.recentMessages}
+              </div>
 
             {pageError ? (
                 <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
@@ -1464,7 +1534,7 @@ export default function ChatPage() {
             ) : null}
 
             <div className="space-y-3">
-              {!targetUserId ? (
+              {!targetUserId && !isConversationMode ? (
                   loadingConversations ? (
                       <div className="flex items-center justify-center py-16 text-stone-500">
                         {t.chat.loadingHistory}
@@ -1640,10 +1710,18 @@ export default function ChatPage() {
                             {!isMe ? (
                                 <button
                                     type="button"
-                                    onClick={() => setProfileOpen(true)}
+                                    onClick={() => {
+                                      if (!isConversationMode) {
+                                        setProfileOpen(true)
+                                      }
+                                    }}
                                     className="h-9 w-9 shrink-0 overflow-hidden rounded-2xl border border-white bg-orange-100 shadow-sm"
                                 >
-                                  {targetUser?.avatar_url ? (
+                                  {isConversationMode ? (
+                                      <div className="flex h-full w-full items-center justify-center text-orange-600">
+                                        <MessageCircle className="h-4 w-4" />
+                                      </div>
+                                  ) : targetUser?.avatar_url ? (
                                       <img
                                           src={targetUser.avatar_url || "/placeholder.svg"}
                                           alt={headerName}
@@ -1795,7 +1873,7 @@ export default function ChatPage() {
                   size="icon"
                   variant="ghost"
                   onClick={handlePickImage}
-                  disabled={!targetUserId || !conversationId || introLocked || sending || uploadingImage}
+                  disabled={(!targetUserId && !isConversationMode) || !conversationId || introLocked || sending || uploadingImage}
                   className="h-10 w-10 shrink-0 rounded-full text-stone-600 hover:bg-orange-100/70 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ImagePlus className="h-5 w-5" />
@@ -1811,13 +1889,13 @@ export default function ChatPage() {
                     }
                   }}
                   placeholder={
-                    !targetUserId
+                    !targetUserId && !isConversationMode
                         ? t.chat.selectConversationFirst
                         : introLocked
                             ? t.chat.waitForLike
                             : t.chat.typeMessage
                   }
-                  disabled={!targetUserId || introLocked}
+                  disabled={(!targetUserId && !isConversationMode) || introLocked}
                   className="h-10 border-0 bg-transparent px-1 py-0 text-[15px] shadow-none placeholder:text-stone-400 focus-visible:ring-0"
               />
 
@@ -1825,7 +1903,7 @@ export default function ChatPage() {
                   onClick={handleSend}
                   size="icon"
                   disabled={
-                      !targetUserId ||
+                      (!targetUserId && !isConversationMode) ||
                       !inputText.trim() ||
                       !conversationId ||
                       sending ||
