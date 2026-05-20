@@ -212,6 +212,12 @@ const STATIC_EVENT_PEOPLE = {
   "3": 6,
 }
 
+const STATIC_EVENT_TITLES = {
+  "1": "周末狗狗公园聚会",
+  "2": "宠物咖啡馆社交日",
+  "3": "晚间散步小组",
+}
+
 const eventParticipationState = new Map()
 
 function getEventParticipationState(eventId, currentPeople = 0, maxPeople = null) {
@@ -231,6 +237,32 @@ function isMissingEventsTableError(error) {
     error?.code === "PGRST205" ||
     error?.message?.includes("Could not find the table 'public.events'")
   )
+}
+
+async function resolveEventTitleByEventId(eventId) {
+  const safeEventId = String(eventId || "").trim()
+
+  if (!safeEventId) {
+    return null
+  }
+
+  const { data: event, error } = await supabase
+    .from("events")
+    .select("title, name")
+    .eq("id", safeEventId)
+    .maybeSingle()
+
+  if (error && !isMissingEventsTableError(error)) {
+    throw error
+  }
+
+  const dbTitle = String(event?.title || event?.name || "").trim()
+
+  if (dbTitle) {
+    return dbTitle
+  }
+
+  return STATIC_EVENT_TITLES[safeEventId] || null
 }
 
 async function listEventsWithOrganizers() {
@@ -646,6 +678,19 @@ async function getConversationById(conversationId) {
 
   if (error) {
     throw error
+  }
+
+  if (!data) {
+    return null
+  }
+
+  if (data.type === "event_group") {
+    const eventTitle = await resolveEventTitleByEventId(data.event_id)
+
+    return {
+      ...data,
+      event_title: eventTitle,
+    }
   }
 
   return data
@@ -3221,6 +3266,7 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
           likedMe,
           { count: sentCount },
           otherMembership,
+          eventTitle,
         ] = await Promise.all([
           supabase
             .from("messages")
@@ -3237,6 +3283,9 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
             .eq("conversation_id", conversation.id)
             .eq("sender_id", currentUserId),
           getActiveMembership(String(otherUserId)),
+          conversation.type === "event_group"
+            ? resolveEventTitleByEventId(conversation.event_id)
+            : Promise.resolve(null),
         ])
 
         const settings = conversationSettingsById.get(String(conversation.id))
@@ -3247,10 +3296,12 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
 
         return {
           id: conversation.id,
+          type: conversation.type ?? null,
           other_user_id: otherUser.id,
           other_username: otherUser.username ?? "",
           other_pet_name: otherUser.pet_name ?? "",
           other_avatar_url: otherUser.avatar_url ?? "",
+          ...(conversation.type === "event_group" ? { event_title: eventTitle } : {}),
           other_user_is_ai: otherUser.is_ai ? 1 : 0,
           other_last_seen: otherUser.last_seen ?? null,
           other_membership_active: Boolean(otherMembership),

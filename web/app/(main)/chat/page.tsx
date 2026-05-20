@@ -52,6 +52,8 @@ type TargetUser = {
 
 type ConversationSummary = {
   id: string
+  type?: string | null
+  event_title?: string | null
   other_user_id: string
   other_username: string
   other_pet_name: string
@@ -259,6 +261,7 @@ export default function ChatPage() {
   const isConversationMode = Boolean(conversationIdParam)
 
   const [conversationId, setConversationId] = useState<string | null>(null)
+  const [chatTab, setChatTab] = useState<"direct" | "group">("direct")
   const [targetUser, setTargetUser] = useState<TargetUser | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
@@ -296,6 +299,11 @@ export default function ChatPage() {
 
   const hasCustomBackground = Boolean(background_url)
 
+  const activeConversationSummary = useMemo(
+    () => conversations.find((item) => item.id === conversationIdParam) || null,
+    [conversations, conversationIdParam]
+  )
+
   const chatBackgroundClass = useMemo(
       () => getChatBackgroundClass(background_key),
       [background_key]
@@ -315,11 +323,13 @@ export default function ChatPage() {
   }, [background_url, hasCustomBackground])
 
   const headerName = useMemo(() => {
-    if (isConversationMode) return "活动群聊"
+    if (isConversationMode) {
+      return activeConversationSummary?.event_title?.trim() || "活动群聊"
+    }
     if (!targetUserId) return t.chat.title
     if (!targetUser) return t.chat.title
     return targetUser.petName?.trim() || targetUser.pet_name?.trim() || targetUser.username || t.chat.title
-  }, [isConversationMode, targetUser, targetUserId, t.chat.title])
+  }, [activeConversationSummary?.event_title, isConversationMode, targetUser, targetUserId, t.chat.title])
 
   const profilePetName = targetUser?.petName || targetUser?.pet_name || targetUser?.username || "-"
   const profilePetAge = targetUser?.petAge ?? targetUser?.pet_age ?? "Age not set"
@@ -575,6 +585,7 @@ export default function ChatPage() {
 
           await loadChatSettings(safeConversationId)
           await loadMessages(safeConversationId)
+          await loadConversations()
           return
         }
 
@@ -1187,6 +1198,14 @@ export default function ChatPage() {
     return t.chat.statusNoRelation
   }
 
+  const filteredConversations = useMemo(() => {
+    if (chatTab === "group") {
+      return conversations.filter((conversation) => conversation.type === "event_group")
+    }
+
+    return conversations.filter((conversation) => conversation.type !== "event_group")
+  }, [chatTab, conversations])
+
   return (
       <div
         className={`flex h-full min-h-0 flex-col overflow-hidden ${hasCustomBackground ? "bg-stone-100" : chatBackgroundClass}`}
@@ -1289,6 +1308,35 @@ export default function ChatPage() {
           ) : null}
 
         </div>
+
+        {!targetUserId && !isConversationMode ? (
+          <div className="border-b border-orange-100/80 bg-white/90 px-5 pb-3 pt-2">
+            <div className="inline-flex rounded-full border border-orange-100 bg-white p-1 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setChatTab("direct")}
+                className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+                  chatTab === "direct"
+                    ? "bg-orange-500 text-white shadow"
+                    : "bg-transparent text-stone-400 hover:text-stone-600"
+                }`}
+              >
+                个人
+              </button>
+              <button
+                type="button"
+                onClick={() => setChatTab("group")}
+                className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+                  chatTab === "group"
+                    ? "bg-orange-500 text-white shadow"
+                    : "bg-transparent text-stone-400 hover:text-stone-600"
+                }`}
+              >
+                群聊
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
           <SheetContent side="right" className="w-[86%] border-l border-orange-100 p-0 sm:max-w-sm">
@@ -1539,7 +1587,7 @@ export default function ChatPage() {
                       <div className="flex items-center justify-center py-16 text-stone-500">
                         {t.chat.loadingHistory}
                       </div>
-                  ) : conversations.length === 0 ? (
+                  ) : filteredConversations.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-16 text-center text-stone-500">
                         <div className="mb-2 text-lg font-semibold text-stone-700">
                           {t.chat.noHistory}
@@ -1555,7 +1603,11 @@ export default function ChatPage() {
                         </Button>
                       </div>
                   ) : (
-                      conversations.map((item) => {
+                      filteredConversations.map((item) => {
+                        const conversationDisplayName =
+                          item.type === "event_group"
+                            ? item.event_title?.trim() || "活动群聊"
+                            : item.other_pet_name || item.other_username
                         const unreadCount = Number(item.unread_count || 0)
                         const showUnreadBadge = Number.isFinite(unreadCount) && unreadCount > 0
                         const unreadBadgeText = unreadCount > 99 ? "99+" : String(unreadCount)
@@ -1570,7 +1622,11 @@ export default function ChatPage() {
                                 } catch (error) {
                                   console.warn("Failed to mark conversation as read:", error)
                                 }
-                                router.push(`/chat?userId=${item.other_user_id}`)
+                                if (item.type === "event_group") {
+                                  router.push(`/chat?conversationId=${item.id}`)
+                                } else {
+                                  router.push(`/chat?userId=${item.other_user_id}`)
+                                }
                               }}
                               className="w-full rounded-[1.65rem] border border-orange-100/70 bg-white/95 px-4 py-3.5 text-left shadow-lg shadow-orange-900/5 ring-1 ring-white/70 transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-900/10 active:translate-y-0 active:scale-[0.985]"
                           >
@@ -1579,12 +1635,12 @@ export default function ChatPage() {
                                 {item.other_avatar_url ? (
                                     <img
                                         src={item.other_avatar_url || "/placeholder.svg"}
-                                        alt={item.other_pet_name || item.other_username}
+                                        alt={conversationDisplayName}
                                         className="h-full w-full object-cover"
                                     />
                                 ) : (
                                     <div className="flex h-full w-full items-center justify-center text-lg font-black text-orange-600">
-                                      {(item.other_pet_name || item.other_username || "W").charAt(0).toUpperCase()}
+                                      {(conversationDisplayName || "W").charAt(0).toUpperCase()}
                                     </div>
                                 )}
                                 <span
@@ -1600,7 +1656,7 @@ export default function ChatPage() {
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="flex min-w-0 items-center gap-2">
                                     <div className="truncate text-base font-extrabold tracking-tight text-stone-900">
-                                      {item.other_pet_name || item.other_username}
+                                      {conversationDisplayName}
                                     </div>
                                     {item.is_pinned ? (
                                         <span className="shrink-0 rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-bold text-stone-600">
