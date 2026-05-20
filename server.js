@@ -576,8 +576,8 @@ async function getOrCreateEventGroupConversation(eventId) {
     .insert({
       type: "event_group",
       event_id: eventId,
-      user1_id: "00000000-0000-0000-0000-000000000000",
-      user2_id: "00000000-0000-0000-0000-000000000000",
+      user1_id: "00000000-0000-0000-0000-000000000001",
+      user2_id: "00000000-0000-0000-0000-000000000002",
       created_at: new Date().toISOString(),
     })
     .select("*")
