@@ -77,6 +77,7 @@ type ApiEvent = {
   city?: string | null
   city_lat?: number | string | null
   city_lng?: number | string | null
+  is_joined?: boolean
 }
 
 type EventsResponse = {
@@ -338,7 +339,7 @@ const copy = {
     mapLocate: "地图定位",
     join: "参加",
     joined: "已参加",
-    cancel: "取消",
+    cancel: "取消参加",
     detail: "活动详情",
     edit: "编辑",
     joinedText: (n: number) => `已有 ${n} 人参加`,
@@ -452,6 +453,15 @@ export default function ExplorePage() {
         if (!cancelled && items.length > 0) {
           setEvents(items)
           setSelectedId(null)
+          // 从后端返回的 is_joined 初始化 joinedMap
+          const initialJoinedMap: Record<number, boolean> = {}
+          ;(response.data || []).forEach((event, index) => {
+            const id = index + 1000
+            if (event.is_joined) {
+              initialJoinedMap[id] = true
+            }
+          })
+          setJoinedMap(initialJoinedMap)
         }
       } catch (error) {
         console.error("Failed to load events", error)

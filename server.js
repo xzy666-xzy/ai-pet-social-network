@@ -278,7 +278,7 @@ async function resolveEventTitleByEventId(eventId) {
   }
 }
 
-async function listEventsWithOrganizers() {
+async function listEventsWithOrganizers(userId) {
   const { data: events, error } = await supabase
     .from("events")
     .select("*")
@@ -306,6 +306,19 @@ async function listEventsWithOrganizers() {
     })
   }
 
+  // 查询当前用户已参加的所有 event_id
+  let joinedEventIds = new Set()
+  if (userId) {
+    const { data: participations, error: partError } = await supabase
+      .from("event_participants")
+      .select("event_id")
+      .eq("user_id", userId)
+
+    if (!partError && participations) {
+      participations.forEach((p) => joinedEventIds.add(p.event_id))
+    }
+  }
+
   return (events || []).map((event) => {
     const organizer = organizersById.get(event.organizer_id)
 
@@ -315,6 +328,7 @@ async function listEventsWithOrganizers() {
       city: event.city ?? organizer?.city ?? null,
       city_lat: event.city_lat ?? organizer?.city_lat ?? null,
       city_lng: event.city_lng ?? organizer?.city_lng ?? null,
+      is_joined: joinedEventIds.has(event.id),
     }
   })
 }
@@ -2519,9 +2533,10 @@ app.put("/profile/location", authMiddleware, async (req, res) => {
   }
 })
 
-app.get("/events", async (req, res) => {
+app.get("/events", authMiddleware, async (req, res) => {
   try {
-    const events = await listEventsWithOrganizers()
+    const userId = req.user?.userId
+    const events = await listEventsWithOrganizers(userId)
 
     return toDataResponse(res, events)
   } catch (error) {
