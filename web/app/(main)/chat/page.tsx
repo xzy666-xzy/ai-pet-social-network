@@ -688,6 +688,18 @@ export default function ChatPage() {
         }
       } catch (error: unknown) {
         if (cancelled) return
+
+        // If loading an event_group conversation returns 403 (user no longer a member),
+        // redirect back to chat list instead of showing Forbidden
+        if (
+          conversationIdParam &&
+          error instanceof ApiError &&
+          error.status === 403
+        ) {
+          router.push("/chat")
+          return
+        }
+
         setPageError(
             error instanceof Error ? error.message : "Failed to initialize chat"
         )
@@ -802,6 +814,16 @@ export default function ChatPage() {
 
     return () => clearInterval(timer)
   }, [isConversationMode, targetUserId, loading, hasToken])
+
+  // 监听从其他页面（如探索页取消参加活动）发来的刷新聊天列表事件
+  useEffect(() => {
+    const handleEventLeft = () => {
+      loadConversations().catch(() => {})
+    }
+
+    window.addEventListener("wepet:event-left", handleEventLeft)
+    return () => window.removeEventListener("wepet:event-left", handleEventLeft)
+  }, [])
 
   const handleMessageLike = async () => {
     if (!targetUserId || chatLikeLoading || chatLiked) return

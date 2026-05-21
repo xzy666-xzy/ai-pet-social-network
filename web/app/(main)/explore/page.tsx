@@ -521,6 +521,12 @@ export default function ExplorePage() {
             }
           : prev
       )
+      // 取消参加成功后，通知聊天页面刷新会话列表
+      if (joined) {
+        window.dispatchEvent(
+          new CustomEvent("wepet:event-left", { detail: { eventId } })
+        )
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
 
