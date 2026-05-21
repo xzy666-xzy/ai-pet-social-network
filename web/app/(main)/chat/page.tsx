@@ -2,7 +2,7 @@
 
 import { type ChangeEvent, type MouseEvent, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Send, ChevronLeft, Heart, Settings, ImagePlus, Pin, BellOff, Upload, Loader2, X, MessageCircle, Menu } from "lucide-react"
+import { Send, ChevronLeft, Heart, Settings, ImagePlus, BellOff, Upload, Loader2, X, MessageCircle, Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -89,7 +89,7 @@ type ConversationSummary = {
   liked_me?: number
   is_match?: number
   single_message_used_by_me?: number
-  last_message_type?: "text" | "image" | null
+  last_message_type?: "text" | "image" | "event" | null
   unread_count?: number | null
 }
 
@@ -1979,9 +1979,13 @@ export default function ChatPage() {
                                   router.push(`/chat?userId=${item.other_user_id}`)
                                 }
                               }}
-                              className="w-full rounded-[1.65rem] border border-orange-100/70 bg-white/95 px-4 py-3.5 text-left shadow-lg shadow-orange-900/5 ring-1 ring-white/70 transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-900/10 active:translate-y-0 active:scale-[0.985]"
+                              className={`w-full rounded-[1.65rem] border border-orange-100/70 px-4 py-3.5 text-left shadow-lg shadow-orange-900/5 ring-1 ring-white/70 transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-900/10 active:translate-y-0 active:scale-[0.985] ${
+                                normalizeBoolean(item.is_pinned)
+                                  ? "bg-stone-100/90"
+                                  : "bg-white/95"
+                              }`}
                           >
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-start gap-3">
                               <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-white bg-gradient-to-br from-orange-100 to-amber-100 shadow-md shadow-orange-900/10">
                                 {item.other_avatar_url ? (
                                     <img
@@ -2004,16 +2008,11 @@ export default function ChatPage() {
                               </div>
 
                               <div className="min-w-0 flex-1">
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="flex min-w-0 items-center gap-2">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
                                     <div className="truncate text-base font-extrabold tracking-tight text-stone-900">
                                       {conversationDisplayName}
                                     </div>
-                                    {item.is_pinned ? (
-                                        <span className="shrink-0 rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-bold text-stone-600">
-                                          Pinned
-                                        </span>
-                                    ) : null}
                                     {item.other_membership_active ? (
                                         <span className="shrink-0 rounded-full bg-gradient-to-r from-rose-500 to-amber-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
                                           VIP
@@ -2021,9 +2020,6 @@ export default function ChatPage() {
                                     ) : null}
                                   </div>
                                   <div className="flex shrink-0 items-center gap-1.5 pt-0.5 text-[11px] font-semibold text-stone-400">
-                                    {normalizeBoolean(item.is_pinned) ? (
-                                        <Pin className="h-3.5 w-3.5 text-orange-500" />
-                                    ) : null}
                                     {normalizeBoolean(item.is_muted) ? (
                                         <BellOff className="h-3.5 w-3.5 text-stone-400" />
                                     ) : null}
@@ -2083,16 +2079,18 @@ export default function ChatPage() {
                                   )}
                                 </div>
 
-                                  <div className="mt-2 flex min-w-0 items-center justify-between gap-3">
-                                    <div className="truncate text-sm font-medium leading-5 text-stone-600">
+                                <div className="mt-2 flex min-w-0 items-center justify-between gap-3">
+                                  <div className="truncate text-sm font-medium leading-5 text-stone-600">
                                     {item.last_message_type === "image"
                                       ? "📷 Photo"
-                                      : item.last_message || t.chat.noMessagesYet}
-                                    </div>
-                                    {item.liked_me && !item.is_match ? (
-                                      <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-orange-500 px-1.5 text-[10px] font-black text-white shadow-md shadow-orange-500/25">
-                                        1
-                                      </span>
+                                      : item.last_message_type === "event"
+                                        ? (locale === "zh" ? "分享了一个活动" : locale === "ko" ? "활동을 공유했습니다" : "Shared an event")
+                                        : item.last_message || t.chat.noMessagesYet}
+                                  </div>
+                                  {item.liked_me && !item.is_match ? (
+                                    <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-orange-500 px-1.5 text-[10px] font-black text-white shadow-md shadow-orange-500/25">
+                                      1
+                                    </span>
                                   ) : null}
                                 </div>
                               </div>
