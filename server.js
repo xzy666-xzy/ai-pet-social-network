@@ -218,6 +218,26 @@ const STATIC_EVENT_TITLES = {
   "3": "晚间散步小组",
 }
 
+const STATIC_EVENT_UUID_MAP = {
+  "1": "11111111-1111-1111-1111-111111111111",
+  "2": "22222222-2222-2222-2222-222222222222",
+  "3": "33333333-3333-3333-3333-333333333333",
+}
+
+function normalizeEventIdForDb(eventId) {
+  const safeId = String(eventId || "").trim()
+  // If it's already a valid UUID, return as-is
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(safeId)) {
+    return safeId
+  }
+  // If it's a static event id, map to fixed UUID
+  if (STATIC_EVENT_UUID_MAP[safeId]) {
+    return STATIC_EVENT_UUID_MAP[safeId]
+  }
+  // Fallback: return original (will likely fail at DB level, but preserves existing behavior)
+  return safeId
+}
+
 const eventParticipationState = new Map()
 
 function getEventParticipationState(eventId, currentPeople = 0, maxPeople = null) {
@@ -247,11 +267,13 @@ async function resolveEventTitleByEventId(eventId) {
     return "活动群聊"
   }
 
+  const dbEventId = normalizeEventIdForDb(safeEventId)
+
   try {
     const { data: event, error } = await supabase
       .from("events")
       .select("title")
-      .eq("id", safeEventId)
+      .eq("id", dbEventId)
       .maybeSingle()
 
     if (error) {
@@ -328,7 +350,7 @@ async function listEventsWithOrganizers(userId) {
       city: event.city ?? organizer?.city ?? null,
       city_lat: event.city_lat ?? organizer?.city_lat ?? null,
       city_lng: event.city_lng ?? organizer?.city_lng ?? null,
-      is_joined: joinedEventIds.has(event.id),
+      is_joined: joinedEventIds.has(event.id) || joinedEventIds.has(normalizeEventIdForDb(event.id)),
     }
   })
 }
@@ -613,12 +635,14 @@ async function getOrCreateConversation(currentUserId, targetUserId) {
 }
 
 async function getOrCreateEventGroupConversation(eventId, creatorUserId) {
+  const dbEventId = normalizeEventIdForDb(eventId)
+
   // Check if an event group conversation already exists
   const { data: existingConversation, error: existingError } = await supabase
     .from("conversations")
     .select("*")
     .eq("type", "event_group")
-    .eq("event_id", eventId)
+    .eq("event_id", dbEventId)
     .maybeSingle()
 
   if (existingError) {
@@ -649,7 +673,7 @@ async function getOrCreateEventGroupConversation(eventId, creatorUserId) {
     .from("conversations")
     .insert({
       type: "event_group",
-      event_id: eventId,
+      event_id: dbEventId,
       user1_id: user1Id,
       user2_id: user2Id,
       created_at: new Date().toISOString(),
@@ -2780,10 +2804,12 @@ app.post("/events/join", authMiddleware, async (req, res) => {
     }
 
     const userId = String(currentUser.id)
+    const dbEventId = normalizeEventIdForDb(eventId)
+
     const { data: event, error: eventError } = await supabase
       .from("events")
       .select("*")
-      .eq("id", eventId)
+      .eq("id", dbEventId)
       .maybeSingle()
 
     if (eventError) {
@@ -2803,7 +2829,7 @@ app.post("/events/join", authMiddleware, async (req, res) => {
     const { data: existingParticipant, error: existingParticipantError } = await supabase
       .from("event_participants")
       .select("id")
-      .eq("event_id", eventId)
+      .eq("event_id", dbEventId)
       .eq("user_id", userId)
       .maybeSingle()
 
@@ -2816,7 +2842,7 @@ app.post("/events/join", authMiddleware, async (req, res) => {
       const { count: participantCount, error: countError } = await supabase
         .from("event_participants")
         .select("*", { count: "exact", head: true })
-        .eq("event_id", eventId)
+        .eq("event_id", dbEventId)
 
       if (countError) {
         throw countError
@@ -2839,7 +2865,7 @@ app.post("/events/join", authMiddleware, async (req, res) => {
     const { count: participantCount, error: countError } = await supabase
       .from("event_participants")
       .select("*", { count: "exact", head: true })
-      .eq("event_id", eventId)
+      .eq("event_id", dbEventId)
 
     if (countError) {
       throw countError
@@ -2873,7 +2899,7 @@ app.post("/events/join", authMiddleware, async (req, res) => {
     const { error: insertError } = await supabase
       .from("event_participants")
       .insert({
-        event_id: eventId,
+        event_id: dbEventId,
         user_id: userId,
       })
 
@@ -2883,7 +2909,7 @@ app.post("/events/join", authMiddleware, async (req, res) => {
         const { count: finalCount, error: finalCountError } = await supabase
           .from("event_participants")
           .select("*", { count: "exact", head: true })
-          .eq("event_id", eventId)
+          .eq("event_id", dbEventId)
 
         if (finalCountError) {
           throw finalCountError
@@ -2909,7 +2935,7 @@ app.post("/events/join", authMiddleware, async (req, res) => {
       .update({
         current_people: nextPeople,
       })
-      .eq("id", eventId)
+      .eq("id", dbEventId)
       .select("*")
       .single()
 
@@ -2957,10 +2983,12 @@ app.post("/events/leave", authMiddleware, async (req, res) => {
     }
 
     const userId = String(currentUser.id)
+    const dbEventId = normalizeEventIdForDb(eventId)
+
     const { data: event, error: eventError } = await supabase
       .from("events")
       .select("*")
-      .eq("id", eventId)
+      .eq("id", dbEventId)
       .maybeSingle()
 
     if (eventError) {
@@ -2980,7 +3008,7 @@ app.post("/events/leave", authMiddleware, async (req, res) => {
     const { error: deleteError } = await supabase
       .from("event_participants")
       .delete()
-      .eq("event_id", eventId)
+      .eq("event_id", dbEventId)
       .eq("user_id", userId)
 
     if (deleteError) {
@@ -2991,7 +3019,7 @@ app.post("/events/leave", authMiddleware, async (req, res) => {
     const { count: participantCount, error: countError } = await supabase
       .from("event_participants")
       .select("*", { count: "exact", head: true })
-      .eq("event_id", eventId)
+      .eq("event_id", dbEventId)
 
     if (countError) {
       throw countError
@@ -3017,7 +3045,7 @@ app.post("/events/leave", authMiddleware, async (req, res) => {
       .update({
         current_people: nextPeople,
       })
-      .eq("id", eventId)
+      .eq("id", dbEventId)
       .select("*")
       .single()
 
@@ -3036,7 +3064,7 @@ app.post("/events/leave", authMiddleware, async (req, res) => {
       .from("conversations")
       .select("id")
       .eq("type", "event_group")
-      .eq("event_id", eventId)
+      .eq("event_id", dbEventId)
       .maybeSingle()
 
     if (convError) {
@@ -3090,12 +3118,13 @@ app.post("/events/:eventId/group-chat/join", authMiddleware, async (req, res) =>
     }
 
     const userId = String(currentUser.id)
+    const dbEventId = normalizeEventIdForDb(eventId)
 
     // Check if event exists
     const { data: event, error: eventError } = await supabase
       .from("events")
       .select("*")
-      .eq("id", eventId)
+      .eq("id", dbEventId)
       .maybeSingle()
 
     if (eventError) {
