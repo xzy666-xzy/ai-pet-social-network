@@ -1913,6 +1913,85 @@ app.get("/match/likes/today", authMiddleware, async (req, res) => {
   }
 })
 
+app.get("/friends/mutual-likes", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = String(req.user?.userId || "").trim()
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    const [sentLikesResult, receivedLikesResult] = await Promise.all([
+      supabase
+        .from("likes")
+        .select("to_user_id")
+        .eq("from_user_id", currentUserId),
+      supabase
+        .from("likes")
+        .select("from_user_id")
+        .eq("to_user_id", currentUserId),
+    ])
+
+    if (sentLikesResult.error) {
+      throw sentLikesResult.error
+    }
+
+    if (receivedLikesResult.error) {
+      throw receivedLikesResult.error
+    }
+
+    const sentUserIds = new Set(
+      (sentLikesResult.data || [])
+        .map((like) => String(like.to_user_id || "").trim())
+        .filter(Boolean)
+    )
+    const receivedUserIds = new Set(
+      (receivedLikesResult.data || [])
+        .map((like) => String(like.from_user_id || "").trim())
+        .filter(Boolean)
+    )
+    const mutualUserIds = [...sentUserIds].filter((userId) => receivedUserIds.has(userId))
+
+    if (mutualUserIds.length === 0) {
+      return toDataResponse(res, [])
+    }
+
+    const { data: users, error: usersError } = await supabase
+      .from("users")
+      .select("id, username, email, avatar_url, pet_name, pet_type, pet_age, pet_gender")
+      .in("id", mutualUserIds)
+      .is("deleted_at", null)
+
+    if (usersError) {
+      throw usersError
+    }
+
+    const usersById = new Map((users || []).map((user) => [String(user.id), user]))
+    const friends = mutualUserIds
+      .map((userId) => usersById.get(userId))
+      .filter(Boolean)
+      .map((user) => ({
+        id: user.id,
+        username: user.username ?? null,
+        email: user.email ?? null,
+        avatar_url: user.avatar_url ?? null,
+        pet_name: user.pet_name ?? null,
+        pet_type: user.pet_type ?? null,
+        pet_age: user.pet_age ?? null,
+        pet_gender: user.pet_gender ?? null,
+      }))
+
+    return toDataResponse(res, friends)
+  } catch (error) {
+    console.error("Mutual likes friends error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to load mutual friends",
+    })
+  }
+})
+
 app.get("/profile/stats", authMiddleware, async (req, res) => {
   try {
     const currentUserId = req.user?.userId

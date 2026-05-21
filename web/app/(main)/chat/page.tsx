@@ -2,7 +2,7 @@
 
 import { type ChangeEvent, type MouseEvent, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Send, ChevronLeft, Heart, Settings, ImagePlus, Pin, BellOff, Upload, Loader2, X, MessageCircle } from "lucide-react"
+import { Send, ChevronLeft, Heart, Settings, ImagePlus, Pin, BellOff, Upload, Loader2, X, MessageCircle, Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -57,6 +57,17 @@ type TargetUser = {
   tagline?: string | null
 }
 
+type MutualFriend = {
+  id: string
+  username: string | null
+  email: string | null
+  avatar_url: string | null
+  pet_name: string | null
+  pet_type: string | null
+  pet_age: number | null
+  pet_gender: string | null
+}
+
 type ConversationSummary = {
   id: string
   type?: string | null
@@ -94,6 +105,11 @@ type MessagesResponse = {
   data: {
     messages: ChatMessage[]
   }
+}
+
+type MutualFriendsResponse = {
+  success: true
+  data: MutualFriend[]
 }
 
 type CreateConversationResponse = {
@@ -181,6 +197,21 @@ const EVENT_BUTTON_LABELS = {
   zh: "查看活动",
   ko: "활동 보기",
   en: "View Event",
+} as const
+
+const FRIEND_DRAWER_LABELS = {
+  zh: {
+    title: "好友列表",
+    empty: "暂无好友",
+  },
+  ko: {
+    title: "친구 목록",
+    empty: "친구가 없습니다",
+  },
+  en: {
+    title: "Friends",
+    empty: "No friends yet",
+  },
 } as const
 
 function readEventString(value: unknown): string {
@@ -333,6 +364,10 @@ export default function ChatPage() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [uploadingBackground, setUploadingBackground] = useState(false)
   const [backgroundUploadError, setBackgroundUploadError] = useState("")
+  const [friendListOpen, setFriendListOpen] = useState(false)
+  const [mutualFriends, setMutualFriends] = useState<MutualFriend[]>([])
+  const [friendsLoading, setFriendsLoading] = useState(false)
+  const [friendsError, setFriendsError] = useState("")
   const imageInputRef = useRef<HTMLInputElement | null>(null)
   const backgroundImageInputRef = useRef<HTMLInputElement | null>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -456,6 +491,30 @@ export default function ChatPage() {
 
     setConversations(safeConversations)
     return safeConversations
+  }
+
+  const loadMutualFriends = async () => {
+    try {
+      setFriendsLoading(true)
+      setFriendsError("")
+
+      const data = await apiRequest<MutualFriendsResponse>("/friends/mutual-likes", {
+        cache: "no-store",
+        auth: true,
+      })
+
+      setMutualFriends(Array.isArray(data.data) ? data.data : [])
+    } catch (error) {
+      setFriendsError(error instanceof Error ? error.message : "Failed to load friends")
+      setMutualFriends([])
+    } finally {
+      setFriendsLoading(false)
+    }
+  }
+
+  const handleOpenFriendChat = (friendId: string) => {
+    setFriendListOpen(false)
+    router.push(`/chat?userId=${encodeURIComponent(friendId)}`)
   }
 
   const markConversationAsRead = async (convId: string) => {
@@ -854,6 +913,12 @@ export default function ChatPage() {
 
     return () => clearInterval(timer)
   }, [isConversationMode, targetUserId, loading, hasToken])
+
+  useEffect(() => {
+    if (!friendListOpen || loading || !hasToken) return
+
+    loadMutualFriends()
+  }, [friendListOpen, loading, hasToken])
 
   // 监听从其他页面（如探索页取消参加活动）发来的刷新聊天列表事件
   useEffect(() => {
@@ -1389,6 +1454,8 @@ export default function ChatPage() {
     return conversations.filter((conversation) => conversation.type !== "event_group")
   }, [chatTab, conversations])
 
+  const friendDrawerText = FRIEND_DRAWER_LABELS[locale]
+
   return (
       <div
         className={`flex h-full min-h-0 flex-col overflow-hidden ${hasCustomBackground ? "bg-stone-100" : chatBackgroundClass}`}
@@ -1493,7 +1560,7 @@ export default function ChatPage() {
         </div>
 
         {!targetUserId && !isConversationMode ? (
-          <div className="border-b border-orange-100/80 bg-white/90 px-5 pb-3 pt-2 flex justify-center">
+          <div className="relative flex items-center justify-center border-b border-orange-100/80 bg-white/90 px-5 pb-3 pt-2">
             <div className="inline-flex rounded-full border border-orange-100 bg-white p-1 shadow-sm">
               <button
                 type="button"
@@ -1518,8 +1585,109 @@ export default function ChatPage() {
                 {t.chat.groupTab}
               </button>
             </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={friendDrawerText.title}
+              className="absolute right-5 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full border border-orange-100 bg-white text-stone-700 shadow-sm hover:bg-orange-50"
+              onClick={() => setFriendListOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
           </div>
         ) : null}
+
+        <div
+          aria-hidden={!friendListOpen}
+          className={`fixed inset-0 z-40 bg-black/35 transition-opacity duration-300 ${
+            friendListOpen ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+          onClick={() => setFriendListOpen(false)}
+        >
+          <div
+            className={`absolute right-0 top-0 flex h-full w-[86%] max-w-sm flex-col border-l border-orange-100 bg-white shadow-2xl transition-transform duration-300 ease-out ${
+              friendListOpen ? "translate-x-0" : "translate-x-full"
+            }`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-orange-100 px-5 py-4">
+              <div className="text-base font-extrabold tracking-tight text-stone-900">
+                {friendDrawerText.title}
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Close friends drawer"
+                className="h-9 w-9 rounded-full text-stone-600 hover:bg-orange-50"
+                onClick={() => setFriendListOpen(false)}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+              {friendsLoading ? (
+                <div className="flex h-full min-h-48 items-center justify-center rounded-3xl border border-dashed border-orange-200 bg-orange-50/50 px-4 text-center text-sm font-semibold text-stone-500">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin text-orange-500" />
+                  {t.chat.loadingHistory}
+                </div>
+              ) : friendsError ? (
+                <div className="flex h-full min-h-48 items-center justify-center rounded-3xl border border-red-200 bg-red-50 px-4 text-center text-sm font-semibold text-red-600">
+                  {friendsError}
+                </div>
+              ) : mutualFriends.length === 0 ? (
+                <div className="flex h-full min-h-48 items-center justify-center rounded-3xl border border-dashed border-orange-200 bg-orange-50/50 px-4 text-center text-sm font-semibold text-stone-500">
+                  {friendDrawerText.empty}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {mutualFriends.map((friend) => {
+                    const friendName = friend.pet_name || friend.username || "Friend"
+                    const friendMeta = [
+                      friend.pet_type,
+                      friend.pet_age !== null && friend.pet_age !== undefined ? String(friend.pet_age) : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" / ")
+
+                    return (
+                      <button
+                        type="button"
+                        key={friend.id}
+                        onClick={() => handleOpenFriendChat(friend.id)}
+                        className="flex w-full items-center gap-3 rounded-[1.35rem] border border-orange-100 bg-white px-4 py-3 text-left shadow-sm shadow-orange-900/5 transition hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-md active:translate-y-0 active:scale-[0.985]"
+                      >
+                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl border border-white bg-gradient-to-br from-orange-100 to-amber-100 shadow-sm">
+                          {friend.avatar_url ? (
+                            <img
+                              src={friend.avatar_url || "/placeholder.svg"}
+                              alt={friendName}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-base font-black text-orange-600">
+                              {friendName.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-extrabold text-stone-900">
+                            {friendName}
+                          </div>
+                          <div className="mt-1 truncate text-xs font-semibold text-stone-500">
+                            {friendMeta || friend.email || "-"}
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
 
         <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
           <SheetContent side="right" className="w-[86%] border-l border-orange-100 p-0 sm:max-w-sm">
