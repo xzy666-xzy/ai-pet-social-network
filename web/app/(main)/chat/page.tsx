@@ -19,12 +19,19 @@ type ChatMessage = {
   conversation_id: string
   sender_id: string
   content: string | null
-  message_type?: "text" | "image"
+  message_type?: "text" | "image" | "event"
   image_url?: string | null
   is_read?: number
   is_deleted?: boolean | number
   deleted_at?: string | null
   created_at: string
+}
+
+type EventMessageContent = {
+  eventId: string
+  title: string
+  time: string
+  imageUrl: string
 }
 
 type TargetUser = {
@@ -170,6 +177,39 @@ type ChatBackgroundKey = "default" | "orange" | "green" | "blue"
 
 const CHAT_BACKGROUND_OPTIONS: ChatBackgroundKey[] = ["default", "orange", "green", "blue"]
 
+const EVENT_BUTTON_LABELS = {
+  zh: "查看活动",
+  ko: "활동 보기",
+  en: "View Event",
+} as const
+
+function readEventString(value: unknown): string {
+  return typeof value === "string" ? value.trim() : ""
+}
+
+function parseEventMessageContent(content: string | null): EventMessageContent | null {
+  if (!content) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(content) as Record<string, unknown>
+
+    if (!parsed || typeof parsed !== "object") {
+      return null
+    }
+
+    return {
+      eventId: readEventString(parsed.eventId ?? parsed.event_id ?? parsed.id),
+      title: readEventString(parsed.title),
+      time: readEventString(parsed.time),
+      imageUrl: readEventString(parsed.imageUrl ?? parsed.image_url),
+    }
+  } catch {
+    return null
+  }
+}
+
 function parseBackgroundKey(value: unknown): ChatBackgroundKey {
   if (value === "orange" || value === "green" || value === "blue" || value === "default") {
     return value
@@ -252,7 +292,7 @@ function isUserOnline(lastSeen?: string | null) {
 }
 
 export default function ChatPage() {
-  const { t } = useLanguage()
+  const { locale, t } = useLanguage()
   const { user, loading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -1259,6 +1299,88 @@ export default function ChatPage() {
     return t.chat.statusNoRelation
   }
 
+  const renderEventMessage = (msg: ChatMessage, isMe: boolean) => {
+    const eventContent = parseEventMessageContent(msg.content)
+
+    if (!eventContent) {
+      return (
+        <div
+          className={`max-w-[76%] px-4 py-3 ${
+            isMe
+              ? "rounded-[1.35rem] rounded-br-[0.45rem] bg-gradient-to-br from-orange-500 via-orange-400 to-amber-400 text-white shadow-[0_8px_18px_rgba(251,146,60,0.32)]"
+              : "rounded-[1.35rem] rounded-bl-[0.45rem] border border-stone-200/80 bg-white text-stone-800 shadow-[0_3px_12px_rgba(15,23,42,0.08)]"
+          }`}
+          onContextMenu={(event) => handleMessageContextMenu(event, msg)}
+          onTouchStart={() => handleMessageTouchStart(msg)}
+          onTouchEnd={clearLongPressTimer}
+          onTouchMove={clearLongPressTimer}
+        >
+          <div className="break-words whitespace-pre-wrap text-[15px] leading-relaxed">
+            {msg.content}
+          </div>
+        </div>
+      )
+    }
+
+    const eventId = eventContent.eventId.trim()
+    const canOpenEvent = Boolean(eventId)
+
+    return (
+      <button
+        type="button"
+        aria-disabled={!canOpenEvent}
+        className={`w-full max-w-[260px] overflow-hidden rounded-2xl border bg-white text-left text-stone-900 shadow-[0_3px_12px_rgba(15,23,42,0.08)] transition ${
+          canOpenEvent
+            ? "cursor-pointer hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(15,23,42,0.12)]"
+            : "cursor-default"
+        } ${
+          isMe ? "border-orange-300/70" : "border-stone-200/80"
+        }`}
+        style={{ maxWidth: 260 }}
+        onClick={() => {
+          if (!canOpenEvent) return
+          router.push(`/explore?eventId=${encodeURIComponent(eventId)}`)
+        }}
+        onContextMenu={(event) => handleMessageContextMenu(event, msg)}
+        onTouchStart={() => handleMessageTouchStart(msg)}
+        onTouchEnd={clearLongPressTimer}
+        onTouchMove={clearLongPressTimer}
+      >
+        {eventContent.imageUrl ? (
+          <div className="h-28 w-full overflow-hidden bg-orange-50">
+            <img
+              src={eventContent.imageUrl}
+              alt={eventContent.title || "Event"}
+              className="h-full w-full object-cover"
+            />
+          </div>
+        ) : null}
+        <div className="space-y-2.5 p-3">
+          <span className="inline-flex rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-orange-600">
+            EVENT
+          </span>
+          <div className="line-clamp-2 break-words text-sm font-extrabold leading-snug text-stone-900">
+            {eventContent.title || "Event"}
+          </div>
+          {eventContent.time ? (
+            <div className="break-words text-xs font-semibold leading-relaxed text-stone-500">
+              {eventContent.time}
+            </div>
+          ) : null}
+          <div
+            className={`rounded-full px-3 py-2 text-center text-xs font-extrabold shadow-sm ${
+              canOpenEvent
+                ? "bg-gradient-to-r from-orange-500 to-amber-400 text-white shadow-orange-500/20"
+                : "bg-stone-100 text-stone-400 shadow-stone-200/40"
+            }`}
+          >
+            {EVENT_BUTTON_LABELS[locale]}
+          </div>
+        </div>
+      </button>
+    )
+  }
+
   const filteredConversations = useMemo(() => {
     if (chatTab === "group") {
       return conversations.filter((conversation) => conversation.type === "event_group")
@@ -1902,6 +2024,8 @@ export default function ChatPage() {
                                   className="h-auto w-full rounded-xl object-cover"
                                 />
                               </button>
+                            ) : msg.message_type === "event" ? (
+                              renderEventMessage(msg, isMe)
                             ) : (
                               <div
                                 className={`max-w-[76%] px-4 py-3 ${

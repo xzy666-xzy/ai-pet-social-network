@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useEffect, useMemo, useRef, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
   CalendarDays,
   ChevronRight,
@@ -9,6 +9,7 @@ import {
   MessageCircle,
   Navigation,
   Search,
+  Share2,
   Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -50,6 +51,23 @@ type EventItem = MapPlace & {
   current_people?: number | null
   organizer_id?: string | null
   organizer_name?: string | null
+}
+
+type ShareConversation = {
+  id: string
+  type: "direct" | "event_group"
+  other_username?: string | null
+  other_pet_name?: string | null
+  other_avatar_url?: string | null
+  event_title?: string | null
+}
+
+type ShareConversationsResponse = {
+  success?: boolean
+  data?: {
+    conversations?: ShareConversation[]
+  }
+  conversations?: ShareConversation[]
 }
 
 type EventParticipationResponse = {
@@ -267,14 +285,18 @@ const copy = {
     mapHint: "点击活动卡片或定位按钮，可联动查看位置",
     sectionTitle: "活动聚会",
     createEvent: "创建活动",
+    eventTimeLabel: "活动时间",
+    peopleLimitLabel: "人数限制",
+    organizerLabel: "活动组织者",
+    descriptionLabel: "活动介绍",
     all: "全部",
     event: "活动",
     locate: "定位",
-    mapLocate: "地图定位",
+    mapLocate: "地图位置",
     join: "参加",
-    joined: "已参加",
+    joined: "参加中",
     cancel: "取消参加",
-    detail: "活动详情",
+    detail: "详细信息",
     edit: "编辑",
     joinedText: (n: number) => `已有 ${n} 人参加`,
     countSuffix: (n: number) => `${n} 个附近活动`,
@@ -284,6 +306,12 @@ const copy = {
     groupChatTitle: "加入活动群聊",
     groupChatDesc: "确定要加入这个活动的群聊吗？",
     groupChatConfirm: "确定",
+    share: "转发",
+    shareTo: "转发到",
+    shareDirect: "个人",
+    shareGroup: "群聊",
+    shareLoading: "加载中...",
+    shareEmpty: "暂无可转发会话",
   },
   ko: {
     title: "탐색",
@@ -294,6 +322,10 @@ const copy = {
     mapHint: "카드나 위치 버튼을 누르면 위 지도와 연동됩니다",
     sectionTitle: "활동 모임",
     createEvent: "활동 만들기",
+    eventTimeLabel: "활동 시간",
+    peopleLimitLabel: "인원 제한",
+    organizerLabel: "활동 주최자",
+    descriptionLabel: "활동 소개",
     all: "전체",
     event: "이벤트",
     locate: "위치",
@@ -311,6 +343,12 @@ const copy = {
     groupChatTitle: "활동 단체 채팅 참가",
     groupChatDesc: "이 활동의 단체 채팅에 참가하시겠습니까?",
     groupChatConfirm: "확인",
+    share: "공유",
+    shareTo: "공유할 대화 선택",
+    shareDirect: "개인",
+    shareGroup: "그룹",
+    shareLoading: "불러오는 중...",
+    shareEmpty: "공유할 대화가 없습니다",
   },
   en: {
     title: "Explore",
@@ -321,10 +359,14 @@ const copy = {
     mapHint: "Tap event cards or locate buttons to sync the map",
     sectionTitle: "Events & Meetups",
     createEvent: "Create Event",
+    eventTimeLabel: "Event Time",
+    peopleLimitLabel: "People Limit",
+    organizerLabel: "Event Organizer",
+    descriptionLabel: "Event Description",
     all: "All",
     event: "Events",
     locate: "Locate",
-    mapLocate: "Map Locate",
+    mapLocate: "Map Location",
     join: "Join",
     joined: "Joined",
     cancel: "Cancel",
@@ -338,12 +380,28 @@ const copy = {
     groupChatTitle: "Join Group Chat",
     groupChatDesc: "Are you sure you want to join this event's group chat?",
     groupChatConfirm: "Confirm",
+    share: "Share",
+    shareTo: "Share to",
+    shareDirect: "Direct",
+    shareGroup: "Group",
+    shareLoading: "Loading...",
+    shareEmpty: "No conversations available",
   },
 } as const
 
 export default function ExplorePage() {
+  return (
+    <Suspense fallback={null}>
+      <ExplorePageContent />
+    </Suspense>
+  )
+}
+
+function ExplorePageContent() {
   const { locale } = useLanguage()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const eventIdParam = searchParams.get("eventId")
   const { user } = useAuth()
   const c = copy[locale]
   const userCity = (user as { city?: string | null } | null)?.city ?? null
@@ -351,16 +409,21 @@ export default function ExplorePage() {
   const userCurrentLng = toFiniteNumber((user as { current_lng?: number | string | null } | null)?.current_lng)
   const userCityLat = toFiniteNumber((user as { city_lat?: number | string | null } | null)?.city_lat)
   const userCityLng = toFiniteNumber((user as { city_lng?: number | string | null } | null)?.city_lng)
-  const userCurrentCenter =
+  const userCurrentCenter: { lat: number; lng: number } | null =
+    userCurrentLat !== null &&
+    userCurrentLng !== null &&
     isValidCoordinatePair(userCurrentLat, userCurrentLng)
       ? { lat: userCurrentLat, lng: userCurrentLng }
       : null
-  const userCityCenter =
+  const userCityCenter: { lat: number; lng: number } | null =
+    userCityLat !== null &&
+    userCityLng !== null &&
     isValidCoordinatePair(userCityLat, userCityLng)
       ? { lat: userCityLat, lng: userCityLng }
       : null
 
   const [events, setEvents] = useState<EventItem[]>([])
+  const [eventsLoaded, setEventsLoaded] = useState(false)
   const [query, setQuery] = useState("")
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [joinedMap, setJoinedMap] = useState<Record<number, boolean>>({})
@@ -371,6 +434,11 @@ export default function ExplorePage() {
   const [detailApiEvent, setDetailApiEvent] = useState<ApiEvent | null>(null)
   const [groupChatDialogId, setGroupChatDialogId] = useState<number | null>(null)
   const [joiningGroupChat, setJoiningGroupChat] = useState(false)
+  const [shareModalOpen, setShareModalOpen] = useState(false)
+  const [shareTargetEvent, setShareTargetEvent] = useState<EventItem | null>(null)
+  const [shareConversations, setShareConversations] = useState<ShareConversation[]>([])
+  const [shareLoading, setShareLoading] = useState(false)
+  const [shareSending, setShareSending] = useState(false)
   const userPreferredCenter = userLocation || userCurrentCenter || userCityCenter
 
   const cardRefs = useRef<Record<number, HTMLDivElement | null>>({})
@@ -381,6 +449,7 @@ export default function ExplorePage() {
 
     async function loadEvents() {
       try {
+        setEventsLoaded(false)
         const response = await apiRequest<EventsResponse>("/events", { auth: true })
         const items = sortApiEventsByTime(response.data || []).map(toEventItem)
 
@@ -396,9 +465,14 @@ export default function ExplorePage() {
             }
           })
           setJoinedMap(initialJoinedMap)
+          setEventsLoaded(true)
         }
       } catch (error) {
         console.error("Failed to load events", error)
+
+        if (!cancelled) {
+          setEventsLoaded(true)
+        }
       }
     }
 
@@ -425,6 +499,17 @@ export default function ExplorePage() {
       )
     })
   }, [events, locale, query, userCity, userPreferredCenter])
+
+  useEffect(() => {
+    if (!eventsLoaded || !eventIdParam) return
+
+    const targetEvent = events.find((item) => item.event_id === eventIdParam)
+
+    if (!targetEvent) return
+
+    setDetailEventId(targetEvent.id)
+    setSelectedId(targetEvent.id)
+  }, [eventIdParam, events, eventsLoaded])
 
   const detailEvent = filteredEvents.find((item) => item.id === detailEventId) || null
 
@@ -674,6 +759,86 @@ export default function ExplorePage() {
     window.open(url, "_blank", "noopener,noreferrer")
   }
 
+  const normalizeShareConversation = (item: ShareConversation) => {
+    const type = item.type === "event_group" ? "event_group" : "direct"
+
+    return {
+      ...item,
+      type,
+    } as ShareConversation
+  }
+
+  const loadShareConversations = async () => {
+    setShareLoading(true)
+
+    try {
+      const response = await apiRequest<ShareConversationsResponse>("/chat/conversations", {
+        auth: true,
+        cache: "no-store",
+      })
+
+      const rawConversations = Array.isArray(response?.data?.conversations)
+        ? response.data?.conversations
+        : Array.isArray(response?.conversations)
+          ? response.conversations
+          : []
+
+      setShareConversations(rawConversations.map(normalizeShareConversation))
+    } catch (error) {
+      console.error("Failed to load share conversations", error)
+      setShareConversations([])
+    } finally {
+      setShareLoading(false)
+    }
+  }
+
+  const handleOpenShareModal = async (eventItem: EventItem) => {
+    setShareTargetEvent(eventItem)
+    setShareModalOpen(true)
+    await loadShareConversations()
+  }
+
+  const handleSelectShareConversation = async (conversation: ShareConversation) => {
+    if (shareSending || !shareTargetEvent) return
+
+    const eventId = shareTargetEvent.event_id ?? String(shareTargetEvent.id)
+    const imageUrl = shareTargetEvent.image ?? ""
+
+    setShareSending(true)
+
+    try {
+      await apiRequest("/chat/send", {
+        method: "POST",
+        auth: true,
+        body: JSON.stringify({
+          conversationId: conversation.id,
+          message_type: "event",
+          content: JSON.stringify({
+            eventId,
+            title: shareTargetEvent.title[locale],
+            time: shareTargetEvent.time,
+            imageUrl,
+          }),
+        }),
+      })
+
+      setShareModalOpen(false)
+
+      const successMessages: Record<string, string> = {
+        zh: "已转发",
+        ko: "공유했습니다",
+        en: "Shared",
+      }
+      alert(successMessages[locale] || successMessages.en)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error("Failed to share event", { error, message })
+      alert(message)
+    } finally {
+      setShareSending(false)
+    }
+  }
+
   if (detailEvent) {
     const joined = joinedMap[detailEvent.id]
     const joinedCount = peopleMap[detailEvent.id] ?? detailEvent.joined
@@ -712,14 +877,18 @@ export default function ExplorePage() {
               </h1>
 
               <p className="text-sm text-stone-500 mt-2">{detailEvent.address}</p>
-              <p className="text-sm text-stone-500 mt-1">活动时间：{formatListEventTime(detailTime)}</p>
               <p className="text-sm text-stone-500 mt-1">
-                人数限制：{detailPeople} / {maxPeople ?? "∞"}
+                {c.eventTimeLabel}：{formatListEventTime(detailTime)}
               </p>
-              <p className="text-sm text-stone-500 mt-1">活动组织者：{detailOrganizer}</p>
+              <p className="text-sm text-stone-500 mt-1">
+                {c.peopleLimitLabel}：{detailPeople} / {maxPeople ?? "∞"}
+              </p>
+              <p className="text-sm text-stone-500 mt-1">
+                {c.organizerLabel}：{detailOrganizer}
+              </p>
 
               <div className="mt-4 text-sm text-stone-700 leading-7">
-                活动介绍：{detailDescription}
+                {c.descriptionLabel}：{detailDescription}
               </div>
 
               <div className="mt-5 rounded-2xl bg-stone-50 border border-stone-100 p-4">
@@ -873,6 +1042,7 @@ export default function ExplorePage() {
               const selected = selectedId === item.id
               const joined = joinedMap[item.id]
               const joinedCount = peopleMap[item.id] ?? item.joined
+              const canShare = Boolean(user?.id && (item.organizer_id === user.id || joinedMap[item.id] === true))
 
               return (
                   <div
@@ -923,11 +1093,25 @@ export default function ExplorePage() {
                         <h3 className="mt-3 line-clamp-2 min-h-[3rem] text-lg font-black leading-6 tracking-tight text-stone-900">{item.title[locale]}</h3>
                         <p className="mt-1 text-sm font-medium text-stone-500">{formatListEventTime(item.time)}</p>
 
-                        <div className="mt-4 flex items-center gap-4 text-xs font-semibold text-stone-500">
+                        <div className="mt-4 flex items-center justify-between gap-4 text-xs font-semibold text-stone-500">
                           <span className="flex items-center gap-1 rounded-full bg-stone-50 px-3 py-1.5">
                             <Users className="h-3.5 w-3.5" />
                             {joined ? c.joined : c.joinedText(joinedCount)}
                           </span>
+
+                          {canShare && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="shrink-0 rounded-full border-orange-100 bg-white px-3 font-bold text-stone-700 shadow-sm hover:bg-orange-50"
+                                onClick={() => {
+                                  void handleOpenShareModal(item)
+                                }}
+                            >
+                              <Share2 className="h-3.5 w-3.5 mr-1" />
+                              {c.share}
+                            </Button>
+                          )}
                         </div>
 
                         <div className="mt-auto flex gap-2 pt-4">
@@ -976,6 +1160,71 @@ export default function ExplorePage() {
             ))}
           </div>
         </section>
+
+        <Dialog
+            open={shareModalOpen}
+            onOpenChange={(open) => {
+              setShareModalOpen(open)
+
+              if (!open) {
+                setShareTargetEvent(null)
+              }
+            }}
+        >
+          <DialogContent className="sm:max-w-[420px] rounded-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-center text-lg">{c.shareTo}</DialogTitle>
+            </DialogHeader>
+
+            <div className="max-h-[420px] space-y-2 overflow-y-auto">
+              {shareLoading ? (
+                <div className="py-8 text-center text-sm text-stone-500">{c.shareLoading}</div>
+              ) : shareConversations.length === 0 ? (
+                <div className="py-8 text-center text-sm text-stone-500">{c.shareEmpty}</div>
+              ) : (
+                shareConversations.map((conversation) => {
+                  const isGroup = conversation.type === "event_group"
+                  const displayName = isGroup
+                    ? conversation.event_title?.trim() || "Group"
+                    : conversation.other_pet_name?.trim() ||
+                      conversation.other_username?.trim() ||
+                      "Direct"
+
+                  return (
+                    <button
+                        key={conversation.id}
+                        type="button"
+                        disabled={shareSending}
+                        onClick={() => handleSelectShareConversation(conversation)}
+                        className={`flex w-full items-center justify-between rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-left transition hover:bg-orange-50 ${
+                            shareSending ? "cursor-not-allowed opacity-50" : ""
+                        }`}
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-stone-100">
+                          {!isGroup && conversation.other_avatar_url ? (
+                            <img
+                                src={conversation.other_avatar_url}
+                                alt={displayName}
+                                className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <Users className="h-4 w-4 text-stone-500" />
+                          )}
+                        </div>
+                        <span className="truncate text-sm font-semibold text-stone-800">{displayName}</span>
+                      </div>
+
+                      <span className="ml-2 shrink-0 rounded-full bg-stone-100 px-2 py-1 text-[11px] font-semibold text-stone-600">
+                        {isGroup ? c.shareGroup : c.shareDirect}
+                      </span>
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Dialog
             open={groupChatDialogId !== null}
