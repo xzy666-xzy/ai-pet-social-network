@@ -132,6 +132,8 @@ export const translations = {
 
     // Chat Page
     chat: {
+      directTab: "Direct",
+      groupTab: "Groups",
       activeNow: "Active now",
       offline: "Offline",
       today: "Today",
@@ -601,6 +603,8 @@ export const translations = {
 
     // Chat Page
     chat: {
+      directTab: "개인",
+      groupTab: "그룹",
       activeNow: "활동 중",
       offline: "오프라인",
       today: "오늘",
@@ -1069,6 +1073,8 @@ export const translations = {
 
     // Chat Page
     chat: {
+      directTab: "个人",
+      groupTab: "群聊",
       activeNow: "在线中",
       offline: "离线中",
       today: "今天",

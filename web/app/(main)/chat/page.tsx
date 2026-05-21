@@ -1349,7 +1349,7 @@ export default function ChatPage() {
         </div>
 
         {!targetUserId && !isConversationMode ? (
-          <div className="border-b border-orange-100/80 bg-white/90 px-5 pb-3 pt-2">
+          <div className="border-b border-orange-100/80 bg-white/90 px-5 pb-3 pt-2 flex justify-center">
             <div className="inline-flex rounded-full border border-orange-100 bg-white p-1 shadow-sm">
               <button
                 type="button"
@@ -1360,7 +1360,7 @@ export default function ChatPage() {
                     : "bg-transparent text-stone-400 hover:text-stone-600"
                 }`}
               >
-                个人
+                {t.chat.directTab}
               </button>
               <button
                 type="button"
@@ -1371,7 +1371,7 @@ export default function ChatPage() {
                     : "bg-transparent text-stone-400 hover:text-stone-600"
                 }`}
               >
-                群聊
+                {t.chat.groupTab}
               </button>
             </div>
           </div>
