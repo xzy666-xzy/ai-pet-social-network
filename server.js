@@ -3422,11 +3422,12 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
       return sendUnauthorized(res)
     }
 
-    // Get conversations where user is user1/user2 (direct) OR member via conversation_members (event_group)
+    // Get direct conversations (non-event_group) where user is user1 or user2
     const { data: directConversations, error: directError } = await supabase
       .from("conversations")
       .select("*")
       .or(`user1_id.eq.${currentUserId},user2_id.eq.${currentUserId}`)
+      .neq("type", "event_group")
 
     if (directError) {
       throw directError
@@ -3459,7 +3460,7 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
       eventGroupConversations = egConversations || []
     }
 
-    // Merge and deduplicate by id
+    // Merge: direct conversations + event_group conversations (only those user is still a member of)
     const conversationMap = new Map()
     for (const c of directConversations || []) {
       conversationMap.set(c.id, c)
@@ -4209,25 +4210,59 @@ app.post("/chat/send", authMiddleware, async (req, res) => {
     const messageType = String(req.body?.message_type || "text").trim().toLowerCase() || "text"
     const imageUrl = String(req.body?.image_url || "").trim()
 
-    if (messageType !== "text" && messageType !== "image") {
+    const isTextMessage = messageType === "text"
+    const isImageMessage = messageType === "image"
+    const isEventMessage = messageType === "event"
+
+    if (!isTextMessage && !isImageMessage && !isEventMessage) {
       return res.status(400).json({
         success: false,
-        error: "message_type must be text or image",
+        error: "message_type must be text, image or event",
       })
     }
 
-    if (messageType === "text" && !content) {
+    if (isTextMessage && !content) {
       return res.status(400).json({
         success: false,
         error: "content is required",
       })
     }
 
-    if (messageType === "image" && !imageUrl) {
+    if (isImageMessage && !imageUrl) {
       return res.status(400).json({
         success: false,
         error: "image_url is required when message_type is image",
       })
+    }
+
+    if (isEventMessage) {
+      if (!content) {
+        return res.status(400).json({
+          success: false,
+          error: "content is required when message_type is event",
+        })
+      }
+
+      let parsedEventContent = null
+
+      try {
+        parsedEventContent = JSON.parse(content)
+      } catch (parseError) {
+        return res.status(400).json({
+          success: false,
+          error: "content must be valid JSON when message_type is event",
+        })
+      }
+
+      const eventId = String(parsedEventContent?.eventId || "").trim()
+      const title = String(parsedEventContent?.title || "").trim()
+
+      if (!eventId || !title) {
+        return res.status(400).json({
+          success: false,
+          error: "event content must include eventId and title",
+        })
+      }
     }
 
     let conversationId = conversationIdInput
@@ -4348,7 +4383,7 @@ app.post("/chat/send", authMiddleware, async (req, res) => {
       }
 
       const senderDisplayName = currentUser.pet_name || currentUser.username || "New message"
-      const notificationBody = messageType === "image" ? "📷 Photo" : content
+      const notificationBody = isImageMessage ? "📷 Photo" : isEventMessage ? "📅 Event" : content
 
       void sendNewMessagePushNotification({
         conversationId,
