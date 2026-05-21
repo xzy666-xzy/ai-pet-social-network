@@ -216,72 +216,6 @@ function sortEventItemsForUserCity(
   })
 }
 
-const eventData: EventItem[] = [
-  {
-    id: 1,
-    name: "event-1",
-    category: "event",
-    address: "Ansan Central Park",
-    lat: 37.3212,
-    lng: 126.8309,
-    image: "/event-dog-park.jpg",
-    title: {
-      zh: "周末狗狗公园聚会",
-      ko: "주말 강아지 공원 모임",
-      en: "Weekend Dog Park Meetup",
-    },
-    desc: {
-      zh: "适合周末带宠物一起散步、社交和认识附近新朋友。",
-      ko: "주말에 반려동물과 함께 산책하고 주변 친구들을 만나는 모임입니다.",
-      en: "A casual weekend meetup for walking, socializing, and meeting nearby pet friends.",
-    },
-    time: "Sat 3:00 PM",
-    joined: 12,
-  },
-  {
-    id: 2,
-    name: "event-2",
-    category: "event",
-    address: "Gojan-dong Pet Street",
-    lat: 37.3186,
-    lng: 126.8348,
-    image: "/event-pet-cafe.jpg",
-    title: {
-      zh: "宠物咖啡馆社交日",
-      ko: "펫 카페 소셜 데이",
-      en: "Pet Cafe Social Day",
-    },
-    desc: {
-      zh: "在宠物咖啡馆轻松交流，适合第一次见面的主人和宠物。",
-      ko: "펫 카페에서 편하게 이야기하고 처음 만나는 반려인에게 잘 맞는 모임입니다.",
-      en: "A relaxed cafe meetup for pet owners and pets meeting for the first time.",
-    },
-    time: "Sun 2:00 PM",
-    joined: 8,
-  },
-  {
-    id: 3,
-    name: "event-3",
-    category: "event",
-    address: "Lake Park Plaza",
-    lat: 37.3159,
-    lng: 126.8322,
-    image: "/event-evening-walk.jpg",
-    title: {
-      zh: "晚间散步小组",
-      ko: "저녁 산책 그룹",
-      en: "Evening Walking Group",
-    },
-    desc: {
-      zh: "适合下班后轻松散步，帮助宠物释放精力。",
-      ko: "퇴근 후 가볍게 산책하며 반려동물의 에너지를 풀어주는 모임입니다.",
-      en: "An easy after-work walking group to help pets release energy.",
-    },
-    time: "Fri 7:30 PM",
-    joined: 6,
-  },
-]
-
 const DEFAULT_MAP_CENTER = { lat: 37.3219, lng: 126.8353 }
 
 function toEventItem(event: ApiEvent, index: number): EventItem {
@@ -426,7 +360,7 @@ export default function ExplorePage() {
       ? { lat: userCityLat, lng: userCityLng }
       : null
 
-  const [events, setEvents] = useState<EventItem[]>(sortEventItemsByTime(eventData))
+  const [events, setEvents] = useState<EventItem[]>([])
   const [query, setQuery] = useState("")
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [joinedMap, setJoinedMap] = useState<Record<number, boolean>>({})
@@ -450,7 +384,7 @@ export default function ExplorePage() {
         const response = await apiRequest<EventsResponse>("/events")
         const items = sortApiEventsByTime(response.data || []).map(toEventItem)
 
-        if (!cancelled && items.length > 0) {
+        if (!cancelled) {
           setEvents(items)
           setSelectedId(null)
           // 从后端返回的 is_joined 初始化 joinedMap
