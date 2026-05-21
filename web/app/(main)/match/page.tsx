@@ -325,7 +325,10 @@ export default function MatchPage() {
                   ? "text-amber-500"
                   : "text-red-500"
 
-  const matchScore = currentPet?.matchScore ?? [98, 85, 92, 88, 95, 84, 90, 87][currentIndex % 8]
+  const rawMatchScore = currentPet?.matchScore
+  const hasMatchScore =
+      typeof rawMatchScore === "number" && Number.isFinite(rawMatchScore)
+  const matchScore = rawMatchScore ?? [98, 85, 92, 88, 95, 84, 90, 87][currentIndex % 8]
 
   const displayName =
       currentPet?.pet_name?.trim() ||
@@ -566,6 +569,12 @@ export default function MatchPage() {
                           />
 
                           <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+
+                          {hasMatchScore ? (
+                              <Badge className="absolute right-4 top-4 rounded-full border border-white/60 bg-white/90 px-3 py-1.5 text-orange-600 shadow-lg backdrop-blur">
+                                {matchScore}% {t.match.matchPercent}
+                              </Badge>
+                          ) : null}
 
                         </div>
 

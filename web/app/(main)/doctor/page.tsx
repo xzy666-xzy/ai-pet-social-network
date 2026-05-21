@@ -522,6 +522,8 @@ export default function DoctorPage() {
           imageBase64,
           mimeType: imageFile.type || "image/jpeg",
           symptom: imageSymptom,
+          description: imageSymptom,
+          uiLanguage: locale,
         }),
       })
 

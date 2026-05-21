@@ -27,7 +27,7 @@ export default function SettingsPage() {
     { label: t.profile.switchCity, icon: MapPin, href: "/profile/settings/city" },
     { label: t.profile.switchAccount, icon: Repeat, href: "/login" },
     { label: t.profile.logout, icon: LogOut, action: "logout" },
-    { label: "注销账号", icon: AlertCircle, action: "deleteAccount", danger: true },
+    { label: t.settings.deleteAccount, icon: AlertCircle, action: "deleteAccount", danger: true },
   ]
 
   const handleLogout = async () => {

@@ -9,7 +9,16 @@ export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData()
         const image = formData.get("image") as File | null
-        const symptom = (formData.get("symptom") as string | null) || ""
+        const symptom = String(
+            formData.get("description") ||
+            formData.get("prompt") ||
+            formData.get("message") ||
+            formData.get("symptom") ||
+            ""
+        ).trim()
+        const uiLanguage = String(
+            formData.get("uiLanguage") || formData.get("locale") || ""
+        ).trim()
 
         if (!image) {
             return NextResponse.json({ error: "没有图片" }, { status: 400 })
@@ -25,17 +34,31 @@ export async function POST(req: NextRequest) {
         const mimeType = image.type || "image/jpeg"
 
         const prompt = `
-你是一名宠物医生 AI 助手。
-请根据图片和用户描述进行初步分析。
+You are WePet AI Pet Doctor.
+Analyze the image and the user's symptom description to provide a preliminary pet health observation.
 
-输出格式：
-【图片观察】
-【可能问题】
-【建议处理】
-【是否需要线下就医】
+Language rules:
+Respond in the same language as the user's description.
+If the description is Korean, answer in Korean.
+If the description is Chinese, answer in Chinese.
+If the description is English, answer in English.
+If the description is another language, answer in that same language as much as possible.
+If no description is provided, respond in the current UI language if available; otherwise Korean by default.
+Current UI language: ${uiLanguage || "not provided"}
 
-用户描述：
-${symptom || "无"}
+Medical safety rules:
+This is preliminary guidance only and cannot replace an in-person veterinarian.
+For severe symptoms such as breathing difficulty, repeated seizures, heavy bleeding, inability to stand, rapid worsening, or extreme pain, clearly advise offline veterinary care immediately.
+
+Output format:
+[Visual Observations]
+[Possible Issues]
+[Suggested Care]
+[Should Visit a Vet Offline]
+Keep the same four-section structure, but write the section headings and content in the response language.
+
+User symptom description:
+${symptom || "None"}
 `
 
         const response = await openai.responses.create({

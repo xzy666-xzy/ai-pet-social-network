@@ -4547,7 +4547,10 @@ app.post("/ai/diagnose", authMiddleware, async (req, res) => {
 
     const imageBase64 = String(req.body?.imageBase64 || "").trim()
     const mimeType = String(req.body?.mimeType || "image/jpeg").trim()
-    const symptom = String(req.body?.symptom || "").trim()
+    const symptom = String(
+      req.body?.description || req.body?.prompt || req.body?.message || req.body?.symptom || ""
+    ).trim()
+    const uiLanguage = String(req.body?.uiLanguage || req.body?.locale || "").trim()
 
     if (!imageBase64) {
       return res.status(400).json({
@@ -4561,11 +4564,25 @@ app.post("/ai/diagnose", authMiddleware, async (req, res) => {
 You are WePet AI Pet Doctor.
 Analyze the image and the user's symptom description to provide a preliminary pet health observation.
 
+Language rules:
+Respond in the same language as the user's description.
+If the description is Korean, answer in Korean.
+If the description is Chinese, answer in Chinese.
+If the description is English, answer in English.
+If the description is another language, answer in that same language as much as possible.
+If no description is provided, respond in the current UI language if available; otherwise Korean by default.
+Current UI language: ${uiLanguage || "not provided"}
+
+Medical safety rules:
+This is preliminary guidance only and cannot replace an in-person veterinarian.
+For severe symptoms such as breathing difficulty, repeated seizures, heavy bleeding, inability to stand, rapid worsening, or extreme pain, clearly advise offline veterinary care immediately.
+
 Output format:
 [Visual Observations]
 [Possible Issues]
 [Suggested Care]
 [Should Visit a Vet Offline]
+Keep the same four-section structure, but write the section headings and content in the response language.
 
 User symptom description:
 ${symptom || "None"}

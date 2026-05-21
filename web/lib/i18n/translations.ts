@@ -234,6 +234,10 @@ export const translations = {
       profile: "Profile",
     },
 
+    settings: {
+      deleteAccount: "Delete Account",
+    },
+
     // Profile Page
     profile: {
       petName: "Max",
@@ -705,6 +709,10 @@ export const translations = {
       profile: "프로필",
     },
 
+    settings: {
+      deleteAccount: "계정 탈퇴",
+    },
+
     // Profile Page
     profile: {
       petName: "맥스",
@@ -1173,6 +1181,10 @@ export const translations = {
       explore: "探索",
       doctor: "AI医生",
       profile: "个人资料",
+    },
+
+    settings: {
+      deleteAccount: "注销账号",
     },
 
     // Profile Page
