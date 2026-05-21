@@ -381,7 +381,7 @@ export default function ExplorePage() {
 
     async function loadEvents() {
       try {
-        const response = await apiRequest<EventsResponse>("/events")
+        const response = await apiRequest<EventsResponse>("/events", { auth: true })
         const items = sortApiEventsByTime(response.data || []).map(toEventItem)
 
         if (!cancelled) {

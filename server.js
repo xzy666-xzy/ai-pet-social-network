@@ -653,39 +653,51 @@ async function getOrCreateEventGroupConversation(eventId, creatorUserId) {
     return existingConversation
   }
 
-  // Find another real user (not the creator) to satisfy the foreign key constraint
-  const { data: otherUser, error: otherUserError } = await supabase
+  // Find other users (not the creator) to satisfy the foreign key constraint
+  const { data: otherUsers, error: otherUsersError } = await supabase
     .from("users")
     .select("id")
     .neq("id", creatorUserId)
-    .limit(1)
-    .maybeSingle()
 
-  if (otherUserError) {
-    throw otherUserError
+  if (otherUsersError) {
+    throw otherUsersError
+  }
+
+  if (!otherUsers || otherUsers.length === 0) {
+    throw new Error("Need at least two users to create event group conversation")
   }
 
   const user1Id = creatorUserId
-  const user2Id = otherUser ? otherUser.id : creatorUserId
 
-  // Create a new event group conversation
-  const { data: conversation, error: insertError } = await supabase
-    .from("conversations")
-    .insert({
-      type: "event_group",
-      event_id: dbEventId,
-      user1_id: user1Id,
-      user2_id: user2Id,
-      created_at: new Date().toISOString(),
-    })
-    .select("*")
-    .single()
+  // Try each other user as user2_id until one succeeds (avoids unique constraint conflict)
+  for (const otherUser of otherUsers) {
+    const user2Id = otherUser.id
 
-  if (insertError) {
-    throw insertError
+    const { data: conversation, error: insertError } = await supabase
+      .from("conversations")
+      .insert({
+        type: "event_group",
+        event_id: dbEventId,
+        user1_id: user1Id,
+        user2_id: user2Id,
+        created_at: new Date().toISOString(),
+      })
+      .select("*")
+      .single()
+
+    if (insertError) {
+      // If duplicate key violation, try next user
+      if (insertError.code === "23505") {
+        continue
+      }
+
+      throw insertError
+    }
+
+    return conversation
   }
 
-  return conversation
+  throw new Error("Need at least two users to create event group conversation")
 }
 
 async function addUserToEventGroupConversation(conversationId, userId) {
@@ -2557,9 +2569,21 @@ app.put("/profile/location", authMiddleware, async (req, res) => {
   }
 })
 
-app.get("/events", authMiddleware, async (req, res) => {
+app.get("/events", async (req, res) => {
   try {
-    const userId = req.user?.userId
+    // 可选认证：如果 token 存在且有效则解析 userId，否则为 null
+    let userId = null
+    const authHeader = req.headers.authorization || ""
+    if (authHeader.startsWith("Bearer ")) {
+      try {
+        const token = authHeader.slice("Bearer ".length).trim()
+        const payload = jwt.verify(token, JWT_SECRET)
+        userId = payload.userId || payload.sub
+      } catch {
+        // token 无效，忽略即可，不返回 401
+      }
+    }
+
     const events = await listEventsWithOrganizers(userId)
 
     return toDataResponse(res, events)
