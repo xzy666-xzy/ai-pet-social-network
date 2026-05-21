@@ -61,3 +61,5 @@ Thumbs.db
 # =========================
 
 .vercel
+.agents/
+.claude/

@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ApiError, apiRequest } from "@/lib/api-client"
 import { useAuth } from "@/lib/auth-context"
+import { useLanguage } from "@/lib/i18n/language-context"
 import { supabase } from "@/lib/supabase"
 
 const CREATE_EVENT_DRAFT_KEY = "create_event_draft"
@@ -18,6 +19,8 @@ const CREATE_EVENT_LOCATION_KEY = "create_event_location"
 export default function CreateExploreEventPage() {
   const router = useRouter()
   const { user } = useAuth()
+  const { t } = useLanguage()
+  const createEventText = t.explore.createEvent
   const [title, setTitle] = useState("")
   const [time, setTime] = useState("")
   const [maxPeople, setMaxPeople] = useState("")
@@ -104,7 +107,7 @@ export default function CreateExploreEventPage() {
 
     if (uploadError) {
       console.error(uploadError)
-      alert("活动图片上传失败")
+      alert(createEventText.imageUploadFailed)
       return
     }
 
@@ -163,10 +166,10 @@ export default function CreateExploreEventPage() {
           onClick={() => router.back()}
           className="mb-3 text-sm text-stone-500"
         >
-          ← 返回
+          ← {createEventText.back}
         </button>
-        <h1 className="text-2xl font-bold text-stone-900">创建活动</h1>
-        <p className="mt-1 text-sm text-stone-500">填写活动信息，邀请附近的宠物朋友参加。</p>
+        <h1 className="text-2xl font-bold text-stone-900">{createEventText.title}</h1>
+        <p className="mt-1 text-sm text-stone-500">{createEventText.subtitle}</p>
       </header>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -175,27 +178,27 @@ export default function CreateExploreEventPage() {
         <input type="hidden" name="lng" value={location.lng} readOnly />
         <Card className="space-y-4 rounded-2xl border-stone-100 p-4 shadow-sm">
           <div className="space-y-2">
-            <Label htmlFor="event-title">活动名称</Label>
+            <Label htmlFor="event-title">{createEventText.eventName}</Label>
             <Input
               id="event-title"
-              placeholder="请输入活动名称"
+              placeholder={createEventText.eventNamePlaceholder}
               value={title}
               onChange={(event) => setTitle(event.target.value)}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="event-image">活动图片上传</Label>
+            <Label htmlFor="event-image">{createEventText.imageUpload}</Label>
             <label
               htmlFor="event-image"
               className="flex h-44 cursor-pointer items-center justify-center overflow-hidden rounded-2xl border border-dashed border-orange-200 bg-orange-50 text-orange-500"
             >
               {imagePreview ? (
-                <img src={imagePreview} alt="活动图片预览" className="h-full w-full object-cover" />
+                <img src={imagePreview} alt={createEventText.imagePreviewAlt} className="h-full w-full object-cover" />
               ) : (
                 <div className="flex flex-col items-center gap-2 text-sm font-medium">
                   <ImagePlus className="h-7 w-7" />
-                  上传活动图片
+                  {createEventText.uploadImage}
                 </div>
               )}
             </label>
@@ -203,7 +206,7 @@ export default function CreateExploreEventPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="event-time">活动时间</Label>
+            <Label htmlFor="event-time">{createEventText.eventTime}</Label>
             <div className="relative">
               <CalendarDays className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-stone-400" />
               <Input
@@ -217,14 +220,14 @@ export default function CreateExploreEventPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="event-limit">人数限制</Label>
+            <Label htmlFor="event-limit">{createEventText.peopleLimit}</Label>
             <div className="relative">
               <Users className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-stone-400" />
               <Input
                 id="event-limit"
                 type="number"
                 min="1"
-                placeholder="例如 20"
+                placeholder={createEventText.peopleLimitPlaceholder}
                 className="pl-10"
                 value={maxPeople}
                 onChange={(event) => setMaxPeople(event.target.value)}
@@ -233,19 +236,19 @@ export default function CreateExploreEventPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="event-description">活动介绍</Label>
+            <Label htmlFor="event-description">{createEventText.description}</Label>
             <Textarea
               id="event-description"
               rows={5}
-              placeholder="介绍活动内容、集合地点和注意事项"
+              placeholder={createEventText.descriptionPlaceholder}
               value={description}
               onChange={(event) => setDescription(event.target.value)}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="event-organizer">活动组织者</Label>
-            <Input id="event-organizer" value={organizerName} readOnly placeholder="当前用户" />
+            <Label htmlFor="event-organizer">{createEventText.organizer}</Label>
+            <Input id="event-organizer" value={organizerName} readOnly placeholder={createEventText.currentUser} />
           </div>
 
           <Button
@@ -258,7 +261,7 @@ export default function CreateExploreEventPage() {
             }}
           >
             <MapPin className="h-4 w-4" />
-            地图定位
+            {createEventText.mapLocation}
           </Button>
 
           {showLocationPicker && (
@@ -292,7 +295,7 @@ export default function CreateExploreEventPage() {
           disabled={submitting}
           className="h-12 w-full rounded-2xl bg-orange-500 text-white hover:bg-orange-600"
         >
-          {submitting ? "提交中..." : "提交"}
+          {submitting ? createEventText.submitting : createEventText.submit}
         </Button>
       </form>
     </div>
