@@ -199,6 +199,12 @@ const EVENT_BUTTON_LABELS = {
   en: "View Event",
 } as const
 
+const EVENT_PREVIEW_LABELS = {
+  zh: "分享了一个活动",
+  ko: "활동을 공유했습니다",
+  en: "Shared an event",
+} as const
+
 const FRIEND_DRAWER_LABELS = {
   zh: {
     title: "好友列表",
@@ -294,6 +300,57 @@ function resolveImageExtension(file: File): string {
 
 function normalizeBoolean(value: unknown): boolean {
   return value === true || value === 1 || value === "1"
+}
+
+function getEventPreviewLabel(locale: string) {
+  if (locale.startsWith("zh")) {
+    return EVENT_PREVIEW_LABELS.zh
+  }
+
+  if (locale.startsWith("ko")) {
+    return EVENT_PREVIEW_LABELS.ko
+  }
+
+  return EVENT_PREVIEW_LABELS.en
+}
+
+function looksLikeEventPayload(content: string | null): boolean {
+  const text = typeof content === "string" ? content.trim() : ""
+
+  if (!text || !text.startsWith("{")) {
+    return false
+  }
+
+  if (!text.includes("eventId") && !text.includes("event_id")) {
+    return false
+  }
+
+  try {
+    const parsed = JSON.parse(text) as Record<string, unknown>
+    return Boolean(
+      parsed &&
+        typeof parsed === "object" &&
+        ("eventId" in parsed || "event_id" in parsed)
+    )
+  } catch {
+    return true
+  }
+}
+
+function getConversationPreviewText(
+  item: ConversationSummary,
+  locale: string,
+  emptyText: string
+) {
+  if (item.last_message_type === "image") {
+    return "📷 Photo"
+  }
+
+  if (item.last_message_type === "event" || looksLikeEventPayload(item.last_message)) {
+    return getEventPreviewLabel(locale)
+  }
+
+  return item.last_message || emptyText
 }
 
 function getChatBackgroundClass(backgroundKey: ChatBackgroundKey) {
@@ -1474,7 +1531,7 @@ export default function ChatPage() {
                 </Button>
             ) : null}
 
-            <div className="min-w-0">
+            <div className={`min-w-0 ${!targetUserId && !isConversationMode ? "w-full text-center" : ""}`}>
               {!targetUserId && !isConversationMode ? (
                   <div className="mb-1 flex items-center gap-2">
                     <span className="h-2 w-2 rounded-full bg-orange-500 shadow-[0_0_0_4px_rgba(249,115,22,0.12)]" />
@@ -1538,7 +1595,7 @@ export default function ChatPage() {
                   </div>
               )}
               {!targetUserId && !isConversationMode ? (
-                  <div className="mt-1 text-sm font-medium text-stone-500">
+                  <div className="mt-1 w-full text-center text-sm font-medium text-stone-500">
                     {t.chat.recentMessages}
                   </div>
               ) : null}
@@ -1921,8 +1978,8 @@ export default function ChatPage() {
         ) : null}
 
         <ScrollArea className="min-h-0 flex-1 px-5 py-5">
-            <div className="mx-auto max-w-2xl">
-              <div className="mb-4 text-center text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">
+            <div className="mx-auto w-full max-w-2xl overflow-x-hidden">
+              <div className="mb-4 w-full text-center text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">
               {targetUserId || isConversationMode ? t.chat.today : t.chat.recentMessages}
               </div>
 
@@ -1932,7 +1989,7 @@ export default function ChatPage() {
                 </div>
             ) : null}
 
-            <div className="space-y-3">
+            <div className="w-full space-y-3 overflow-x-hidden">
               {!targetUserId && !isConversationMode ? (
                   loadingConversations ? (
                       <div className="flex items-center justify-center py-16 text-stone-500">
@@ -1979,13 +2036,13 @@ export default function ChatPage() {
                                   router.push(`/chat?userId=${item.other_user_id}`)
                                 }
                               }}
-                              className={`w-full rounded-[1.65rem] border border-orange-100/70 px-4 py-3.5 text-left shadow-lg shadow-orange-900/5 ring-1 ring-white/70 transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-900/10 active:translate-y-0 active:scale-[0.985] ${
+                              className={`w-full max-w-full overflow-hidden rounded-[1.65rem] border border-orange-100/70 px-4 py-3.5 text-left shadow-lg shadow-orange-900/5 ring-1 ring-white/70 transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-900/10 active:translate-y-0 active:scale-[0.985] ${
                                 normalizeBoolean(item.is_pinned)
-                                  ? "bg-stone-100/90"
+                                  ? "bg-stone-200/95"
                                   : "bg-white/95"
                               }`}
                           >
-                            <div className="flex items-start gap-3">
+                            <div className="flex min-w-0 items-center gap-3">
                               <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-white bg-gradient-to-br from-orange-100 to-amber-100 shadow-md shadow-orange-900/10">
                                 {item.other_avatar_url ? (
                                     <img
@@ -2008,8 +2065,8 @@ export default function ChatPage() {
                               </div>
 
                               <div className="min-w-0 flex-1">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+                                <div className="flex min-w-0 items-start justify-between gap-2">
+                                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
                                     <div className="truncate text-base font-extrabold tracking-tight text-stone-900">
                                       {conversationDisplayName}
                                     </div>
@@ -2036,7 +2093,7 @@ export default function ChatPage() {
                                   </div>
                                 </div>
 
-                                <div className="mt-1.5 flex items-center gap-2">
+                                <div className="mt-1.5 flex min-w-0 items-center gap-2 overflow-hidden">
                                   {item.type === "event_group" ? (
                                     (() => {
                                       const rawCount = Number(item.member_count)
@@ -2046,22 +2103,22 @@ export default function ChatPage() {
                                           : 1
 
                                       return (
-                                    <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-bold text-orange-600">
+                                    <span className="shrink-0 rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-bold text-orange-600">
                                       👥 {displayMemberCount} 人
                                     </span>
                                       )
                                     })()
                                   ) : (
                                     <>
-                                      <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-bold text-orange-600">
+                                      <span className="shrink-0 rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-bold text-orange-600">
                                         {getConversationStatusText(item)}
                                       </span>
                                       {item.liked_me && !item.is_match ? (
-                                          <span className="rounded-full bg-gradient-to-r from-orange-500 to-amber-400 px-2.5 py-1 text-[10px] font-extrabold text-white shadow-sm shadow-orange-500/20">
+                                          <span className="shrink-0 rounded-full bg-gradient-to-r from-orange-500 to-amber-400 px-2.5 py-1 text-[10px] font-extrabold text-white shadow-sm shadow-orange-500/20">
                                             New
                                           </span>
                                       ) : null}
-                                      <span className="flex items-center gap-1 text-[11px] font-semibold text-stone-400">
+                                      <span className="flex min-w-0 items-center gap-1 text-[11px] font-semibold text-stone-400">
                                         <span
                                             className={`h-1.5 w-1.5 rounded-full ${
                                                 isUserOnline(item.other_last_seen)
@@ -2069,7 +2126,7 @@ export default function ChatPage() {
                                                     : "bg-stone-300"
                                             }`}
                                         />
-                                        <span>
+                                        <span className="truncate">
                                           {isUserOnline(item.other_last_seen)
                                               ? t.chat.activeNow
                                               : t.chat.offline}
@@ -2080,12 +2137,8 @@ export default function ChatPage() {
                                 </div>
 
                                 <div className="mt-2 flex min-w-0 items-center justify-between gap-3">
-                                  <div className="truncate text-sm font-medium leading-5 text-stone-600">
-                                    {item.last_message_type === "image"
-                                      ? "📷 Photo"
-                                      : item.last_message_type === "event"
-                                        ? (locale === "zh" ? "分享了一个活动" : locale === "ko" ? "활동을 공유했습니다" : "Shared an event")
-                                        : item.last_message || t.chat.noMessagesYet}
+                                  <div className="min-w-0 flex-1 truncate text-sm font-medium leading-5 text-stone-600">
+                                    {getConversationPreviewText(item, locale, t.chat.noMessagesYet)}
                                   </div>
                                   {item.liked_me && !item.is_match ? (
                                     <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-orange-500 px-1.5 text-[10px] font-black text-white shadow-md shadow-orange-500/25">
