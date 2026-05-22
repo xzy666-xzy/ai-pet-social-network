@@ -1128,7 +1128,7 @@ function toSafeSearchUser(user) {
     id: user.id,
     username: user.username ?? null,
     pet_name: user.pet_name ?? null,
-    pet_breed: user.pet_breed ?? null,
+    pet_breed: user.pet_type ?? null,
     avatar_url: user.avatar_url ?? null,
     pet_age: user.pet_age ?? null,
     pet_gender: user.pet_gender ?? null,
@@ -1940,7 +1940,7 @@ app.get("/users/search", authMiddleware, async (req, res) => {
       return toDataResponse(res, [])
     }
 
-    const selectedFields = "id, username, pet_name, pet_breed, avatar_url, pet_age, pet_gender, city"
+    const selectedFields = "id, username, pet_name, pet_type, avatar_url, pet_age, pet_gender, city"
     const searchPattern = `%${keyword}%`
     const searchResults = await Promise.all([
       supabaseAdmin
@@ -1962,7 +1962,7 @@ app.get("/users/search", authMiddleware, async (req, res) => {
         .select(selectedFields)
         .neq("id", currentUserId)
         .is("deleted_at", null)
-        .ilike("pet_breed", searchPattern)
+        .ilike("pet_type", searchPattern)
         .limit(20),
     ])
 
