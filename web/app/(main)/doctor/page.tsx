@@ -369,9 +369,22 @@ export default function DoctorPage() {
         videoRef.current.srcObject = stream
         await videoRef.current.play()
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error)
-      alert(c.cameraError)
+      // NotAllowedError → 权限被拒绝（Manifest 缺少权限 或 用户拒绝）
+      // NotFoundError → 设备上没有摄像头
+      // NotReadableError → 摄像头被其他应用占用
+      if (error?.name === "NotAllowedError" || error?.name === "PermissionDeniedError") {
+        const permissionHint =
+          locale === "ko"
+            ? " (설정 > 앱 > WePet > 권한에서 카메라를 허용해 주세요)"
+            : locale === "zh"
+              ? " (请前往 设置 > 应用 > WePet > 权限 开启相机)"
+              : " (Go to Settings > Apps > WePet > Permissions to enable camera)"
+        alert(c.cameraError + permissionHint)
+      } else {
+        alert(c.cameraError)
+      }
     }
   }
 

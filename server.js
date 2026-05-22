@@ -359,7 +359,7 @@ async function buildEventGroupSettingsPayload(conversationId, currentUserId) {
     getEventOrganizerId(conversation.event_id),
     supabase
       .from("conversation_members")
-      .select("id, user_id, nickname, joined_at")
+      .select("id, user_id, joined_at")
       .eq("conversation_id", conversationId)
       .order("joined_at", { ascending: true }),
     supabase
@@ -414,7 +414,7 @@ async function buildEventGroupSettingsPayload(conversationId, currentUserId) {
     is_owner: ownerId ? String(ownerId) === String(currentUserId) : false,
     member_count: members.length,
     remark: settings?.group_remark ?? "",
-    my_nickname: currentMember?.nickname ?? "",
+    my_nickname: "",
     is_pinned: settings?.is_pinned ?? false,
     is_muted: settings?.is_muted ?? false,
     members: members.map((member) => {
@@ -427,8 +427,8 @@ async function buildEventGroupSettingsPayload(conversationId, currentUserId) {
         username: memberUser.username ?? null,
         pet_name: memberUser.pet_name ?? null,
         avatar_url: memberUser.avatar_url ?? null,
-        nickname: member.nickname ?? "",
-        display_name: member.nickname || fallbackName,
+        nickname: "",
+        display_name: fallbackName,
         is_owner: ownerId ? String(member.user_id) === String(ownerId) : false,
         joined_at: member.joined_at ?? null,
       }
@@ -831,6 +831,9 @@ async function getOrCreateEventGroupConversation(eventId, creatorUserId) {
 
       throw insertError
     }
+
+    // Automatically add the creator as a member of the group
+    await addUserToEventGroupConversation(conversation.id, creatorUserId)
 
     return conversation
   }

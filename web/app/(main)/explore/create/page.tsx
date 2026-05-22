@@ -103,7 +103,7 @@ export default function CreateExploreEventPage() {
 
     const filePath = `event-${Date.now()}-${file.name}`
     const { error: uploadError } = await supabase.storage
-      .from("avatars")
+      .from("events")
       .upload(filePath, file)
 
     if (uploadError) {
@@ -112,7 +112,7 @@ export default function CreateExploreEventPage() {
       return
     }
 
-    const { data } = supabase.storage.from("avatars").getPublicUrl(filePath)
+    const { data } = supabase.storage.from("events").getPublicUrl(filePath)
     setEventImageUrl(data.publicUrl)
   }
 

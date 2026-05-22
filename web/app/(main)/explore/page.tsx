@@ -34,7 +34,7 @@ type EventItem = MapPlace & {
   city?: string | null
   city_lat?: number | null
   city_lng?: number | null
-  image: string
+  image: string | null
   title: {
     zh: string
     ko: string
@@ -255,7 +255,7 @@ function toEventItem(event: ApiEvent, index: number): EventItem {
     city: event.city || null,
     city_lat: Number.isFinite(cityLat) ? cityLat : null,
     city_lng: Number.isFinite(cityLng) ? cityLng : null,
-    image: event.image_url || "",
+    image: event.image_url || null,
     title: {
       zh: title,
       ko: title,
@@ -883,7 +883,7 @@ function ExplorePageContent() {
     const joinedCount = peopleMap[detailEvent.id] ?? detailEvent.joined
     const canEdit = user?.id && detailEvent.organizer_id === user.id
     const detailTitle = detailApiEvent?.title || detailEvent.title[locale]
-    const detailImage = detailApiEvent?.image_url || detailEvent.image
+    const detailImage = detailApiEvent?.image_url || detailEvent.image || null
     const detailTime = detailApiEvent?.time || detailEvent.time
     const detailDescription = detailApiEvent?.description || detailEvent.desc[locale]
     const detailOrganizer = detailApiEvent?.organizer_name || detailEvent.organizer_name || detailEvent.address
@@ -900,11 +900,17 @@ function ExplorePageContent() {
           </button>
 
           <div className="rounded-3xl overflow-hidden bg-white border border-stone-100 shadow-sm">
-            <img
-                src={detailImage}
-                alt={detailTitle}
-                className="w-full h-52 object-cover"
-            />
+            {detailImage ? (
+                <img
+                    src={detailImage}
+                    alt={detailTitle}
+                    className="w-full h-52 object-cover"
+                />
+            ) : (
+                <div className="w-full h-52 flex items-center justify-center bg-stone-100 text-sm text-stone-400">
+                  No image
+                </div>
+            )}
 
             <div className="p-4">
             <span className="text-[11px] font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded-full uppercase tracking-wide">
