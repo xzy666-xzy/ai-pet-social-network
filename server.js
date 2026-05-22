@@ -359,12 +359,11 @@ async function buildEventGroupSettingsPayload(conversationId, currentUserId) {
     getEventOrganizerId(conversation.event_id),
     supabase
       .from("conversation_members")
-      .select("id, user_id, joined_at")
-      .eq("conversation_id", conversationId)
-      .order("joined_at", { ascending: true }),
+      .select("id, user_id")
+      .eq("conversation_id", conversationId),
     supabase
       .from("chat_settings")
-      .select("conversation_id, background_key, background_url, is_pinned, is_muted, group_remark")
+      .select("conversation_id, is_pinned, is_muted")
       .eq("user_id", currentUserId)
       .eq("conversation_id", conversationId)
       .maybeSingle(),
@@ -395,8 +394,22 @@ async function buildEventGroupSettingsPayload(conversationId, currentUserId) {
     usersById = new Map((users || []).map((user) => [String(user.id), user]))
   }
 
+  // 单独查询 group_remark（该列可能不存在于旧表中，单独处理避免整个查询失败）
+  let groupRemark = ""
+  try {
+    const { data: remarkData } = await supabase
+      .from("chat_settings")
+      .select("group_remark")
+      .eq("user_id", currentUserId)
+      .eq("conversation_id", conversationId)
+      .maybeSingle()
+    groupRemark = remarkData?.group_remark ?? ""
+  } catch {
+    // group_remark 列不存在时静默降级
+    groupRemark = ""
+  }
+
   const ownerId = String(eventOrganizerId || conversation.user1_id || "")
-  const currentMember = members.find((member) => String(member.user_id) === String(currentUserId))
   const groupName = normalizeOptionalText(conversation.group_name, 120) || eventTitle || "活动群聊"
   const announcement = normalizeOptionalText(conversation.announcement, 1000)
   const settings = settingsResult.data || null
@@ -413,7 +426,7 @@ async function buildEventGroupSettingsPayload(conversationId, currentUserId) {
     owner_id: ownerId || null,
     is_owner: ownerId ? String(ownerId) === String(currentUserId) : false,
     member_count: members.length,
-    remark: settings?.group_remark ?? "",
+    remark: groupRemark,
     my_nickname: "",
     is_pinned: settings?.is_pinned ?? false,
     is_muted: settings?.is_muted ?? false,
@@ -430,7 +443,7 @@ async function buildEventGroupSettingsPayload(conversationId, currentUserId) {
         nickname: "",
         display_name: fallbackName,
         is_owner: ownerId ? String(member.user_id) === String(ownerId) : false,
-        joined_at: member.joined_at ?? null,
+        joined_at: null,
       }
     }),
   }
