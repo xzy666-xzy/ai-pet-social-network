@@ -4030,7 +4030,42 @@ app.put("/chat/group-settings", authMiddleware, async (req, res) => {
         .eq("type", "event_group")
 
       if (conversationUpdateError) {
-        throw conversationUpdateError
+        // 如果是因为列不存在导致的错误（如 announcement_updated_by），
+        // 移除可能不存在的列后重试
+        const isColumnError =
+          conversationUpdateError?.code === "42703" ||
+          (typeof conversationUpdateError?.message === "string" &&
+            conversationUpdateError.message.includes("does not exist"))
+
+        if (isColumnError) {
+          console.warn(
+            "Conversation update failed due to missing column, retrying with safe fields:",
+            conversationUpdateError.message
+          )
+
+          // 只保留肯定存在的列：announcement, group_name
+          const safeUpdates = {}
+          if (Object.prototype.hasOwnProperty.call(conversationUpdates, "announcement")) {
+            safeUpdates.announcement = conversationUpdates.announcement
+          }
+          if (Object.prototype.hasOwnProperty.call(conversationUpdates, "group_name")) {
+            safeUpdates.group_name = conversationUpdates.group_name
+          }
+
+          if (Object.keys(safeUpdates).length > 0) {
+            const { error: retryError } = await supabase
+              .from("conversations")
+              .update(safeUpdates)
+              .eq("id", conversationId)
+              .eq("type", "event_group")
+
+            if (retryError) {
+              throw retryError
+            }
+          }
+        } else {
+          throw conversationUpdateError
+        }
       }
     }
 
@@ -4061,7 +4096,48 @@ app.put("/chat/group-settings", authMiddleware, async (req, res) => {
         )
 
       if (settingUpdateError) {
-        throw settingUpdateError
+        // 如果是因为列不存在导致的错误（如 group_remark），
+        // 移除可能不存在的列后重试
+        const isColumnError =
+          settingUpdateError?.code === "42703" ||
+          (typeof settingUpdateError?.message === "string" &&
+            settingUpdateError.message.includes("does not exist"))
+
+        if (isColumnError) {
+          console.warn(
+            "Chat settings upsert failed due to missing column, retrying with safe fields:",
+            settingUpdateError.message
+          )
+
+          // 只保留肯定存在的列：is_pinned, is_muted
+          const safeUpdates = {}
+          if (Object.prototype.hasOwnProperty.call(chatSettingUpdates, "is_pinned")) {
+            safeUpdates.is_pinned = chatSettingUpdates.is_pinned
+          }
+          if (Object.prototype.hasOwnProperty.call(chatSettingUpdates, "is_muted")) {
+            safeUpdates.is_muted = chatSettingUpdates.is_muted
+          }
+
+          if (Object.keys(safeUpdates).length > 0) {
+            const { error: retryError } = await supabase
+              .from("chat_settings")
+              .upsert(
+                {
+                  user_id: currentUserId,
+                  conversation_id: conversationId,
+                  updated_at: now,
+                  ...safeUpdates,
+                },
+                { onConflict: "user_id,conversation_id" }
+              )
+
+            if (retryError) {
+              throw retryError
+            }
+          }
+        } else {
+          throw settingUpdateError
+        }
       }
     }
 
@@ -4074,6 +4150,72 @@ app.put("/chat/group-settings", authMiddleware, async (req, res) => {
     return res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Failed to save group settings",
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
+    })
+  }
+})
+
+app.delete("/chat/group-settings", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = String(req.user?.userId || "").trim()
+    const conversationId = String(req.body?.conversation_id || req.body?.conversationId || "").trim()
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    if (!conversationId) {
+      return res.status(400).json({
+        success: false,
+        error: "conversation_id is required",
+      })
+    }
+
+    // Verify the conversation exists and is an event_group type
+    const conversation = await resolveGroupConversationAccess(conversationId, currentUserId)
+
+    if (!conversation) {
+      return res.status(404).json({
+        success: false,
+        error: "Group conversation not found",
+      })
+    }
+
+    // Remove user from conversation_members
+    const { error: removeError } = await supabase
+      .from("conversation_members")
+      .delete()
+      .eq("conversation_id", conversationId)
+      .eq("user_id", currentUserId)
+
+    if (removeError) {
+      throw removeError
+    }
+
+    // Also clean up chat_settings for this user+conversation
+    const { error: settingsDeleteError } = await supabase
+      .from("chat_settings")
+      .delete()
+      .eq("user_id", currentUserId)
+      .eq("conversation_id", conversationId)
+
+    if (settingsDeleteError) {
+      // Non-blocking: chat_settings might not exist
+      console.warn("Failed to delete chat_settings on leave (non-blocking):", settingsDeleteError)
+    }
+
+    return toDataResponse(res, {
+      success: true,
+      message: "Successfully left the group chat",
+    })
+  } catch (error) {
+    console.error("Chat group settings delete (leave) error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to leave group chat",
       code: error?.code,
       details: error?.details,
       hint: error?.hint,

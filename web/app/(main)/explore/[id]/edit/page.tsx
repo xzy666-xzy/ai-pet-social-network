@@ -91,6 +91,16 @@ export default function EditEventPage() {
     }
   }, [params.id])
 
+  /** 生成安全的 Storage 文件名：event-时间戳.扩展名 */
+  const generateSafeFileName = (originalName: string): string => {
+    // 提取扩展名，.jfif 自动转 .jpg
+    const rawExt = originalName.includes(".")
+      ? originalName.split(".").pop()?.toLowerCase() ?? "jpg"
+      : "jpg"
+    const ext = rawExt === "jfif" ? "jpg" : rawExt
+    return `event-${Date.now()}.${ext}`
+  }
+
   async function handleSubmit(submitEvent: FormEvent<HTMLFormElement>) {
     submitEvent.preventDefault()
 
@@ -100,16 +110,19 @@ export default function EditEventPage() {
       let nextImageUrl = imageUrl
 
       if (selectedImageFile) {
-        const filePath = `event-${Date.now()}-${selectedImageFile.name}`
+        const filePath = generateSafeFileName(selectedImageFile.name)
         const { error: uploadError } = await supabase.storage
-          .from("avatars")
-          .upload(filePath, selectedImageFile)
+          .from("events")
+          .upload(filePath, selectedImageFile, {
+            cacheControl: "3600",
+            upsert: false,
+          })
 
         if (uploadError) {
           throw uploadError
         }
 
-        const { data } = supabase.storage.from("avatars").getPublicUrl(filePath)
+        const { data } = supabase.storage.from("events").getPublicUrl(filePath)
         nextImageUrl = data.publicUrl
         setImageUrl(nextImageUrl)
       }
@@ -187,15 +200,6 @@ export default function EditEventPage() {
                 className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-              />
-            </label>
-
-            <label className="block space-y-1 text-sm font-medium text-stone-700">
-              <span>{copy.imageUrl}</span>
-              <input
-                className="h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm"
-                value={imageUrl}
-                onChange={(event) => setImageUrl(event.target.value)}
               />
             </label>
 

@@ -2,7 +2,8 @@
 
 import { type ChangeEvent, type MouseEvent, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Send, ChevronLeft, Heart, Settings, ImagePlus, BellOff, Upload, Loader2, X, MessageCircle, Menu, Search } from "lucide-react"
+import { Send, ChevronLeft, Heart, Settings, ImagePlus, BellOff, Upload, Loader2, X, MessageCircle, Menu, Search, UserPlus } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -503,6 +504,7 @@ export default function ChatPage() {
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([])
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState("")
+  const [memberSearchQuery, setMemberSearchQuery] = useState("")
   const imageInputRef = useRef<HTMLInputElement | null>(null)
   const backgroundImageInputRef = useRef<HTMLInputElement | null>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -559,6 +561,25 @@ export default function ChatPage() {
       t.chat.eventGroupSettings.defaultGroupName
     )
   }, [activeConversationSummary?.event_title, eventGroupSettings?.group_name, t.chat.eventGroupSettings.defaultGroupName])
+
+  const filteredMembers = useMemo(() => {
+    const members = eventGroupSettings?.members || []
+    const query = memberSearchQuery.trim().toLowerCase()
+    if (!query) return members
+    return members.filter((m) => {
+      const searchable = [m.display_name, m.nickname, m.username, m.pet_name].filter(Boolean).join(" ").toLowerCase()
+      return searchable.includes(query)
+    })
+  }, [eventGroupSettings?.members, memberSearchQuery])
+
+  const handleInviteClick = () => {
+    const messages: Record<string, string> = {
+      zh: "邀请功能暂未开放",
+      ko: "초대 기능은 아직 지원되지 않습니다",
+      en: "Invite feature is not available yet",
+    }
+    toast.info(messages[locale] || messages.en)
+  }
 
   const chatBackgroundClass = useMemo(
       () => getChatBackgroundClass(background_key),
@@ -962,6 +983,48 @@ export default function ChatPage() {
       console.warn("Failed to delete conversation:", error)
     } finally {
       setDeletingConversation(false)
+    }
+  }
+
+  const handleLeaveGroupChat = async () => {
+    if (!conversationId || !eventGroupSettings) return
+
+    const confirmed = window.confirm(eventGroupSettingsText.leave)
+    if (!confirmed) return
+
+    try {
+      await apiRequest<{ success: boolean }>("/chat/group-settings", {
+        method: "DELETE",
+        auth: true,
+        body: JSON.stringify({
+          conversation_id: conversationId,
+        }),
+      })
+
+      // Close settings panel and reset all group-related state
+      setEventGroupSettingsOpen(false)
+      setEventGroupSettings(null)
+      setConversationId(null)
+      setTargetUser(null)
+      setMessages([])
+      setInputText("")
+      setInlineNotice(false)
+      setIntroLocked(false)
+      setChatLiked(false)
+      setChatMatched(false)
+      setBackgroundKey("default")
+      setBackgroundUrl("")
+      setBackgroundUploadError("")
+      setIsMuted(false)
+      setIsPinned(false)
+      setMessageMenu(null)
+      setDeletingMessageId(null)
+
+      await loadConversations()
+      router.push("/chat")
+      router.refresh()
+    } catch (error) {
+      console.warn("Failed to leave group chat:", error)
     }
   }
 
@@ -1814,9 +1877,6 @@ export default function ChatPage() {
   const eventGroupPublishAnnouncementText =
     (eventGroupSettingsText as typeof eventGroupSettingsText & { publishAnnouncement?: string }).publishAnnouncement ||
     "发布公告"
-  const eventGroupLeaveNoticeText =
-    (eventGroupSettingsText as typeof eventGroupSettingsText & { leaveNotice?: string }).leaveNotice ||
-    eventGroupSettingsText.staticNotice
   const trimmedFriendSearchQuery = friendSearchQuery.trim()
   const isSearchingUsers = Boolean(trimmedFriendSearchQuery)
 
@@ -2270,13 +2330,25 @@ export default function ChatPage() {
                 </div>
               ) : null}
 
-              <button
-                type="button"
-                className="flex w-full items-center gap-3 rounded-2xl border border-orange-100 bg-white px-4 py-3 text-left shadow-sm shadow-orange-900/5"
-              >
-                <Search className="h-5 w-5 shrink-0 text-orange-500" />
-                <span className="text-sm font-semibold text-stone-800">{eventGroupSettingsText.searchMembers}</span>
-              </button>
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-orange-400" />
+                <input
+                  type="text"
+                  value={memberSearchQuery}
+                  onChange={(e) => setMemberSearchQuery(e.target.value)}
+                  placeholder={eventGroupSettingsText.searchMembers}
+                  className="w-full rounded-2xl border border-orange-100 bg-white py-3 pl-10 pr-4 text-sm font-medium text-stone-700 outline-none placeholder:text-stone-400 focus:border-orange-200 focus:bg-orange-50/30 shadow-sm shadow-orange-900/5"
+                />
+                {memberSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setMemberSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
 
               <section className="rounded-[1.6rem] border border-orange-100 bg-white p-4 shadow-sm shadow-orange-900/5">
                 <div className="mb-4 flex items-center justify-between">
@@ -2287,14 +2359,21 @@ export default function ChatPage() {
                 </div>
                 <div className="grid grid-cols-5 gap-3">
                   {[
-                    ...(eventGroupSettings?.members || []).slice(0, 9).map((member) => ({
+                    ...filteredMembers.slice(0, 9).map((member) => ({
                       key: member.id || member.user_id,
                       label: member.display_name || member.nickname || member.pet_name || member.username || eventGroupSettingsText.member,
                       avatar: member.avatar_url || "",
                     })),
                     { key: "invite-placeholder", label: "+", avatar: "" },
                   ].map((member) => (
-                    <div key={member.key} className="min-w-0 text-center">
+                    <div
+                      key={member.key}
+                      className="min-w-0 text-center"
+                      onClick={member.label === "+" ? handleInviteClick : undefined}
+                      role={member.label === "+" ? "button" : undefined}
+                      tabIndex={member.label === "+" ? 0 : undefined}
+                      onKeyDown={member.label === "+" ? (e) => { if (e.key === "Enter" || e.key === " ") handleInviteClick() } : undefined}
+                    >
                       <div className="mx-auto flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-100 to-amber-50 text-sm font-black text-orange-600 shadow-sm">
                         {member.avatar ? (
                           <img
@@ -2487,15 +2566,11 @@ export default function ChatPage() {
 
               <button
                 type="button"
-                disabled
-                className="w-full rounded-[1.6rem] border border-red-100 bg-white px-4 py-3.5 text-center text-sm font-extrabold text-red-500 shadow-sm shadow-orange-900/5 disabled:opacity-70"
+                onClick={handleLeaveGroupChat}
+                className="w-full rounded-[1.6rem] border border-red-100 bg-white px-4 py-3.5 text-center text-sm font-extrabold text-red-500 shadow-sm shadow-orange-900/5 active:bg-red-50"
               >
                 {eventGroupSettingsText.leave}
               </button>
-
-              <p className="px-2 text-center text-xs font-medium leading-5 text-stone-400">
-                {eventGroupLeaveNoticeText}
-              </p>
             </div>
           </SheetContent>
         </Sheet>

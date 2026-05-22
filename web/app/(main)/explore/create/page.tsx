@@ -91,6 +91,17 @@ export default function CreateExploreEventPage() {
     )
   }
 
+  /** 生成安全的 Storage 文件名：event-时间戳-随机6位字符.扩展名 */
+  const generateSafeFileName = (originalName: string): string => {
+    // 提取扩展名（保留原始扩展名，转小写）
+    const ext = originalName.includes(".")
+      ? originalName.split(".").pop()?.toLowerCase() ?? "jpg"
+      : "jpg"
+    // 生成 6 位随机字母数字字符串
+    const random = Math.random().toString(36).substring(2, 8)
+    return `event-${Date.now()}-${random}.${ext}`
+  }
+
   const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
@@ -101,10 +112,13 @@ export default function CreateExploreEventPage() {
 
     setImagePreview(URL.createObjectURL(file))
 
-    const filePath = `event-${Date.now()}-${file.name}`
+    const filePath = generateSafeFileName(file.name)
     const { error: uploadError } = await supabase.storage
       .from("events")
-      .upload(filePath, file)
+      .upload(filePath, file, {
+        cacheControl: "3600",
+        upsert: false,
+      })
 
     if (uploadError) {
       console.error(uploadError)
