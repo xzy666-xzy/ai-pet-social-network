@@ -1958,6 +1958,8 @@ app.get("/users/search", authMiddleware, async (req, res) => {
       return toDataResponse(res, [])
     }
 
+    // 只允许 username 和 pet_name 参与搜索
+    // pet_age、pet_type、pet_breed、email、location、gender、bio、description 等字段不参与搜索
     const selectedFields = "id, username, pet_name, pet_type, avatar_url, pet_age, pet_gender, city"
     const searchPattern = `%${escapeIlikePattern(keyword)}%`
     const searchResults = await Promise.all([
@@ -1992,12 +1994,20 @@ app.get("/users/search", authMiddleware, async (req, res) => {
       })
     })
 
+    // JS 层兜底过滤：只保留 username 或 pet_name 包含 keyword 的用户
+    // 数字也按字符串匹配（如搜索 "1" 不会因为 pet_age=1 而命中）
+    const keywordLower = keyword.toLowerCase()
+
+    const filtered = [...usersById.values()].filter((user) => {
+      return (
+        String(user.username || "").toLowerCase().includes(keywordLower) ||
+        String(user.pet_name || "").toLowerCase().includes(keywordLower)
+      )
+    })
+
     return toDataResponse(
       res,
-      [...usersById.values()]
-        .filter((user) => matchesUserSearchKeyword(user, keyword))
-        .slice(0, 20)
-        .map(toSafeSearchUser)
+      filtered.slice(0, 20).map(toSafeSearchUser)
     )
   } catch (error) {
     console.error("User search error:", error)

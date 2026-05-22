@@ -1591,7 +1591,18 @@ export default function ChatPage() {
   const friendDrawerText = FRIEND_DRAWER_LABELS[locale]
   const trimmedFriendSearchQuery = friendSearchQuery.trim()
   const isSearchingUsers = Boolean(trimmedFriendSearchQuery)
-  const displayedFriends = isSearchingUsers ? searchResults : mutualFriends
+
+  // 搜索时只显示 searchResults，不合并 mutualFriends
+  // 渲染前再兜底过滤一次：只显示 username 或 pet_name 包含 keyword 的结果
+  const displayedFriends = isSearchingUsers
+    ? searchResults.filter((result) => {
+        const kw = trimmedFriendSearchQuery.toLowerCase()
+        return (
+          String(result.username || "").toLowerCase().includes(kw) ||
+          String(result.pet_name || "").toLowerCase().includes(kw)
+        )
+      })
+    : mutualFriends
 
   return (
       <div
