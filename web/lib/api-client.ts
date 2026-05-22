@@ -105,3 +105,34 @@ export type AuthSuccessResponse = {
   access_token?: string
   user: AuthUser
 }
+
+export type UserSearchResult = {
+  id: string
+  username: string | null
+  pet_name: string | null
+  pet_breed: string | null
+  avatar_url: string | null
+  pet_age: number | string | null
+  pet_gender: string | null
+  location: string | null
+}
+
+type UserSearchResponse = {
+  success: true
+  data: UserSearchResult[]
+}
+
+export async function searchUsers(keyword: string): Promise<UserSearchResult[]> {
+  const trimmedKeyword = String(keyword || "").trim()
+
+  if (!trimmedKeyword) {
+    return []
+  }
+
+  const response = await apiRequest<UserSearchResponse>(
+    `/users/search?keyword=${encodeURIComponent(trimmedKeyword)}`,
+    { auth: true }
+  )
+
+  return Array.isArray(response.data) ? response.data : []
+}

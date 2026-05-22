@@ -1123,6 +1123,19 @@ function buildMatchScore(currentUser, candidate) {
   return Math.max(60, Math.min(98, Math.round(score)))
 }
 
+function toSafeSearchUser(user) {
+  return {
+    id: user.id,
+    username: user.username ?? null,
+    pet_name: user.pet_name ?? null,
+    pet_breed: user.pet_breed ?? null,
+    avatar_url: user.avatar_url ?? null,
+    pet_age: user.pet_age ?? null,
+    pet_gender: user.pet_gender ?? null,
+    location: user.city ?? null,
+  }
+}
+
 app.get("/", (req, res) => {
   res.json({
     success: true,
@@ -1909,6 +1922,72 @@ app.get("/match/likes/today", authMiddleware, async (req, res) => {
     return res.status(500).json({
       success: false,
       error: "Failed to load like quota",
+    })
+  }
+})
+
+app.get("/users/search", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = String(req.user?.userId || "").trim()
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    const keyword = String(req.query?.keyword || "").trim()
+
+    if (keyword.length < 1) {
+      return toDataResponse(res, [])
+    }
+
+    const selectedFields = "id, username, pet_name, pet_breed, avatar_url, pet_age, pet_gender, city"
+    const searchPattern = `%${keyword}%`
+    const searchResults = await Promise.all([
+      supabaseAdmin
+        .from("users")
+        .select(selectedFields)
+        .neq("id", currentUserId)
+        .is("deleted_at", null)
+        .ilike("username", searchPattern)
+        .limit(20),
+      supabaseAdmin
+        .from("users")
+        .select(selectedFields)
+        .neq("id", currentUserId)
+        .is("deleted_at", null)
+        .ilike("pet_name", searchPattern)
+        .limit(20),
+      supabaseAdmin
+        .from("users")
+        .select(selectedFields)
+        .neq("id", currentUserId)
+        .is("deleted_at", null)
+        .ilike("pet_breed", searchPattern)
+        .limit(20),
+    ])
+
+    searchResults.forEach((result) => {
+      if (result.error) {
+        throw result.error
+      }
+    })
+
+    const usersById = new Map()
+    searchResults.forEach((result) => {
+      ;(result.data || []).forEach((user) => {
+        if (!usersById.has(String(user.id))) {
+          usersById.set(String(user.id), user)
+        }
+      })
+    })
+
+    return toDataResponse(res, [...usersById.values()].slice(0, 20).map(toSafeSearchUser))
+  } catch (error) {
+    console.error("User search error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to search users",
     })
   }
 })

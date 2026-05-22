@@ -2,7 +2,7 @@
 
 import { type ChangeEvent, type MouseEvent, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Send, ChevronLeft, Heart, Settings, ImagePlus, BellOff, Upload, Loader2, X, MessageCircle, Menu } from "lucide-react"
+import { Send, ChevronLeft, Heart, Settings, ImagePlus, BellOff, Upload, Loader2, X, MessageCircle, Menu, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -11,7 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { useLanguage } from "@/lib/i18n/language-context"
 import { useAuth } from "@/lib/auth-context"
-import { apiRequest, ApiError, getAccessToken } from "@/lib/api-client"
+import { apiRequest, ApiError, getAccessToken, searchUsers, type UserSearchResult } from "@/lib/api-client"
 import { supabase } from "@/lib/supabase"
 
 type ChatMessage = {
@@ -209,14 +209,23 @@ const FRIEND_DRAWER_LABELS = {
   zh: {
     title: "好友列表",
     empty: "暂无好友",
+    searchPlaceholder: "搜索用户名或宠物名",
+    searching: "搜索中...",
+    noSearchResults: "未找到用户",
   },
   ko: {
     title: "친구 목록",
     empty: "친구가 없습니다",
+    searchPlaceholder: "사용자명 또는 반려동물 이름 검색",
+    searching: "검색 중...",
+    noSearchResults: "사용자를 찾을 수 없습니다",
   },
   en: {
     title: "Friends",
     empty: "No friends yet",
+    searchPlaceholder: "Search username or pet name",
+    searching: "Searching...",
+    noSearchResults: "No users found",
   },
 } as const
 
@@ -422,9 +431,13 @@ export default function ChatPage() {
   const [uploadingBackground, setUploadingBackground] = useState(false)
   const [backgroundUploadError, setBackgroundUploadError] = useState("")
   const [friendListOpen, setFriendListOpen] = useState(false)
+  const [friendSearchQuery, setFriendSearchQuery] = useState("")
   const [mutualFriends, setMutualFriends] = useState<MutualFriend[]>([])
   const [friendsLoading, setFriendsLoading] = useState(false)
   const [friendsError, setFriendsError] = useState("")
+  const [searchResults, setSearchResults] = useState<UserSearchResult[]>([])
+  const [searching, setSearching] = useState(false)
+  const [searchError, setSearchError] = useState("")
   const imageInputRef = useRef<HTMLInputElement | null>(null)
   const backgroundImageInputRef = useRef<HTMLInputElement | null>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -977,6 +990,52 @@ export default function ChatPage() {
     loadMutualFriends()
   }, [friendListOpen, loading, hasToken])
 
+  useEffect(() => {
+    if (!friendListOpen || loading || !hasToken) {
+      setSearchResults([])
+      setSearching(false)
+      setSearchError("")
+      return
+    }
+
+    const keyword = friendSearchQuery.trim()
+
+    if (!keyword) {
+      setSearchResults([])
+      setSearching(false)
+      setSearchError("")
+      return
+    }
+
+    let cancelled = false
+    const timer = setTimeout(async () => {
+      try {
+        setSearching(true)
+        setSearchError("")
+
+        const results = await searchUsers(keyword)
+
+        if (cancelled) return
+
+        setSearchResults(Array.isArray(results) ? results : [])
+      } catch (error) {
+        if (cancelled) return
+
+        setSearchResults([])
+        setSearchError(error instanceof Error ? error.message : "Failed to search users")
+      } finally {
+        if (!cancelled) {
+          setSearching(false)
+        }
+      }
+    }, 300)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [friendListOpen, friendSearchQuery, loading, hasToken])
+
   // 监听从其他页面（如探索页取消参加活动）发来的刷新聊天列表事件
   useEffect(() => {
     const handleEventLeft = () => {
@@ -1512,6 +1571,9 @@ export default function ChatPage() {
   }, [chatTab, conversations])
 
   const friendDrawerText = FRIEND_DRAWER_LABELS[locale]
+  const trimmedFriendSearchQuery = friendSearchQuery.trim()
+  const isSearchingUsers = Boolean(trimmedFriendSearchQuery)
+  const displayedFriends = isSearchingUsers ? searchResults : mutualFriends
 
   return (
       <div
@@ -1684,26 +1746,54 @@ export default function ChatPage() {
               </Button>
             </div>
 
+            <div className="border-b border-orange-100 bg-white px-5 py-4">
+              <div className="flex items-center gap-2 rounded-full border border-orange-100 bg-orange-50/60 px-4 py-2.5 shadow-inner shadow-orange-900/5">
+                <Search className="h-4 w-4 shrink-0 text-orange-500" />
+                <input
+                  type="search"
+                  value={friendSearchQuery}
+                  onChange={(event) => setFriendSearchQuery(event.target.value)}
+                  placeholder={friendDrawerText.searchPlaceholder}
+                  className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-stone-800 outline-none placeholder:text-stone-400"
+                />
+              </div>
+            </div>
+
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-              {friendsLoading ? (
+              {isSearchingUsers && searching ? (
+                <div className="flex h-full min-h-48 items-center justify-center rounded-3xl border border-dashed border-orange-200 bg-orange-50/50 px-4 text-center text-sm font-semibold text-stone-500">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin text-orange-500" />
+                  {friendDrawerText.searching}
+                </div>
+              ) : isSearchingUsers && searchError ? (
+                <div className="flex h-full min-h-48 items-center justify-center rounded-3xl border border-red-200 bg-red-50 px-4 text-center text-sm font-semibold text-red-600">
+                  {searchError}
+                </div>
+              ) : !isSearchingUsers && friendsLoading ? (
                 <div className="flex h-full min-h-48 items-center justify-center rounded-3xl border border-dashed border-orange-200 bg-orange-50/50 px-4 text-center text-sm font-semibold text-stone-500">
                   <Loader2 className="mr-2 h-4 w-4 animate-spin text-orange-500" />
                   {t.chat.loadingHistory}
                 </div>
-              ) : friendsError ? (
+              ) : !isSearchingUsers && friendsError ? (
                 <div className="flex h-full min-h-48 items-center justify-center rounded-3xl border border-red-200 bg-red-50 px-4 text-center text-sm font-semibold text-red-600">
                   {friendsError}
                 </div>
-              ) : mutualFriends.length === 0 ? (
+              ) : !isSearchingUsers && mutualFriends.length === 0 ? (
                 <div className="flex h-full min-h-48 items-center justify-center rounded-3xl border border-dashed border-orange-200 bg-orange-50/50 px-4 text-center text-sm font-semibold text-stone-500">
                   {friendDrawerText.empty}
                 </div>
+              ) : displayedFriends.length === 0 ? (
+                <div className="flex h-full min-h-48 items-center justify-center rounded-3xl border border-dashed border-orange-200 bg-orange-50/50 px-4 text-center text-sm font-semibold text-stone-500">
+                  {friendDrawerText.noSearchResults}
+                </div>
               ) : (
                 <div className="space-y-3">
-                  {mutualFriends.map((friend) => {
+                  {displayedFriends.map((friend) => {
                     const friendName = friend.pet_name || friend.username || "Friend"
+                    const friendPetType = "pet_type" in friend ? friend.pet_type : friend.pet_breed
+                    const friendFallbackMeta = "email" in friend ? friend.email : friend.location
                     const friendMeta = [
-                      friend.pet_type,
+                      friendPetType,
                       friend.pet_age !== null && friend.pet_age !== undefined ? String(friend.pet_age) : null,
                     ]
                       .filter(Boolean)
@@ -1734,7 +1824,7 @@ export default function ChatPage() {
                             {friendName}
                           </div>
                           <div className="mt-1 truncate text-xs font-semibold text-stone-500">
-                            {friendMeta || friend.email || "-"}
+                            {friendMeta || friendFallbackMeta || "-"}
                           </div>
                         </div>
                       </button>
