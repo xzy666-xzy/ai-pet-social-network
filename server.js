@@ -1136,6 +1136,24 @@ function toSafeSearchUser(user) {
   }
 }
 
+function escapeIlikePattern(value) {
+  return String(value || "").replace(/[\\%_]/g, "\\$&")
+}
+
+function matchesUserSearchKeyword(user, keyword) {
+  const normalizedKeyword = String(keyword || "").trim().toLowerCase()
+
+  if (!normalizedKeyword) {
+    return false
+  }
+
+  return [user?.username, user?.pet_name].some((value) =>
+    String(value || "")
+      .toLowerCase()
+      .includes(normalizedKeyword)
+  )
+}
+
 app.get("/", (req, res) => {
   res.json({
     success: true,
@@ -1941,7 +1959,7 @@ app.get("/users/search", authMiddleware, async (req, res) => {
     }
 
     const selectedFields = "id, username, pet_name, pet_type, avatar_url, pet_age, pet_gender, city"
-    const searchPattern = `%${keyword}%`
+    const searchPattern = `%${escapeIlikePattern(keyword)}%`
     const searchResults = await Promise.all([
       supabaseAdmin
         .from("users")
@@ -1956,13 +1974,6 @@ app.get("/users/search", authMiddleware, async (req, res) => {
         .neq("id", currentUserId)
         .is("deleted_at", null)
         .ilike("pet_name", searchPattern)
-        .limit(20),
-      supabaseAdmin
-        .from("users")
-        .select(selectedFields)
-        .neq("id", currentUserId)
-        .is("deleted_at", null)
-        .ilike("pet_type", searchPattern)
         .limit(20),
     ])
 
@@ -1981,7 +1992,13 @@ app.get("/users/search", authMiddleware, async (req, res) => {
       })
     })
 
-    return toDataResponse(res, [...usersById.values()].slice(0, 20).map(toSafeSearchUser))
+    return toDataResponse(
+      res,
+      [...usersById.values()]
+        .filter((user) => matchesUserSearchKeyword(user, keyword))
+        .slice(0, 20)
+        .map(toSafeSearchUser)
+    )
   } catch (error) {
     console.error("User search error:", error)
 

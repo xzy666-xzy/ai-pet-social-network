@@ -379,19 +379,8 @@ export default function ProfilePage() {
       user.pet_age !== null && user.pet_age !== undefined
           ? `${user.pet_age} ${t.profile.yearsSuffix}`
           : t.profile.ageNotSet
-  const petGenderSymbol =
-      user.pet_gender === "male"
-          ? "♂"
-          : user.pet_gender === "female"
-              ? "♀"
-              : ""
-  const petGenderColor =
-      user.pet_gender === "male"
-          ? "text-blue-500"
-          : user.pet_gender === "female"
-              ? "text-pink-500"
-              : ""
   const petAgeText = petAge
+  const petGenderSymbol = user.pet_gender === "male" ? "♂" : user.pet_gender === "female" ? "♀" : ""
 
   const tagline = user.tagline || ""
   const bio =
@@ -508,9 +497,7 @@ export default function ProfilePage() {
                   </span>
                   <span className="rounded-full border border-stone-100 bg-white px-3 py-1.5 text-xs font-bold text-stone-600 shadow-sm">
                     {petAgeText}
-                    {petGenderSymbol ? (
-                        <span className={petGenderColor}>{petGenderSymbol}</span>
-                    ) : null}
+                    {petGenderSymbol ? <span className="ml-1">{petGenderSymbol}</span> : null}
                   </span>
                 </div>
               </div>
@@ -526,9 +513,6 @@ export default function ProfilePage() {
                 <p className="font-semibold text-stone-900">{t.profile.typeLabel}: {petType}</p>
                 <p className="font-semibold text-stone-900">
                   {t.profile.ageLabel}: {petAgeText}
-                  {petGenderSymbol ? (
-                      <span className={petGenderColor}>{petGenderSymbol}</span>
-                  ) : null}
                 </p>
               </div>
 

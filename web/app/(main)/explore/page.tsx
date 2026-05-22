@@ -1232,25 +1232,25 @@ function ExplorePageContent() {
               if (!open) setGroupChatDialogId(null)
             }}
         >
-          <DialogContent className="sm:max-w-[360px] rounded-2xl">
-            <DialogHeader>
-              <DialogTitle className="text-center text-lg">
+          <DialogContent className="gap-3 rounded-2xl p-4 sm:max-w-[360px] sm:p-5">
+            <DialogHeader className="gap-1 pr-6">
+              <DialogTitle className="text-center text-lg leading-snug">
                 {c.groupChatTitle}
               </DialogTitle>
-              <DialogDescription className="text-center text-sm text-stone-500">
+              <DialogDescription className="text-center text-sm leading-snug text-stone-500">
                 {c.groupChatDesc}
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter className="flex-row justify-center gap-3 sm:justify-center">
+            <DialogFooter className="mt-1 flex-row justify-center gap-2 sm:justify-center">
               <Button
                   variant="outline"
-                  className="rounded-full border-orange-100 px-6 font-bold text-stone-600"
+                  className="h-9 rounded-full border-orange-100 px-5 font-bold text-stone-600"
                   onClick={() => setGroupChatDialogId(null)}
               >
                 {c.cancel}
               </Button>
               <Button
-                  className="rounded-full bg-gradient-to-br from-orange-500 to-amber-400 px-6 font-bold text-white shadow-lg shadow-orange-500/20"
+                  className="h-9 rounded-full bg-gradient-to-br from-orange-500 to-amber-400 px-5 font-bold text-white shadow-lg shadow-orange-500/20"
                   disabled={joiningGroupChat}
                   onClick={handleJoinGroupChat}
               >

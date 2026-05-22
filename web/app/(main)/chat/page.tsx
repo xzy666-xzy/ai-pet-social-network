@@ -68,6 +68,20 @@ type MutualFriend = {
   pet_gender: string | null
 }
 
+function matchesSearchableUserFields(user: Pick<UserSearchResult, "username" | "pet_name">, keyword: string) {
+  const normalizedKeyword = keyword.trim().toLowerCase()
+
+  if (!normalizedKeyword) {
+    return true
+  }
+
+  return [user.username, user.pet_name].some((value) =>
+    String(value || "")
+      .toLowerCase()
+      .includes(normalizedKeyword)
+  )
+}
+
 type ConversationSummary = {
   id: string
   type?: string | null
@@ -419,6 +433,7 @@ export default function ChatPage() {
   const [profileLikeLoading, setProfileLikeLoading] = useState(false)
   const [profileLikeInitialized, setProfileLikeInitialized] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [eventGroupSettingsOpen, setEventGroupSettingsOpen] = useState(false)
   const [background_key, setBackgroundKey] = useState<ChatBackgroundKey>("default")
   const [background_url, setBackgroundUrl] = useState("")
   const [is_muted, setIsMuted] = useState(false)
@@ -768,6 +783,7 @@ export default function ChatPage() {
         setChatMatched(false)
         setProfileOpen(false)
         setSettingsOpen(false)
+        setEventGroupSettingsOpen(false)
         setBackgroundKey("default")
         setBackgroundUrl("")
         setBackgroundUploadError("")
@@ -1017,7 +1033,9 @@ export default function ChatPage() {
 
         if (cancelled) return
 
-        setSearchResults(Array.isArray(results) ? results : [])
+        setSearchResults(
+          Array.isArray(results) ? results.filter((result) => matchesSearchableUserFields(result, keyword)) : []
+        )
       } catch (error) {
         if (cancelled) return
 
@@ -1674,6 +1692,17 @@ export default function ChatPage() {
               >
                 <Settings className="h-5 w-5" />
               </Button>
+          ) : isConversationMode ? (
+              <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="群设置"
+                  className="h-11 w-11 rounded-full bg-white text-stone-700 shadow-lg shadow-orange-900/10 hover:bg-orange-50"
+                  onClick={() => setEventGroupSettingsOpen(true)}
+              >
+                <Settings className="h-5 w-5" />
+              </Button>
           ) : null}
 
         </div>
@@ -1931,6 +1960,115 @@ export default function ChatPage() {
           </SheetContent>
         </Sheet>
 
+        <Sheet open={eventGroupSettingsOpen} onOpenChange={setEventGroupSettingsOpen}>
+          <SheetContent side="right" className="w-[88%] overflow-y-auto border-l border-orange-100 bg-[#f7f5f2] p-0 sm:max-w-sm">
+            <SheetHeader className="sticky top-0 z-10 border-b border-orange-100 bg-white/95 px-5 py-4 text-left backdrop-blur-xl">
+              <SheetTitle className="text-base font-extrabold tracking-tight text-stone-900">
+                群设置
+              </SheetTitle>
+            </SheetHeader>
+
+            <div className="space-y-3 px-5 py-5">
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 rounded-2xl border border-orange-100 bg-white px-4 py-3 text-left shadow-sm shadow-orange-900/5"
+              >
+                <Search className="h-5 w-5 shrink-0 text-orange-500" />
+                <span className="text-sm font-semibold text-stone-800">搜索群成员</span>
+              </button>
+
+              <section className="rounded-[1.6rem] border border-orange-100 bg-white p-4 shadow-sm shadow-orange-900/5">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-sm font-extrabold text-stone-900">群成员</h3>
+                  <span className="text-xs font-semibold text-stone-400">
+                    {activeConversationMemberCount ?? 0} 人
+                  </span>
+                </div>
+                <div className="grid grid-cols-5 gap-3">
+                  {[
+                    {
+                      label: user?.pet_name || user?.username || "我",
+                      avatar: user?.avatar_url || "",
+                    },
+                    { label: "成员", avatar: "" },
+                    { label: "成员", avatar: "" },
+                    { label: "成员", avatar: "" },
+                    { label: "+", avatar: "" },
+                  ].map((member, index) => (
+                    <div key={`${member.label}-${index}`} className="min-w-0 text-center">
+                      <div className="mx-auto flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-100 to-amber-50 text-sm font-black text-orange-600 shadow-sm">
+                        {member.avatar ? (
+                          <img
+                            src={member.avatar || "/placeholder.svg"}
+                            alt={member.label}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span>{member.label.charAt(0).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <div className="mt-1 truncate text-[11px] font-semibold text-stone-500">
+                        {member.label === "+" ? "邀请" : member.label}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="overflow-hidden rounded-[1.6rem] border border-orange-100 bg-white shadow-sm shadow-orange-900/5">
+                {[
+                  { label: "群聊名称", value: activeConversationSummary?.event_title?.trim() || "活动群聊" },
+                  { label: "群公告", value: "暂无群公告" },
+                  { label: "备注", value: "未设置" },
+                  { label: "我在本群的昵称", value: user?.pet_name || user?.username || "我" },
+                ].map((item, index, list) => (
+                  <div
+                    key={item.label}
+                    className={`flex items-center justify-between gap-4 px-4 py-3.5 ${
+                      index < list.length - 1 ? "border-b border-stone-100" : ""
+                    }`}
+                  >
+                    <span className="shrink-0 text-sm font-semibold text-stone-800">{item.label}</span>
+                    <span className="min-w-0 truncate text-right text-sm font-medium text-stone-400">
+                      {item.value}
+                    </span>
+                  </div>
+                ))}
+              </section>
+
+              <section className="overflow-hidden rounded-[1.6rem] border border-orange-100 bg-white shadow-sm shadow-orange-900/5">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left"
+                >
+                  <span className="text-sm font-semibold text-stone-800">查找聊天内容</span>
+                  <Search className="h-4 w-4 shrink-0 text-stone-300" />
+                </button>
+                <div className="flex items-center justify-between gap-4 border-t border-stone-100 px-4 py-3.5">
+                  <span className="text-sm font-semibold text-stone-800">消息免打扰</span>
+                  <Switch checked={false} disabled />
+                </div>
+                <div className="flex items-center justify-between gap-4 border-t border-stone-100 px-4 py-3.5">
+                  <span className="text-sm font-semibold text-stone-800">置顶聊天</span>
+                  <Switch checked={false} disabled />
+                </div>
+              </section>
+
+              <button
+                type="button"
+                disabled
+                className="w-full rounded-[1.6rem] border border-red-100 bg-white px-4 py-3.5 text-center text-sm font-extrabold text-red-500 shadow-sm shadow-orange-900/5 disabled:opacity-70"
+              >
+                退出群聊
+              </button>
+
+              <p className="px-2 text-center text-xs font-medium leading-5 text-stone-400">
+                当前为静态群设置界面，暂未连接真实接口。
+              </p>
+            </div>
+          </SheetContent>
+        </Sheet>
+
         {profileOpen && targetUser ? (
             <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-4 sm:items-center sm:pb-0">
               <div className="relative w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl">
@@ -2023,11 +2161,6 @@ export default function ChatPage() {
                         </span>
                         <span className="rounded-full border border-stone-100 bg-white px-3 py-1.5 text-xs font-bold text-stone-600 shadow-sm">
                           {profilePetAge}
-                          {targetUser.pet_gender === "male" ? (
-                              <span className="ml-0.5 text-blue-500">♂</span>
-                          ) : targetUser.pet_gender === "female" ? (
-                              <span className="ml-0.5 text-pink-500">♀</span>
-                          ) : null}
                         </span>
                         {targetUser.is_ai ? (
                             <span className="rounded-full bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-700 shadow-sm">
@@ -2046,11 +2179,6 @@ export default function ChatPage() {
                       <p className="font-semibold text-stone-900">{t.profile.typeLabel}: {profilePetType}</p>
                       <p className="font-semibold text-stone-900">
                         {t.profile.ageLabel}: {profilePetAge}
-                        {targetUser.pet_gender === "male" ? (
-                            <span className="ml-0.5 text-blue-500">♂</span>
-                        ) : targetUser.pet_gender === "female" ? (
-                            <span className="ml-0.5 text-pink-500">♀</span>
-                        ) : null}
                       </p>
                     </div>
                   </div>
