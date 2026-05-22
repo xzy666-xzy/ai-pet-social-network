@@ -300,6 +300,142 @@ async function resolveEventTitleByEventId(eventId) {
   }
 }
 
+function normalizeOptionalText(value, maxLength = 500) {
+  if (value === null || value === undefined) {
+    return ""
+  }
+
+  return String(value).trim().slice(0, maxLength)
+}
+
+async function resolveGroupConversationAccess(conversationId, userId) {
+  const access = await checkConversationAccess(conversationId, userId)
+
+  if (!access || !access.isGroup) {
+    return null
+  }
+
+  return access.conversation
+}
+
+async function getEventOrganizerId(eventId) {
+  const safeEventId = String(eventId || "").trim()
+
+  if (!safeEventId) {
+    return null
+  }
+
+  try {
+    const { data: event, error } = await supabase
+      .from("events")
+      .select("organizer_id")
+      .eq("id", normalizeEventIdForDb(safeEventId))
+      .maybeSingle()
+
+    if (error) {
+      if (!isMissingEventsTableError(error)) {
+        throw error
+      }
+
+      return null
+    }
+
+    return event?.organizer_id ? String(event.organizer_id) : null
+  } catch (error) {
+    console.warn("Resolve event organizer failed:", error?.message || error)
+    return null
+  }
+}
+
+async function buildEventGroupSettingsPayload(conversationId, currentUserId) {
+  const conversation = await resolveGroupConversationAccess(conversationId, currentUserId)
+
+  if (!conversation) {
+    return null
+  }
+
+  const [eventTitle, eventOrganizerId, membersResult, settingsResult] = await Promise.all([
+    resolveEventTitleByEventId(conversation.event_id),
+    getEventOrganizerId(conversation.event_id),
+    supabase
+      .from("conversation_members")
+      .select("id, user_id, nickname, joined_at")
+      .eq("conversation_id", conversationId)
+      .order("joined_at", { ascending: true }),
+    supabase
+      .from("chat_settings")
+      .select("conversation_id, background_key, background_url, is_pinned, is_muted, group_remark")
+      .eq("user_id", currentUserId)
+      .eq("conversation_id", conversationId)
+      .maybeSingle(),
+  ])
+
+  if (membersResult.error) {
+    throw membersResult.error
+  }
+
+  if (settingsResult.error) {
+    throw settingsResult.error
+  }
+
+  const members = membersResult.data || []
+  const memberUserIds = [...new Set(members.map((member) => String(member.user_id || "").trim()).filter(Boolean))]
+  let usersById = new Map()
+
+  if (memberUserIds.length > 0) {
+    const { data: users, error: usersError } = await supabase
+      .from("users")
+      .select("id, username, email, avatar_url, pet_name")
+      .in("id", memberUserIds)
+
+    if (usersError) {
+      throw usersError
+    }
+
+    usersById = new Map((users || []).map((user) => [String(user.id), user]))
+  }
+
+  const ownerId = String(eventOrganizerId || conversation.user1_id || "")
+  const currentMember = members.find((member) => String(member.user_id) === String(currentUserId))
+  const groupName = normalizeOptionalText(conversation.group_name, 120) || eventTitle || "活动群聊"
+  const announcement = normalizeOptionalText(conversation.announcement, 1000)
+  const settings = settingsResult.data || null
+
+  return {
+    conversation_id: conversationId,
+    type: "event_group",
+    event_id: conversation.event_id ?? null,
+    group_name: groupName,
+    event_title: eventTitle,
+    announcement,
+    announcement_updated_at: conversation.announcement_updated_at ?? null,
+    announcement_updated_by: conversation.announcement_updated_by ?? null,
+    owner_id: ownerId || null,
+    is_owner: ownerId ? String(ownerId) === String(currentUserId) : false,
+    member_count: members.length,
+    remark: settings?.group_remark ?? "",
+    my_nickname: currentMember?.nickname ?? "",
+    is_pinned: settings?.is_pinned ?? false,
+    is_muted: settings?.is_muted ?? false,
+    members: members.map((member) => {
+      const memberUser = usersById.get(String(member.user_id)) || {}
+      const fallbackName = memberUser.pet_name || memberUser.username || memberUser.email || "Member"
+
+      return {
+        id: member.id,
+        user_id: member.user_id,
+        username: memberUser.username ?? null,
+        pet_name: memberUser.pet_name ?? null,
+        avatar_url: memberUser.avatar_url ?? null,
+        nickname: member.nickname ?? "",
+        display_name: member.nickname || fallbackName,
+        is_owner: ownerId ? String(member.user_id) === String(ownerId) : false,
+        joined_at: member.joined_at ?? null,
+      }
+    }),
+  }
+}
+
 async function listEventsWithOrganizers(userId) {
   const { data: events, error } = await supabase
     .from("events")
@@ -667,6 +803,8 @@ async function getOrCreateEventGroupConversation(eventId, creatorUserId) {
     throw new Error("Need at least two users to create event group conversation")
   }
 
+  // Existing schema has no conversation_members role/owner column.
+  // For event_group conversations, user1_id is the stable owner/admin marker.
   const user1Id = creatorUserId
 
   // Try each other user as user2_id until one succeeds (avoids unique constraint conflict)
@@ -730,6 +868,16 @@ async function addUserToEventGroupConversation(conversationId, userId) {
   }
 
   return member
+}
+
+async function addEventCreatorToEventGroupConversation(eventId, creatorUserId) {
+  const conversation = await getOrCreateEventGroupConversation(eventId, creatorUserId)
+  const member = await addUserToEventGroupConversation(conversation.id, creatorUserId)
+
+  return {
+    conversation,
+    member,
+  }
 }
 
 async function getConversationById(conversationId) {
@@ -811,7 +959,32 @@ async function getConversationMessages(conversationId) {
     throw error
   }
 
-  return data || []
+  const messages = data || []
+
+  // Enrich messages with sender user info (avatar_url, username, pet_name)
+  const senderIds = [...new Set(messages.map((msg) => msg.sender_id).filter(Boolean))]
+  let usersById = new Map()
+
+  if (senderIds.length > 0) {
+    const { data: users, error: usersError } = await supabase
+      .from("users")
+      .select("id, avatar_url, username, pet_name")
+      .in("id", senderIds)
+
+    if (!usersError && users) {
+      usersById = new Map(users.map((u) => [String(u.id), u]))
+    }
+  }
+
+  return messages.map((msg) => {
+    const sender = usersById.get(String(msg.sender_id)) || {}
+    return {
+      ...msg,
+      sender_avatar_url: sender.avatar_url ?? null,
+      sender_username: sender.username ?? null,
+      sender_pet_name: sender.pet_name ?? null,
+    }
+  })
 }
 
 async function createMessage(conversationId, senderId, content, messageType = "text", imageUrl = null) {
@@ -2954,15 +3127,17 @@ app.post("/events", authMiddleware, async (req, res) => {
       })
     }
 
+    const newEventId = randomUUID()
+
     const { data: event, error } = await supabase
       .from("events")
       .insert({
-        id: randomUUID(),
+        id: newEventId,
         title,
         image_url: imageUrl || null,
         time,
         max_people: Number.isFinite(maxPeople) ? maxPeople : null,
-        current_people: 0,
+        current_people: 1,
         description: description || null,
         organizer_id: organizerId,
         city: currentUser.city || null,
@@ -2984,7 +3159,28 @@ app.post("/events", authMiddleware, async (req, res) => {
       })
     }
 
-    return toDataResponse(res, event)
+    const { error: participantError } = await supabase
+      .from("event_participants")
+      .insert({
+        event_id: event.id,
+        user_id: organizerId,
+      })
+
+    if (participantError && participantError.code !== "23505") {
+      throw participantError
+    }
+
+    const groupChatResult = await addEventCreatorToEventGroupConversation(event.id, organizerId)
+
+    const state = getEventParticipationState(event.id, Number(event.current_people || 1), event.max_people)
+    state.participants.add(organizerId)
+    state.currentPeople = Math.max(Number(event.current_people || 1), state.participants.size)
+
+    return toDataResponse(res, {
+      ...event,
+      group_chat_created: true,
+      group_conversation_id: groupChatResult.conversation.id,
+    })
   } catch (error) {
     console.error("Create event error:", error)
 
@@ -3268,28 +3464,30 @@ app.post("/events/leave", authMiddleware, async (req, res) => {
     state.participants.delete(userId)
     state.currentPeople = Number(updatedEvent.current_people || nextPeople)
 
-    // 从活动群聊 conversation_members 删除该用户
-    const { data: conversation, error: convError } = await supabase
-      .from("conversations")
-      .select("id")
-      .eq("type", "event_group")
-      .eq("event_id", dbEventId)
-      .maybeSingle()
+    // 从活动群聊 conversation_members 删除该用户（容错：如果不在群聊或表不存在，不阻塞取消参加）
+    try {
+      const { data: conversation, error: convError } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("type", "event_group")
+        .eq("event_id", dbEventId)
+        .maybeSingle()
 
-    if (convError) {
-      throw convError
-    }
+      if (!convError && conversation) {
+        const { error: removeMemberError } = await supabase
+          .from("conversation_members")
+          .delete()
+          .eq("conversation_id", conversation.id)
+          .eq("user_id", userId)
 
-    if (conversation) {
-      const { error: removeMemberError } = await supabase
-        .from("conversation_members")
-        .delete()
-        .eq("conversation_id", conversation.id)
-        .eq("user_id", userId)
-
-      if (removeMemberError) {
-        throw removeMemberError
+        if (removeMemberError) {
+          console.warn("Failed to remove user from event group chat (non-blocking):", removeMemberError)
+        }
+      } else if (convError) {
+        console.warn("Failed to find event group conversation (non-blocking):", convError)
       }
+    } catch (innerError) {
+      console.warn("Error removing user from event group chat (non-blocking):", innerError)
     }
 
     return toDataResponse(res, {
@@ -3349,20 +3547,79 @@ app.post("/events/:eventId/group-chat/join", authMiddleware, async (req, res) =>
       })
     }
 
-    // Check if user has joined the event
+    const { data: existingConversation, error: existingConversationError } = await supabase
+      .from("conversations")
+      .select("*")
+      .eq("type", "event_group")
+      .eq("event_id", dbEventId)
+      .maybeSingle()
+
+    if (existingConversationError) {
+      throw existingConversationError
+    }
+
+    if (existingConversation) {
+      const { data: existingMember, error: existingMemberError } = await supabase
+        .from("conversation_members")
+        .select("id")
+        .eq("conversation_id", existingConversation.id)
+        .eq("user_id", userId)
+        .maybeSingle()
+
+      if (existingMemberError) {
+        throw existingMemberError
+      }
+
+      if (existingMember) {
+        return toDataResponse(res, {
+          conversationId: existingConversation.id,
+          eventId: eventId,
+          type: "event_group",
+          alreadyMember: true,
+        })
+      }
+    }
+
+    // Check if user has joined the event. Event participation is persisted in
+    // event_participants, while eventParticipationState is only an in-memory
+    // cache. Do not reject users who joined before the current server process
+    // populated the cache.
     const currentPeople = event ? Number(event.current_people || 0) : STATIC_EVENT_PEOPLE[eventId]
     const maxPeople = event?.max_people == null ? null : Number(event.max_people)
     const state = getEventParticipationState(eventId, currentPeople, maxPeople)
+    let hasJoinedEvent = state.participants.has(userId)
 
-    if (!state.participants.has(userId)) {
+    if (!hasJoinedEvent) {
+      // 查数据库确认（即使 event 为 null，也尝试查 event_participants 表）
+      const { data: existingParticipant, error: participantError } = await supabase
+        .from("event_participants")
+        .select("id")
+        .eq("event_id", dbEventId)
+        .eq("user_id", userId)
+        .maybeSingle()
+
+      // 只 throw 非"表不存在"的错误
+      if (participantError && !isMissingEventsTableError(participantError)) {
+        throw participantError
+      }
+
+      hasJoinedEvent = Boolean(existingParticipant)
+
+      if (hasJoinedEvent) {
+        state.participants.add(userId)
+      }
+    }
+
+    if (!hasJoinedEvent) {
       return res.status(403).json({
         success: false,
+        code: "EVENT_PARTICIPATION_REQUIRED",
         error: "You must join the event before joining the group chat",
       })
     }
 
     // Find or create event group conversation
-    const conversation = await getOrCreateEventGroupConversation(eventId, userId)
+    const conversation = existingConversation || await getOrCreateEventGroupConversation(eventId, userId)
 
     // Add user to conversation members
     await addUserToEventGroupConversation(conversation.id, userId)
@@ -3371,6 +3628,7 @@ app.post("/events/:eventId/group-chat/join", authMiddleware, async (req, res) =>
       conversationId: conversation.id,
       eventId: eventId,
       type: "event_group",
+      alreadyMember: false,
     })
   } catch (error) {
     console.error("Event group chat join error:", error)
@@ -3430,12 +3688,9 @@ app.get("/chat/settings", authMiddleware, async (req, res) => {
       })
     }
 
-    const conversation = await getConversationById(conversationId)
+    const access = await checkConversationAccess(conversationId, String(currentUserId))
 
-    if (
-      !conversation ||
-      (conversation.user1_id !== currentUserId && conversation.user2_id !== currentUserId)
-    ) {
+    if (!access) {
       return res.status(404).json({
         success: false,
         error: "Conversation not found",
@@ -3486,12 +3741,9 @@ app.put("/chat/settings", authMiddleware, async (req, res) => {
       })
     }
 
-    const conversation = await getConversationById(conversationId)
+    const access = await checkConversationAccess(conversationId, String(currentUserId))
 
-    if (
-      !conversation ||
-      (conversation.user1_id !== currentUserId && conversation.user2_id !== currentUserId)
-    ) {
+    if (!access) {
       return res.status(404).json({
         success: false,
         error: "Conversation not found",
@@ -3548,6 +3800,10 @@ app.put("/chat/settings", authMiddleware, async (req, res) => {
       updates.is_muted = req.body.is_muted
     }
 
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "group_remark")) {
+      updates.group_remark = normalizeOptionalText(req.body.group_remark, 120)
+    }
+
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({
         success: false,
@@ -3573,7 +3829,7 @@ app.put("/chat/settings", authMiddleware, async (req, res) => {
 
     const { data: latestSettings, error: latestError } = await supabase
       .from("chat_settings")
-      .select("conversation_id, background_key, background_url, is_pinned, is_muted")
+      .select("conversation_id, background_key, background_url, is_pinned, is_muted, group_remark")
       .eq("user_id", currentUserId)
       .eq("conversation_id", conversationId)
       .maybeSingle()
@@ -3588,6 +3844,7 @@ app.put("/chat/settings", authMiddleware, async (req, res) => {
       background_url: latestSettings?.background_url ?? "",
       is_pinned: latestSettings?.is_pinned ?? false,
       is_muted: latestSettings?.is_muted ?? false,
+      group_remark: latestSettings?.group_remark ?? "",
     })
   } catch (error) {
     console.error("Chat settings put error:", error)
@@ -3595,6 +3852,215 @@ app.put("/chat/settings", authMiddleware, async (req, res) => {
     return res.status(500).json({
       success: false,
       error: "Failed to save chat settings",
+    })
+  }
+})
+
+app.get("/chat/group-settings", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = String(req.user?.userId || "").trim()
+    const conversationId = String(req.query?.conversation_id || req.query?.conversationId || "").trim()
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    if (!conversationId) {
+      return res.status(400).json({
+        success: false,
+        error: "conversation_id is required",
+      })
+    }
+
+    const payload = await buildEventGroupSettingsPayload(conversationId, currentUserId)
+
+    if (!payload) {
+      // 如果 activity group 没有 settings 数据，返回默认值而不是 404
+      return toDataResponse(res, {
+        conversation_id: conversationId,
+        type: "event_group",
+        event_id: null,
+        group_name: "活动群聊",
+        event_title: null,
+        announcement: "",
+        announcement_updated_at: null,
+        announcement_updated_by: null,
+        owner_id: null,
+        is_owner: false,
+        member_count: 0,
+        remark: "",
+        my_nickname: "",
+        is_pinned: false,
+        is_muted: false,
+        members: [],
+      })
+    }
+
+    return toDataResponse(res, payload)
+  } catch (error) {
+    console.error("Chat group settings get error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to load group settings",
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
+    })
+  }
+})
+
+app.put("/chat/group-settings", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = String(req.user?.userId || "").trim()
+    const conversationId = String(req.body?.conversation_id || req.body?.conversationId || "").trim()
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    if (!conversationId) {
+      return res.status(400).json({
+        success: false,
+        error: "conversation_id is required",
+      })
+    }
+
+    const currentPayload = await buildEventGroupSettingsPayload(conversationId, currentUserId)
+
+    if (!currentPayload) {
+      return res.status(404).json({
+        success: false,
+        error: "Group conversation not found",
+      })
+    }
+
+    const chatSettingUpdates = {}
+    const conversationUpdates = {}
+    let shouldUpdateMemberNickname = false
+    let nextNickname = ""
+
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "remark")) {
+      chatSettingUpdates.group_remark = normalizeOptionalText(req.body.remark, 120)
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "my_nickname")) {
+      shouldUpdateMemberNickname = true
+      nextNickname = normalizeOptionalText(req.body.my_nickname, 60)
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "is_pinned")) {
+      if (typeof req.body.is_pinned !== "boolean") {
+        return res.status(400).json({
+          success: false,
+          error: "is_pinned must be a boolean",
+        })
+      }
+
+      chatSettingUpdates.is_pinned = req.body.is_pinned
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "is_muted")) {
+      if (typeof req.body.is_muted !== "boolean") {
+        return res.status(400).json({
+          success: false,
+          error: "is_muted must be a boolean",
+        })
+      }
+
+      chatSettingUpdates.is_muted = req.body.is_muted
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "announcement")) {
+      if (!currentPayload.is_owner) {
+        return res.status(403).json({
+          success: false,
+          error: "Only the group owner can update announcement",
+        })
+      }
+
+      conversationUpdates.announcement = normalizeOptionalText(req.body.announcement, 1000)
+      conversationUpdates.announcement_updated_at = new Date().toISOString()
+      conversationUpdates.announcement_updated_by = currentUserId
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, "group_name")) {
+      if (!currentPayload.is_owner) {
+        return res.status(403).json({
+          success: false,
+          error: "Only the group owner can update group name",
+        })
+      }
+
+      conversationUpdates.group_name = normalizeOptionalText(req.body.group_name, 120)
+    }
+
+    if (
+      Object.keys(chatSettingUpdates).length === 0 &&
+      Object.keys(conversationUpdates).length === 0 &&
+      !shouldUpdateMemberNickname
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: "No group setting fields to update",
+      })
+    }
+
+    if (Object.keys(conversationUpdates).length > 0) {
+      const { error: conversationUpdateError } = await supabase
+        .from("conversations")
+        .update(conversationUpdates)
+        .eq("id", conversationId)
+        .eq("type", "event_group")
+
+      if (conversationUpdateError) {
+        throw conversationUpdateError
+      }
+    }
+
+    if (shouldUpdateMemberNickname) {
+      const { error: memberUpdateError } = await supabase
+        .from("conversation_members")
+        .update({ nickname: nextNickname })
+        .eq("conversation_id", conversationId)
+        .eq("user_id", currentUserId)
+
+      if (memberUpdateError) {
+        throw memberUpdateError
+      }
+    }
+
+    if (Object.keys(chatSettingUpdates).length > 0) {
+      const now = new Date().toISOString()
+      const { error: settingUpdateError } = await supabase
+        .from("chat_settings")
+        .upsert(
+          {
+            user_id: currentUserId,
+            conversation_id: conversationId,
+            updated_at: now,
+            ...chatSettingUpdates,
+          },
+          { onConflict: "user_id,conversation_id" }
+        )
+
+      if (settingUpdateError) {
+        throw settingUpdateError
+      }
+    }
+
+    const payload = await buildEventGroupSettingsPayload(conversationId, currentUserId)
+
+    return toDataResponse(res, payload)
+  } catch (error) {
+    console.error("Chat group settings put error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to save group settings",
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
     })
   }
 })

@@ -3,6 +3,7 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { CalendarDays, ImagePlus, MapPin, Users } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -125,7 +126,13 @@ export default function CreateExploreEventPage() {
       const selectedLat = location.lat.trim() ? Number(location.lat) : null
       const selectedLng = location.lng.trim() ? Number(location.lng) : null
 
-      await apiRequest("/events", {
+      const response = await apiRequest<{
+        success: boolean
+        data: {
+          group_chat_created?: boolean
+          group_conversation_id?: string
+        }
+      }>("/events", {
         method: "POST",
         auth: true,
         body: JSON.stringify({
@@ -140,6 +147,11 @@ export default function CreateExploreEventPage() {
           lng: Number.isFinite(selectedLng) ? selectedLng : null,
         }),
       })
+
+      // Show group chat notification if group chat was created
+      if (response?.data?.group_chat_created) {
+        toast.success(createEventText.groupChatReady)
+      }
 
       router.push("/explore")
     } catch (error) {

@@ -398,12 +398,13 @@ export default function ExplorePage() {
 }
 
 function ExplorePageContent() {
-  const { locale } = useLanguage()
+  const { locale, t } = useLanguage()
   const router = useRouter()
   const searchParams = useSearchParams()
   const eventIdParam = searchParams.get("eventId")
   const { user } = useAuth()
   const c = copy[locale]
+  const groupChatConfirmText = t.explore.groupChatConfirmDialog
   const userCity = (user as { city?: string | null } | null)?.city ?? null
   const userCurrentLat = toFiniteNumber((user as { current_lat?: number | string | null } | null)?.current_lat)
   const userCurrentLng = toFiniteNumber((user as { current_lng?: number | string | null } | null)?.current_lng)
@@ -434,6 +435,7 @@ function ExplorePageContent() {
   const [detailApiEvent, setDetailApiEvent] = useState<ApiEvent | null>(null)
   const [groupChatDialogId, setGroupChatDialogId] = useState<number | null>(null)
   const [joiningGroupChat, setJoiningGroupChat] = useState(false)
+  const [groupChatNotice, setGroupChatNotice] = useState<string | null>(null)
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [shareTargetEvent, setShareTargetEvent] = useState<EventItem | null>(null)
   const [shareConversations, setShareConversations] = useState<ShareConversation[]>([])
@@ -510,6 +512,16 @@ function ExplorePageContent() {
     setDetailEventId(targetEvent.id)
     setSelectedId(targetEvent.id)
   }, [eventIdParam, events, eventsLoaded])
+
+  useEffect(() => {
+    if (!groupChatNotice) return
+
+    const timeoutId = window.setTimeout(() => {
+      setGroupChatNotice(null)
+    }, 2400)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [groupChatNotice])
 
   const detailEvent = filteredEvents.find((item) => item.id === detailEventId) || null
 
@@ -606,7 +618,7 @@ function ExplorePageContent() {
             }
           : prev
       )
-      // 取消参加成功后，通知聊天页面刷新会话列表
+      // 取消参加成功后，通知聊天页面刷新会话列表并退出对应群聊
       if (joined) {
         window.dispatchEvent(
           new CustomEvent("wepet:event-left", { detail: { eventId } })
@@ -622,7 +634,10 @@ function ExplorePageContent() {
         code: error instanceof ApiError ? error.code : undefined,
         data: error instanceof ApiError ? error.data : undefined,
       })
-      alert(message)
+      setGroupChatNotice(message)
+      window.setTimeout(() => {
+        setGroupChatNotice(null)
+      }, 3000)
     } finally {
       setJoiningMap((prev) => ({ ...prev, [id]: false }))
     }
@@ -636,22 +651,46 @@ function ExplorePageContent() {
     const eventId = eventItem?.event_id || String(id)
 
     setJoiningGroupChat(true)
+    setGroupChatNotice(null)
 
     try {
       const response = await apiRequest<{
         success: true
-        data: { conversationId: string; eventId: string; type: string }
+        data: { conversationId: string; eventId: string; type: string; alreadyMember?: boolean }
       }>(`/events/${encodeURIComponent(eventId)}/group-chat/join`, {
         method: "POST",
         auth: true,
       })
 
       setGroupChatDialogId(null)
-      router.push(`/chat?conversationId=${response.data.conversationId}`)
+
+      if (response.data.alreadyMember) {
+        // 已是群成员：显示提示后跳转
+        setGroupChatNotice(groupChatConfirmText.alreadyJoined)
+        window.setTimeout(() => {
+          setGroupChatNotice(null)
+          router.push(`/chat?conversationId=${response.data.conversationId}`)
+        }, 1000)
+      } else {
+        // 新加入群聊：直接跳转
+        router.push(`/chat?conversationId=${response.data.conversationId}`)
+      }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
+      const message =
+        error instanceof ApiError && error.code === "EVENT_PARTICIPATION_REQUIRED"
+          ? groupChatConfirmText.mustJoinEvent
+          : error instanceof ApiError && error.code === "ALREADY_MEMBER"
+            ? groupChatConfirmText.alreadyJoined
+            : error instanceof Error
+              ? error.message || groupChatConfirmText.joinFailed
+              : groupChatConfirmText.joinFailed
+
       console.error("Failed to join group chat", { error, message })
-      alert(message)
+      setGroupChatNotice(message)
+      // 错误提示 3 秒后自动消失
+      window.setTimeout(() => {
+        setGroupChatNotice(null)
+      }, 3000)
     } finally {
       setJoiningGroupChat(false)
     }
@@ -1232,40 +1271,48 @@ function ExplorePageContent() {
               if (!open) setGroupChatDialogId(null)
             }}
         >
-          <DialogContent className="gap-3 rounded-2xl p-4 sm:max-w-[360px] sm:p-5">
-            <DialogHeader className="gap-1 pr-6">
-              <DialogTitle className="text-center text-lg leading-snug">
-                {c.groupChatTitle}
+          <DialogContent className="flex h-auto min-h-0 max-h-none w-[calc(100%-3rem)] flex-col gap-3 rounded-2xl p-4 sm:max-w-[340px]">
+            <DialogHeader className="shrink-0 gap-1 pr-7">
+              <DialogTitle className="text-center text-base leading-snug">
+                {groupChatConfirmText.title}
               </DialogTitle>
-              <DialogDescription className="text-center text-sm leading-snug text-stone-500">
-                {c.groupChatDesc}
+              <DialogDescription className="text-center text-sm leading-tight text-stone-500">
+                {groupChatConfirmText.description}
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter className="mt-1 flex-row justify-center gap-2 sm:justify-center">
+            <DialogFooter className="mt-0 flex shrink-0 flex-row justify-center gap-2 sm:justify-center">
               <Button
                   variant="outline"
-                  className="h-9 rounded-full border-orange-100 px-5 font-bold text-stone-600"
+                  className="h-8 rounded-full border-orange-100 px-4 font-bold text-stone-600"
                   onClick={() => setGroupChatDialogId(null)}
               >
-                {c.cancel}
+                {groupChatConfirmText.cancel}
               </Button>
               <Button
-                  className="h-9 rounded-full bg-gradient-to-br from-orange-500 to-amber-400 px-5 font-bold text-white shadow-lg shadow-orange-500/20"
+                  className="h-8 rounded-full bg-gradient-to-br from-orange-500 to-amber-400 px-4 font-bold text-white shadow-lg shadow-orange-500/20"
                   disabled={joiningGroupChat}
                   onClick={handleJoinGroupChat}
               >
                 {joiningGroupChat ? (
                   <span className="flex items-center gap-2">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    {c.groupChatConfirm}
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    {groupChatConfirmText.confirm}
                   </span>
                 ) : (
-                  c.groupChatConfirm
+                  groupChatConfirmText.confirm
                 )}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {groupChatNotice && (
+          <div className="pointer-events-none fixed inset-x-0 bottom-24 z-50 flex justify-center px-4">
+            <div className="max-w-[320px] rounded-full bg-stone-900 px-4 py-2 text-center text-sm font-semibold text-white shadow-lg">
+              {groupChatNotice}
+            </div>
+          </div>
+        )}
       </div>
   )
 }

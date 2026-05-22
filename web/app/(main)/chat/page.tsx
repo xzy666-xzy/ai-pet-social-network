@@ -25,6 +25,9 @@ type ChatMessage = {
   is_deleted?: boolean | number
   deleted_at?: string | null
   created_at: string
+  sender_avatar_url?: string | null
+  sender_username?: string | null
+  sender_pet_name?: string | null
 }
 
 type EventMessageContent = {
@@ -413,6 +416,42 @@ export default function ChatPage() {
   const showProfile = searchParams.get("showProfile")
   const isConversationMode = Boolean(conversationIdParam)
 
+  type EventGroupMember = {
+    id: string
+    user_id: string
+    username: string | null
+    pet_name: string | null
+    avatar_url: string | null
+    nickname: string | null
+    display_name: string | null
+    is_owner?: boolean
+    joined_at?: string | null
+  }
+
+  type EventGroupSettings = {
+    conversation_id: string
+    type: "event_group"
+    event_id?: string | null
+    group_name: string
+    event_title?: string | null
+    announcement: string
+    announcement_updated_at?: string | null
+    announcement_updated_by?: string | null
+    owner_id?: string | null
+    is_owner: boolean
+    member_count: number
+    remark: string
+    my_nickname: string
+    is_pinned?: boolean | number | null
+    is_muted?: boolean | number | null
+    members: EventGroupMember[]
+  }
+
+  type EventGroupSettingsResponse = {
+    success: true
+    data: EventGroupSettings
+  }
+
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [chatTab, setChatTab] = useState<"direct" | "group">("direct")
   const [targetUser, setTargetUser] = useState<TargetUser | null>(null)
@@ -434,6 +473,17 @@ export default function ChatPage() {
   const [profileLikeInitialized, setProfileLikeInitialized] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [eventGroupSettingsOpen, setEventGroupSettingsOpen] = useState(false)
+  const [eventGroupSettings, setEventGroupSettings] = useState<EventGroupSettings | null>(null)
+  const [loadingEventGroupSettings, setLoadingEventGroupSettings] = useState(false)
+  const [eventGroupSettingsError, setEventGroupSettingsError] = useState("")
+  const [eventGroupAnnouncementDraft, setEventGroupAnnouncementDraft] = useState("")
+  const [savingEventGroupAnnouncement, setSavingEventGroupAnnouncement] = useState(false)
+  const [editingRemark, setEditingRemark] = useState(false)
+  const [editingNickname, setEditingNickname] = useState(false)
+  const [remarkDraft, setRemarkDraft] = useState("")
+  const [nicknameDraft, setNicknameDraft] = useState("")
+  const [savingRemark, setSavingRemark] = useState(false)
+  const [savingNickname, setSavingNickname] = useState(false)
   const [background_key, setBackgroundKey] = useState<ChatBackgroundKey>("default")
   const [background_url, setBackgroundUrl] = useState("")
   const [is_muted, setIsMuted] = useState(false)
@@ -459,6 +509,19 @@ export default function ChatPage() {
   const autoProfileOpenedRef = useRef(false)
   const hasToken = Boolean(getAccessToken())
 
+  const eventGroupText = t.chat.eventGroupSettings as typeof t.chat.eventGroupSettings & {
+    inputPlaceholder: string
+    loadFailed: string
+    sendFailed: string
+    editRemark: string
+    remarkPlaceholder: string
+    editNickname: string
+    nicknamePlaceholder: string
+    save: string
+    saving: string
+    cancel: string
+  }
+
   const hasCustomBackground = Boolean(background_url)
 
   const activeConversationSummary = useMemo(
@@ -483,6 +546,19 @@ export default function ChatPage() {
 
     return null
   }, [activeConversationSummary, isConversationMode])
+
+  const eventGroupMemberCount = useMemo(() => {
+    const rawCount = Number(eventGroupSettings?.member_count ?? activeConversationMemberCount)
+    return Number.isFinite(rawCount) && rawCount > 0 ? Math.floor(rawCount) : 0
+  }, [activeConversationMemberCount, eventGroupSettings?.member_count])
+
+  const eventGroupDisplayName = useMemo(() => {
+    return (
+      eventGroupSettings?.group_name?.trim() ||
+      activeConversationSummary?.event_title?.trim() ||
+      t.chat.eventGroupSettings.defaultGroupName
+    )
+  }, [activeConversationSummary?.event_title, eventGroupSettings?.group_name, t.chat.eventGroupSettings.defaultGroupName])
 
   const chatBackgroundClass = useMemo(
       () => getChatBackgroundClass(background_key),
@@ -549,6 +625,10 @@ export default function ChatPage() {
     setMessages(safeMessages)
 
     return safeMessages as ChatMessage[]
+  }
+
+  const getEventGroupErrorMessage = (fallback: string) => {
+    return eventGroupText.loadFailed || fallback
   }
 
   const loadConversations = async () => {
@@ -663,6 +743,126 @@ export default function ChatPage() {
   const handlePinChange = (checked: boolean) => {
     setIsPinned(checked)
     saveChatSettings({ is_pinned: checked })
+  }
+
+  const loadEventGroupSettings = async (convId: string) => {
+    try {
+      setLoadingEventGroupSettings(true)
+      setEventGroupSettingsError("")
+
+      const data = await apiRequest<EventGroupSettingsResponse>(`/chat/group-settings?conversation_id=${encodeURIComponent(convId)}`, {
+        cache: "no-store",
+        auth: true,
+      })
+      const settings = data.data
+
+      setEventGroupSettings(settings)
+      setEventGroupAnnouncementDraft(settings.announcement || "")
+      setIsMuted(normalizeBoolean(settings.is_muted))
+      setIsPinned(normalizeBoolean(settings.is_pinned))
+
+      return settings
+    } catch (error) {
+      console.warn("Failed to load group settings:", error)
+      setEventGroupSettingsError(getEventGroupErrorMessage(t.chat.sendFailed))
+      throw error
+    } finally {
+      setLoadingEventGroupSettings(false)
+    }
+  }
+
+  const saveEventGroupSettings = async (next: Partial<{ remark: string; my_nickname: string; is_muted: boolean; is_pinned: boolean; announcement: string; group_name: string }>) => {
+    if (!conversationId) return null
+
+    const data = await apiRequest<EventGroupSettingsResponse>("/chat/group-settings", {
+      method: "PUT",
+      auth: true,
+      body: JSON.stringify({
+        conversation_id: conversationId,
+        ...next,
+      }),
+    })
+
+    setEventGroupSettings(data.data)
+    setEventGroupAnnouncementDraft(data.data.announcement || "")
+
+    if (Object.prototype.hasOwnProperty.call(next, "is_muted")) {
+      setIsMuted(normalizeBoolean(data.data.is_muted))
+    }
+
+    if (Object.prototype.hasOwnProperty.call(next, "is_pinned")) {
+      setIsPinned(normalizeBoolean(data.data.is_pinned))
+    }
+
+    return data.data
+  }
+
+  const handleEventGroupMuteChange = (checked: boolean) => {
+    setIsMuted(checked)
+    saveEventGroupSettings({ is_muted: checked }).catch((error) => {
+      console.warn("Failed to save group mute setting:", error)
+      setIsMuted(!checked)
+    })
+  }
+
+  const handleEventGroupPinChange = (checked: boolean) => {
+    setIsPinned(checked)
+    saveEventGroupSettings({ is_pinned: checked }).catch((error) => {
+      console.warn("Failed to save group pin setting:", error)
+      setIsPinned(!checked)
+    })
+  }
+
+  const handleSaveEventGroupAnnouncement = async () => {
+    if (!eventGroupSettings?.is_owner || savingEventGroupAnnouncement) return
+
+    try {
+      setSavingEventGroupAnnouncement(true)
+      setEventGroupSettingsError("")
+      await saveEventGroupSettings({ announcement: eventGroupAnnouncementDraft })
+    } catch (error) {
+      setEventGroupSettingsError(error instanceof Error ? error.message : "Failed to save announcement")
+    } finally {
+      setSavingEventGroupAnnouncement(false)
+    }
+  }
+
+  const handleOpenEditRemark = () => {
+    setRemarkDraft(eventGroupSettings?.remark || "")
+    setEditingRemark(true)
+  }
+
+  const handleSaveRemark = async () => {
+    if (!conversationId || savingRemark) return
+
+    try {
+      setSavingRemark(true)
+      await saveEventGroupSettings({ remark: remarkDraft })
+      setEditingRemark(false)
+    } catch (error) {
+      console.warn("Failed to save remark:", error)
+    } finally {
+      setSavingRemark(false)
+    }
+  }
+
+  const handleOpenEditNickname = () => {
+    setNicknameDraft(eventGroupSettings?.my_nickname || "")
+    setEditingNickname(true)
+  }
+
+  const handleSaveNickname = async () => {
+    if (!conversationId || savingNickname) return
+
+    try {
+      setSavingNickname(true)
+      await saveEventGroupSettings({ my_nickname: nicknameDraft })
+      setEditingNickname(false)
+    } catch (error) {
+      console.warn("Failed to save nickname:", error)
+    } finally {
+      setSavingNickname(false)
+    }
   }
 
   const handleBackgroundChange = (nextBackgroundKey: ChatBackgroundKey) => {
@@ -783,7 +983,10 @@ export default function ChatPage() {
         setChatMatched(false)
         setProfileOpen(false)
         setSettingsOpen(false)
-        setEventGroupSettingsOpen(false)
+          setEventGroupSettingsOpen(false)
+          setEventGroupSettings(null)
+          setEventGroupSettingsError("")
+          setEventGroupAnnouncementDraft("")
         setBackgroundKey("default")
         setBackgroundUrl("")
         setBackgroundUploadError("")
@@ -807,7 +1010,9 @@ export default function ChatPage() {
           setConversationId(safeConversationId)
           setTargetUser(null)
 
-          await loadChatSettings(safeConversationId)
+          setIntroLocked(false)
+          setInlineNotice(false)
+          await loadEventGroupSettings(safeConversationId).catch(() => null)
           await loadMessages(safeConversationId)
           await loadConversations()
           return
@@ -886,7 +1091,9 @@ export default function ChatPage() {
         }
 
         setPageError(
-            error instanceof Error ? error.message : "Failed to initialize chat"
+          conversationIdParam
+            ? getEventGroupErrorMessage(t.chat.sendFailed)
+            : error instanceof Error ? error.message : "Failed to initialize chat"
         )
       } finally {
         if (!cancelled) {
@@ -923,6 +1130,14 @@ export default function ChatPage() {
       setBackgroundUploadError("")
       setIsMuted(false)
       setIsPinned(false)
+      setEventGroupSettings(null)
+      setEventGroupSettingsError("")
+      setEventGroupAnnouncementDraft("")
+      return
+    }
+
+    if (isConversationMode) {
+      loadEventGroupSettings(conversationId).catch(() => {})
       return
     }
 
@@ -968,6 +1183,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!conversationId) return
+    if (isConversationMode) return
 
     const timer = setInterval(async () => {
       try {
@@ -986,7 +1202,7 @@ export default function ChatPage() {
     }, 2000)
 
     return () => clearInterval(timer)
-  }, [conversationId, user?.id, introLocked, chatMatched])
+  }, [conversationId, isConversationMode, user?.id, introLocked, chatMatched])
 
   useEffect(() => {
     if (isConversationMode) return
@@ -1056,13 +1272,24 @@ export default function ChatPage() {
 
   // 监听从其他页面（如探索页取消参加活动）发来的刷新聊天列表事件
   useEffect(() => {
-    const handleEventLeft = () => {
+    const handleEventLeft = (e: Event) => {
+      const detail = (e as CustomEvent<{ eventId?: string }>).detail
+      // 如果当前正在查看该活动的群聊，退出到聊天列表
+      if (
+        detail?.eventId &&
+        conversationIdParam &&
+        activeConversationSummary?.event_id &&
+        (activeConversationSummary.event_id === detail.eventId ||
+         activeConversationSummary.event_id === detail.eventId.replace(/-/g, ""))
+      ) {
+        router.push("/chat")
+      }
       loadConversations().catch(() => {})
     }
 
     window.addEventListener("wepet:event-left", handleEventLeft)
     return () => window.removeEventListener("wepet:event-left", handleEventLeft)
-  }, [])
+  }, [conversationIdParam, activeConversationSummary?.event_id])
 
   const handleMessageLike = async () => {
     if (!targetUserId || chatLikeLoading || chatLiked) return
@@ -1197,7 +1424,7 @@ export default function ChatPage() {
   }
 
   const handleSend = async () => {
-    if (!conversationId || !inputText.trim() || sending || introLocked) return
+    if (!conversationId || !inputText.trim() || sending || (!isConversationMode && introLocked)) return
 
     try {
       setSending(true)
@@ -1236,11 +1463,8 @@ export default function ChatPage() {
       }
     } catch (error: unknown) {
       if (isConversationMode) {
-        if (error instanceof Error) {
-          setPageError(error.message)
-        } else {
-          setPageError(t.chat.sendFailed)
-        }
+        console.warn("Failed to send event group message:", error)
+        setPageError(eventGroupText.sendFailed)
         return
       }
 
@@ -1271,7 +1495,7 @@ export default function ChatPage() {
   }
 
   const handlePickImage = () => {
-    if (!conversationId || introLocked || sending || uploadingImage) return
+    if (!conversationId || (!isConversationMode && introLocked) || sending || uploadingImage) return
     if (!targetUserId && !isConversationMode) return
     imageInputRef.current?.click()
   }
@@ -1280,7 +1504,7 @@ export default function ChatPage() {
     const file = event.target.files?.[0]
     event.target.value = ""
 
-    if (!file || !conversationId || sending || uploadingImage || introLocked) return
+    if (!file || !conversationId || sending || uploadingImage || (!isConversationMode && introLocked)) return
 
     try {
       setUploadingImage(true)
@@ -1329,11 +1553,8 @@ export default function ChatPage() {
       }
     } catch (error: unknown) {
       if (isConversationMode) {
-        if (error instanceof Error) {
-          setPageError(error.message)
-        } else {
-          setPageError(t.chat.sendFailed)
-        }
+        console.warn("Failed to send event group image:", error)
+        setPageError(eventGroupText.sendFailed)
         return
       }
 
@@ -1589,12 +1810,19 @@ export default function ChatPage() {
   }, [chatTab, conversations])
 
   const friendDrawerText = FRIEND_DRAWER_LABELS[locale]
+  const eventGroupSettingsText = eventGroupText
+  const eventGroupPublishAnnouncementText =
+    (eventGroupSettingsText as typeof eventGroupSettingsText & { publishAnnouncement?: string }).publishAnnouncement ||
+    "发布公告"
+  const eventGroupLeaveNoticeText =
+    (eventGroupSettingsText as typeof eventGroupSettingsText & { leaveNotice?: string }).leaveNotice ||
+    eventGroupSettingsText.staticNotice
   const trimmedFriendSearchQuery = friendSearchQuery.trim()
   const isSearchingUsers = Boolean(trimmedFriendSearchQuery)
 
-  // 搜索时只显示 searchResults，不合并 mutualFriends
-  // 渲染前再兜底过滤一次：只显示 username 或 pet_name 包含 keyword 的结果
-  const displayedFriends = isSearchingUsers
+  // 强制逻辑：搜索时只显示按 username/pet_name 过滤后的 searchResults
+  // 绝不合并 mutualFriends
+  const safeFilteredSearchResults = isSearchingUsers
     ? searchResults.filter((result) => {
         const kw = trimmedFriendSearchQuery.toLowerCase()
         return (
@@ -1602,7 +1830,7 @@ export default function ChatPage() {
           String(result.pet_name || "").toLowerCase().includes(kw)
         )
       })
-    : mutualFriends
+    : []
 
   return (
       <div
@@ -1708,7 +1936,7 @@ export default function ChatPage() {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  aria-label="群设置"
+                  aria-label={eventGroupSettingsText.ariaLabel}
                   className="h-11 w-11 rounded-full bg-white text-stone-700 shadow-lg shadow-orange-900/10 hover:bg-orange-50"
                   onClick={() => setEventGroupSettingsOpen(true)}
               >
@@ -1800,38 +2028,86 @@ export default function ChatPage() {
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-              {isSearchingUsers && searching ? (
-                <div className="flex h-full min-h-48 items-center justify-center rounded-3xl border border-dashed border-orange-200 bg-orange-50/50 px-4 text-center text-sm font-semibold text-stone-500">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin text-orange-500" />
-                  {friendDrawerText.searching}
+              {isSearchingUsers ? (
+                // ===== 搜索模式：只显示 searchResults，绝不显示 mutualFriends =====
+                searching ? (
+                  <div className="flex h-full min-h-48 items-center justify-center rounded-3xl border border-dashed border-orange-200 bg-orange-50/50 px-4 text-center text-sm font-semibold text-stone-500">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin text-orange-500" />
+                    {friendDrawerText.searching}
+                  </div>
+                ) : searchError ? (
+                  <div className="flex h-full min-h-48 items-center justify-center rounded-3xl border border-red-200 bg-red-50 px-4 text-center text-sm font-semibold text-red-600">
+                    {searchError}
+                  </div>
+                ) : safeFilteredSearchResults.length === 0 ? (
+                  <div className="flex h-full min-h-48 items-center justify-center rounded-3xl border border-dashed border-orange-200 bg-orange-50/50 px-4 text-center text-sm font-semibold text-stone-500">
+                    {friendDrawerText.noSearchResults}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {safeFilteredSearchResults.map((friend) => {
+                    const friendName = friend.pet_name || friend.username || "Friend"
+                    const friendPetType = friend.pet_breed || (friend as Record<string, unknown>).pet_type
+                    const friendMeta = [
+                      typeof friendPetType === "string" ? friendPetType : null,
+                      friend.pet_age !== null && friend.pet_age !== undefined ? String(friend.pet_age) : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" / ")
+
+                    return (
+                      <button
+                        type="button"
+                        key={friend.id}
+                        onClick={() => handleOpenFriendChat(friend.id)}
+                        className="flex w-full items-center gap-3 rounded-[1.35rem] border border-orange-100 bg-white px-4 py-3 text-left shadow-sm shadow-orange-900/5 transition hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-md active:translate-y-0 active:scale-[0.985]"
+                      >
+                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl border border-white bg-gradient-to-br from-orange-100 to-amber-100 shadow-sm">
+                          {friend.avatar_url ? (
+                            <img
+                              src={friend.avatar_url || "/placeholder.svg"}
+                              alt={friendName}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-base font-black text-orange-600">
+                              {friendName.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-extrabold text-stone-900">
+                            {friendName}
+                          </div>
+                          <div className="mt-1 truncate text-xs font-semibold text-stone-500">
+                            {friendMeta || "-"}
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
-              ) : isSearchingUsers && searchError ? (
-                <div className="flex h-full min-h-48 items-center justify-center rounded-3xl border border-red-200 bg-red-50 px-4 text-center text-sm font-semibold text-red-600">
-                  {searchError}
-                </div>
-              ) : !isSearchingUsers && friendsLoading ? (
+              )
+            ) : (
+              // ===== 非搜索模式：显示 mutualFriends =====
+              friendsLoading ? (
                 <div className="flex h-full min-h-48 items-center justify-center rounded-3xl border border-dashed border-orange-200 bg-orange-50/50 px-4 text-center text-sm font-semibold text-stone-500">
                   <Loader2 className="mr-2 h-4 w-4 animate-spin text-orange-500" />
                   {t.chat.loadingHistory}
                 </div>
-              ) : !isSearchingUsers && friendsError ? (
+              ) : friendsError ? (
                 <div className="flex h-full min-h-48 items-center justify-center rounded-3xl border border-red-200 bg-red-50 px-4 text-center text-sm font-semibold text-red-600">
                   {friendsError}
                 </div>
-              ) : !isSearchingUsers && mutualFriends.length === 0 ? (
+              ) : mutualFriends.length === 0 ? (
                 <div className="flex h-full min-h-48 items-center justify-center rounded-3xl border border-dashed border-orange-200 bg-orange-50/50 px-4 text-center text-sm font-semibold text-stone-500">
                   {friendDrawerText.empty}
                 </div>
-              ) : displayedFriends.length === 0 ? (
-                <div className="flex h-full min-h-48 items-center justify-center rounded-3xl border border-dashed border-orange-200 bg-orange-50/50 px-4 text-center text-sm font-semibold text-stone-500">
-                  {friendDrawerText.noSearchResults}
-                </div>
               ) : (
                 <div className="space-y-3">
-                  {displayedFriends.map((friend) => {
+                  {mutualFriends.map((friend) => {
                     const friendName = friend.pet_name || friend.username || "Friend"
-                    const friendPetType = "pet_type" in friend ? friend.pet_type : friend.pet_breed
-                    const friendFallbackMeta = "email" in friend ? friend.email : friend.location
+                    const friendPetType = friend.pet_type
                     const friendMeta = [
                       friendPetType,
                       friend.pet_age !== null && friend.pet_age !== undefined ? String(friend.pet_age) : null,
@@ -1864,14 +2140,15 @@ export default function ChatPage() {
                             {friendName}
                           </div>
                           <div className="mt-1 truncate text-xs font-semibold text-stone-500">
-                            {friendMeta || friendFallbackMeta || "-"}
+                            {friendMeta || friend.email || "-"}
                           </div>
                         </div>
                       </button>
                     )
                   })}
                 </div>
-              )}
+              )
+            )}
             </div>
           </div>
         </div>
@@ -1975,38 +2252,49 @@ export default function ChatPage() {
           <SheetContent side="right" className="w-[88%] overflow-y-auto border-l border-orange-100 bg-[#f7f5f2] p-0 sm:max-w-sm">
             <SheetHeader className="sticky top-0 z-10 border-b border-orange-100 bg-white/95 px-5 py-4 text-left backdrop-blur-xl">
               <SheetTitle className="text-base font-extrabold tracking-tight text-stone-900">
-                群设置
+                {eventGroupSettingsText.title}
               </SheetTitle>
             </SheetHeader>
 
             <div className="space-y-3 px-5 py-5">
+              {loadingEventGroupSettings ? (
+                <div className="flex items-center justify-center rounded-[1.6rem] border border-dashed border-orange-200 bg-white px-4 py-8 text-sm font-semibold text-stone-500 shadow-sm shadow-orange-900/5">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin text-orange-500" />
+                  {t.chat.loadingHistory}
+                </div>
+              ) : null}
+
+              {eventGroupSettingsError ? (
+                <div className="rounded-[1.2rem] border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
+                  {eventGroupSettingsError}
+                </div>
+              ) : null}
+
               <button
                 type="button"
                 className="flex w-full items-center gap-3 rounded-2xl border border-orange-100 bg-white px-4 py-3 text-left shadow-sm shadow-orange-900/5"
               >
                 <Search className="h-5 w-5 shrink-0 text-orange-500" />
-                <span className="text-sm font-semibold text-stone-800">搜索群成员</span>
+                <span className="text-sm font-semibold text-stone-800">{eventGroupSettingsText.searchMembers}</span>
               </button>
 
               <section className="rounded-[1.6rem] border border-orange-100 bg-white p-4 shadow-sm shadow-orange-900/5">
                 <div className="mb-4 flex items-center justify-between">
-                  <h3 className="text-sm font-extrabold text-stone-900">群成员</h3>
+                  <h3 className="text-sm font-extrabold text-stone-900">{eventGroupSettingsText.members}</h3>
                   <span className="text-xs font-semibold text-stone-400">
-                    {activeConversationMemberCount ?? 0} 人
+                    {eventGroupMemberCount} {eventGroupSettingsText.peopleSuffix}
                   </span>
                 </div>
                 <div className="grid grid-cols-5 gap-3">
                   {[
-                    {
-                      label: user?.pet_name || user?.username || "我",
-                      avatar: user?.avatar_url || "",
-                    },
-                    { label: "成员", avatar: "" },
-                    { label: "成员", avatar: "" },
-                    { label: "成员", avatar: "" },
-                    { label: "+", avatar: "" },
-                  ].map((member, index) => (
-                    <div key={`${member.label}-${index}`} className="min-w-0 text-center">
+                    ...(eventGroupSettings?.members || []).slice(0, 9).map((member) => ({
+                      key: member.id || member.user_id,
+                      label: member.display_name || member.nickname || member.pet_name || member.username || eventGroupSettingsText.member,
+                      avatar: member.avatar_url || "",
+                    })),
+                    { key: "invite-placeholder", label: "+", avatar: "" },
+                  ].map((member) => (
+                    <div key={member.key} className="min-w-0 text-center">
                       <div className="mx-auto flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-100 to-amber-50 text-sm font-black text-orange-600 shadow-sm">
                         {member.avatar ? (
                           <img
@@ -2019,7 +2307,7 @@ export default function ChatPage() {
                         )}
                       </div>
                       <div className="mt-1 truncate text-[11px] font-semibold text-stone-500">
-                        {member.label === "+" ? "邀请" : member.label}
+                        {member.label === "+" ? eventGroupSettingsText.invite : member.label}
                       </div>
                     </div>
                   ))}
@@ -2027,41 +2315,173 @@ export default function ChatPage() {
               </section>
 
               <section className="overflow-hidden rounded-[1.6rem] border border-orange-100 bg-white shadow-sm shadow-orange-900/5">
-                {[
-                  { label: "群聊名称", value: activeConversationSummary?.event_title?.trim() || "活动群聊" },
-                  { label: "群公告", value: "暂无群公告" },
-                  { label: "备注", value: "未设置" },
-                  { label: "我在本群的昵称", value: user?.pet_name || user?.username || "我" },
-                ].map((item, index, list) => (
-                  <div
-                    key={item.label}
-                    className={`flex items-center justify-between gap-4 px-4 py-3.5 ${
-                      index < list.length - 1 ? "border-b border-stone-100" : ""
-                    }`}
-                  >
-                    <span className="shrink-0 text-sm font-semibold text-stone-800">{item.label}</span>
-                    <span className="min-w-0 truncate text-right text-sm font-medium text-stone-400">
-                      {item.value}
-                    </span>
-                  </div>
-                ))}
-              </section>
-
-              <section className="overflow-hidden rounded-[1.6rem] border border-orange-100 bg-white shadow-sm shadow-orange-900/5">
+                <div className="flex items-center justify-between gap-4 border-b border-stone-100 px-4 py-3.5">
+                  <span className="shrink-0 text-sm font-semibold text-stone-800">{eventGroupSettingsText.groupName}</span>
+                  <span className="min-w-0 truncate text-right text-sm font-medium text-stone-400">
+                    {eventGroupDisplayName}
+                  </span>
+                </div>
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left"
+                  onClick={handleOpenEditRemark}
+                  className="flex w-full items-center justify-between gap-4 border-b border-stone-100 px-4 py-3.5 text-left transition hover:bg-orange-50/50"
                 >
-                  <span className="text-sm font-semibold text-stone-800">查找聊天内容</span>
-                  <Search className="h-4 w-4 shrink-0 text-stone-300" />
+                  <span className="shrink-0 text-sm font-semibold text-stone-800">{eventGroupSettingsText.remark}</span>
+                  <span className="min-w-0 truncate text-right text-sm font-medium text-stone-400">
+                    {eventGroupSettings?.remark?.trim() || eventGroupSettingsText.notSet}
+                  </span>
                 </button>
-                <div className="flex items-center justify-between gap-4 border-t border-stone-100 px-4 py-3.5">
-                  <span className="text-sm font-semibold text-stone-800">消息免打扰</span>
-                  <Switch checked={false} disabled />
+                <button
+                  type="button"
+                  onClick={handleOpenEditNickname}
+                  className="flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left transition hover:bg-orange-50/50"
+                >
+                  <span className="shrink-0 text-sm font-semibold text-stone-800">{eventGroupSettingsText.myNickname}</span>
+                  <span className="min-w-0 truncate text-right text-sm font-medium text-stone-400">
+                    {eventGroupSettings?.my_nickname?.trim() || user?.pet_name || user?.username || eventGroupSettingsText.currentUser}
+                  </span>
+                </button>
+              </section>
+
+              <section className="rounded-[1.6rem] border border-orange-100 bg-white p-4 shadow-sm shadow-orange-900/5">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-extrabold text-stone-900">{eventGroupSettingsText.announcement}</h3>
+                  {eventGroupSettings?.is_owner ? (
+                    <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[11px] font-bold text-orange-600">
+                      Owner
+                    </span>
+                  ) : null}
+                </div>
+                {eventGroupSettings?.is_owner ? (
+                  <>
+                    <textarea
+                      value={eventGroupAnnouncementDraft}
+                      onChange={(event) => setEventGroupAnnouncementDraft(event.target.value)}
+                      rows={4}
+                      maxLength={1000}
+                      placeholder={eventGroupSettingsText.noAnnouncement}
+                      className="w-full resize-none rounded-2xl border border-orange-100 bg-orange-50/40 px-4 py-3 text-sm font-medium leading-6 text-stone-700 outline-none placeholder:text-stone-400 focus:border-orange-200 focus:bg-white"
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleSaveEventGroupAnnouncement}
+                      disabled={savingEventGroupAnnouncement}
+                      className="mt-3 h-10 w-full rounded-2xl bg-gradient-to-r from-orange-500 to-amber-400 text-sm font-extrabold text-white shadow-lg shadow-orange-500/20 hover:from-orange-600 hover:to-amber-500"
+                    >
+                      {savingEventGroupAnnouncement ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          {t.chat.deleting}
+                        </>
+                      ) : (
+                        eventGroupPublishAnnouncementText
+                      )}
+                    </Button>
+                  </>
+                ) : (
+                  <p className="min-h-16 whitespace-pre-wrap rounded-2xl bg-orange-50/45 px-4 py-3 text-sm font-medium leading-6 text-stone-600">
+                    {eventGroupSettings?.announcement?.trim() || eventGroupSettingsText.noAnnouncement}
+                  </p>
+                )}
+              </section>
+
+              {/* Remark Edit Dialog */}
+              <Dialog open={editingRemark} onOpenChange={setEditingRemark}>
+                <DialogContent className="w-[88%] max-w-sm rounded-3xl border border-orange-100 p-0 sm:max-w-sm">
+                  <DialogTitle className="sr-only">{eventGroupSettingsText.editRemark}</DialogTitle>
+                  <div className="px-5 py-5">
+                    <div className="mb-5 text-base font-extrabold tracking-tight text-stone-900">
+                      {eventGroupSettingsText.editRemark}
+                    </div>
+                    <textarea
+                      value={remarkDraft}
+                      onChange={(event) => setRemarkDraft(event.target.value)}
+                      rows={3}
+                      maxLength={120}
+                      placeholder={eventGroupSettingsText.remarkPlaceholder}
+                      className="w-full resize-none rounded-2xl border border-orange-100 bg-orange-50/40 px-4 py-3 text-sm font-medium leading-6 text-stone-700 outline-none placeholder:text-stone-400 focus:border-orange-200 focus:bg-white"
+                    />
+                    <div className="mt-4 flex items-center gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setEditingRemark(false)}
+                        className="h-10 flex-1 rounded-2xl border-orange-200 text-sm font-semibold text-stone-700 hover:bg-orange-50"
+                      >
+                        {eventGroupSettingsText.cancel}
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleSaveRemark}
+                        disabled={savingRemark}
+                        className="h-10 flex-1 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-400 text-sm font-extrabold text-white shadow-lg shadow-orange-500/20 hover:from-orange-600 hover:to-amber-500"
+                      >
+                        {savingRemark ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            {eventGroupSettingsText.saving}
+                          </>
+                        ) : (
+                          eventGroupSettingsText.save
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              {/* Nickname Edit Dialog */}
+              <Dialog open={editingNickname} onOpenChange={setEditingNickname}>
+                <DialogContent className="w-[88%] max-w-sm rounded-3xl border border-orange-100 p-0 sm:max-w-sm">
+                  <DialogTitle className="sr-only">{eventGroupSettingsText.editNickname}</DialogTitle>
+                  <div className="px-5 py-5">
+                    <div className="mb-5 text-base font-extrabold tracking-tight text-stone-900">
+                      {eventGroupSettingsText.editNickname}
+                    </div>
+                    <input
+                      value={nicknameDraft}
+                      onChange={(event) => setNicknameDraft(event.target.value)}
+                      maxLength={60}
+                      placeholder={eventGroupSettingsText.nicknamePlaceholder}
+                      className="w-full rounded-2xl border border-orange-100 bg-orange-50/40 px-4 py-3 text-sm font-medium text-stone-700 outline-none placeholder:text-stone-400 focus:border-orange-200 focus:bg-white"
+                    />
+                    <div className="mt-4 flex items-center gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setEditingNickname(false)}
+                        className="h-10 flex-1 rounded-2xl border-orange-200 text-sm font-semibold text-stone-700 hover:bg-orange-50"
+                      >
+                        {eventGroupSettingsText.cancel}
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleSaveNickname}
+                        disabled={savingNickname}
+                        className="h-10 flex-1 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-400 text-sm font-extrabold text-white shadow-lg shadow-orange-500/20 hover:from-orange-600 hover:to-amber-500"
+                      >
+                        {savingNickname ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            {eventGroupSettingsText.saving}
+                          </>
+                        ) : (
+                          eventGroupSettingsText.save
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <section className="overflow-hidden rounded-[1.6rem] border border-orange-100 bg-white shadow-sm shadow-orange-900/5">
+                <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+                  <span className="text-sm font-semibold text-stone-800">{eventGroupSettingsText.mute}</span>
+                  <Switch checked={is_muted} onCheckedChange={handleEventGroupMuteChange} />
                 </div>
                 <div className="flex items-center justify-between gap-4 border-t border-stone-100 px-4 py-3.5">
-                  <span className="text-sm font-semibold text-stone-800">置顶聊天</span>
-                  <Switch checked={false} disabled />
+                  <span className="text-sm font-semibold text-stone-800">{eventGroupSettingsText.pin}</span>
+                  <Switch checked={is_pinned} onCheckedChange={handleEventGroupPinChange} />
                 </div>
               </section>
 
@@ -2070,11 +2490,11 @@ export default function ChatPage() {
                 disabled
                 className="w-full rounded-[1.6rem] border border-red-100 bg-white px-4 py-3.5 text-center text-sm font-extrabold text-red-500 shadow-sm shadow-orange-900/5 disabled:opacity-70"
               >
-                退出群聊
+                {eventGroupSettingsText.leave}
               </button>
 
               <p className="px-2 text-center text-xs font-medium leading-5 text-stone-400">
-                当前为静态群设置界面，暂未连接真实接口。
+                {eventGroupLeaveNoticeText}
               </p>
             </div>
           </SheetContent>
@@ -2396,6 +2816,7 @@ export default function ChatPage() {
                     const showLikeButton =
                         !isDeleted &&
                         !isMe &&
+                        !isConversationMode &&
                         !chatMatched &&
                         (introLocked || inlineNotice === "LIKE_REQUIRED")
 
@@ -2422,21 +2843,28 @@ export default function ChatPage() {
                                     }}
                                     className="h-9 w-9 shrink-0 overflow-hidden rounded-2xl border border-white bg-orange-100 shadow-sm"
                                 >
-                                  {isConversationMode ? (
-                                      <div className="flex h-full w-full items-center justify-center text-orange-600">
-                                        <MessageCircle className="h-4 w-4" />
-                                      </div>
-                                  ) : targetUser?.avatar_url ? (
-                                      <img
-                                          src={targetUser.avatar_url || "/placeholder.svg"}
-                                          alt={headerName}
-                                          className="h-full w-full object-cover"
-                                      />
-                                  ) : (
-                                      <div className="flex h-full w-full items-center justify-center text-sm font-black text-orange-600">
-                                        {headerName.charAt(0).toUpperCase()}
-                                      </div>
-                                  )}
+                                  {(() => {
+                                    // For group chat: use sender_avatar_url from message data
+                                    // For direct chat: use targetUser.avatar_url
+                                    const avatarUrl = isConversationMode
+                                      ? msg.sender_avatar_url
+                                      : targetUser?.avatar_url
+                                    const altName = isConversationMode
+                                      ? (msg.sender_pet_name || msg.sender_username || "User")
+                                      : headerName
+
+                                    return avatarUrl ? (
+                                        <img
+                                            src={avatarUrl || "/placeholder.svg"}
+                                            alt={altName}
+                                            className="h-full w-full object-cover"
+                                        />
+                                    ) : (
+                                        <div className="flex h-full w-full items-center justify-center text-sm font-black text-orange-600">
+                                          {altName.charAt(0).toUpperCase()}
+                                        </div>
+                                    )
+                                  })()}
                                 </button>
                             ) : null}
                             {isDeleted ? (
@@ -2556,7 +2984,9 @@ export default function ChatPage() {
           <div className="mx-auto max-w-2xl">
             {inlineNotice ? (
                 <div className="mb-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700">
-                  {inlineNotice === true
+                  {isConversationMode
+                      ? inlineNotice
+                      : inlineNotice === true
                       ? t.chat.notMatchedNotice
                       : inlineNotice === "LIKE_REQUIRED"
                           ? t.chat.waitForLike
@@ -2580,7 +3010,7 @@ export default function ChatPage() {
                   size="icon"
                   variant="ghost"
                   onClick={handlePickImage}
-                  disabled={(!targetUserId && !isConversationMode) || !conversationId || introLocked || sending || uploadingImage}
+                  disabled={(!targetUserId && !isConversationMode) || !conversationId || (!isConversationMode && introLocked) || sending || uploadingImage}
                   className="h-10 w-10 shrink-0 rounded-full text-stone-600 hover:bg-orange-100/70 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ImagePlus className="h-5 w-5" />
@@ -2596,13 +3026,15 @@ export default function ChatPage() {
                     }
                   }}
                   placeholder={
-                    !targetUserId && !isConversationMode
+                    isConversationMode
+                        ? eventGroupSettingsText.inputPlaceholder
+                        : !targetUserId
                         ? t.chat.selectConversationFirst
                         : introLocked
                             ? t.chat.waitForLike
                             : t.chat.typeMessage
                   }
-                  disabled={(!targetUserId && !isConversationMode) || introLocked}
+                  disabled={(!targetUserId && !isConversationMode) || (!isConversationMode && introLocked)}
                   className="h-10 border-0 bg-transparent px-1 py-0 text-[15px] shadow-none placeholder:text-stone-400 focus-visible:ring-0"
               />
 
@@ -2615,7 +3047,7 @@ export default function ChatPage() {
                       !conversationId ||
                       sending ||
                       uploadingImage ||
-                      introLocked
+                      (!isConversationMode && introLocked)
                   }
                   className="h-10 w-10 shrink-0 rounded-full bg-gradient-to-br from-orange-500 to-amber-400 text-white shadow-lg shadow-orange-500/25 transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
               >
