@@ -569,6 +569,34 @@ export async function getConversationAccess(
     const likedMe = await hasLiked(otherUserId, currentUserId)
     const isMatch = likedByMe && likedMe
 
+    // Check contact_deletions: did I delete them, or did they delete me?
+    let iDeletedThem = false
+    let theyDeletedMe = false
+
+    const { data: myDeletion } = await supabase
+        .from("contact_deletions")
+        .select("id")
+        .eq("deleter_user_id", currentUserId)
+        .eq("deleted_user_id", otherUserId)
+        .maybeSingle()
+
+    if (myDeletion) {
+        iDeletedThem = true
+    }
+
+    const { data: theirDeletion } = await supabase
+        .from("contact_deletions")
+        .select("id")
+        .eq("deleter_user_id", otherUserId)
+        .eq("deleted_user_id", currentUserId)
+        .maybeSingle()
+
+    if (theirDeletion) {
+        theyDeletedMe = true
+    }
+
+    const contactDeleted = iDeletedThem || theyDeletedMe
+
     const { count, error: countError } = await supabase
         .from("messages")
         .select("*", { count: "exact", head: true })
@@ -585,7 +613,8 @@ export async function getConversationAccess(
     const canSendUnlimited = isMatch
     const canSendOneIntroMessage =
         likedByMe && !isMatch && !singleMessageUsedByMe
-    const canSendMessage = canSendUnlimited || canSendOneIntroMessage
+    const canSendMessage =
+        !contactDeleted && (canSendUnlimited || canSendOneIntroMessage)
 
     return {
         conversation_id: conversationId,
@@ -598,5 +627,8 @@ export async function getConversationAccess(
         can_send_unlimited: canSendUnlimited,
         can_send_one_intro_message: canSendOneIntroMessage,
         can_send_message: canSendMessage,
+        contact_deleted: contactDeleted,
+        i_deleted_them: iDeletedThem,
+        they_deleted_me: theyDeletedMe,
     }
 }

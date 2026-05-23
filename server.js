@@ -1221,6 +1221,34 @@ async function getConversationAccess(conversationId, currentUserId) {
   const likedMe = await hasLiked(otherUserId, currentUserId)
   const isMatch = likedByMe && likedMe
 
+  // Check contact_deletions: did I delete them, or did they delete me?
+  let iDeletedThem = false
+  let theyDeletedMe = false
+
+  const { data: myDeletion } = await supabase
+    .from("contact_deletions")
+    .select("id")
+    .eq("deleter_user_id", currentUserId)
+    .eq("deleted_user_id", otherUserId)
+    .maybeSingle()
+
+  if (myDeletion) {
+    iDeletedThem = true
+  }
+
+  const { data: theirDeletion } = await supabase
+    .from("contact_deletions")
+    .select("id")
+    .eq("deleter_user_id", otherUserId)
+    .eq("deleted_user_id", currentUserId)
+    .maybeSingle()
+
+  if (theirDeletion) {
+    theyDeletedMe = true
+  }
+
+  const contactDeleted = iDeletedThem || theyDeletedMe
+
   const { count, error } = await supabase
     .from("messages")
     .select("*", { count: "exact", head: true })
@@ -1235,7 +1263,7 @@ async function getConversationAccess(conversationId, currentUserId) {
   const singleMessageUsedByMe = sentCount >= 1
   const canSendUnlimited = isMatch
   const canSendOneIntroMessage = likedByMe && !isMatch && !singleMessageUsedByMe
-  const canSendMessage = canSendUnlimited || canSendOneIntroMessage
+  const canSendMessage = !contactDeleted && (canSendUnlimited || canSendOneIntroMessage)
 
   return {
     conversation_id: conversationId,
@@ -1248,6 +1276,9 @@ async function getConversationAccess(conversationId, currentUserId) {
     can_send_unlimited: canSendUnlimited,
     can_send_one_intro_message: canSendOneIntroMessage,
     can_send_message: canSendMessage,
+    contact_deleted: contactDeleted,
+    i_deleted_them: iDeletedThem,
+    they_deleted_me: theyDeletedMe,
   }
 }
 
@@ -5704,6 +5735,15 @@ app.post("/chat/messages", authMiddleware, async (req, res) => {
         })
       }
 
+      if (access.contact_deleted) {
+        return res.status(403).json({
+          success: false,
+          error: "CONTACT_DELETED",
+          code: "CONTACT_DELETED",
+          message: "对方已删除你，无法继续聊天",
+        })
+      }
+
       if (!access.liked_by_me) {
         return res.status(403).json({
           success: false,
@@ -5923,6 +5963,15 @@ app.post("/chat/send", authMiddleware, async (req, res) => {
         return res.status(404).json({
           success: false,
           error: "Conversation access not found",
+        })
+      }
+
+      if (access.contact_deleted) {
+        return res.status(403).json({
+          success: false,
+          error: "CONTACT_DELETED",
+          code: "CONTACT_DELETED",
+          message: "对方已删除你，无法继续聊天",
         })
       }
 

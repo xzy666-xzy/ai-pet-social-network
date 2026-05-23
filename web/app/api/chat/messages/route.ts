@@ -90,6 +90,16 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    if (access.contact_deleted) {
+      return NextResponse.json(
+          {
+            error: "对方已删除你，无法继续聊天",
+            code: "CONTACT_DELETED",
+          },
+          { status: 403 }
+      )
+    }
+
     if (!access.liked_by_me) {
       return NextResponse.json(
           {
