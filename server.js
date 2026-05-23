@@ -1515,7 +1515,7 @@ function getPersonalityCompatibility(currentUser, candidate) {
   const candidateTags = extractTags(candidate)
 
   if (currentTags.length === 0 && candidateTags.length === 0) {
-    return 70
+    return 55
   }
 
   const currentTagSet = new Set(currentTags)
@@ -1548,26 +1548,26 @@ function getPersonalityCompatibility(currentUser, candidate) {
   return Math.max(30, Math.min(100, score))
 }
 
-function getDistanceScore(candidate) {
-  const distanceKm = Number(candidate?.distance_km)
+function getDistanceScore(distanceKm) {
+  const km = Number(distanceKm)
 
-  if (!Number.isFinite(distanceKm)) {
+  if (!Number.isFinite(km)) {
     return 60
   }
 
-  if (distanceKm < 1) {
+  if (km < 1) {
     return 100
   }
 
-  if (distanceKm < 5) {
+  if (km < 5) {
     return 85
   }
 
-  if (distanceKm < 20) {
+  if (km < 20) {
     return 60
   }
 
-  if (distanceKm < 100) {
+  if (km < 100) {
     return 30
   }
 
@@ -1593,7 +1593,7 @@ function getInterestCompatibility(currentUser, candidate) {
   const candidateInterests = extractInterestTags(candidate)
 
   if (currentInterests.length === 0 && candidateInterests.length === 0) {
-    return 70
+    return 55
   }
 
   const candidateInterestSet = new Set(candidateInterests)
@@ -1602,14 +1602,14 @@ function getInterestCompatibility(currentUser, candidate) {
   return Math.min(100, 50 + commonCount * 15)
 }
 
-function buildMatchScore(currentUser, candidate) {
+function buildMatchScore(currentUser, candidate, distanceKm) {
   const speciesA = normalizePetSpecies(currentUser.pet_type)
   const speciesB = normalizePetSpecies(candidate.pet_type)
 
   const speciesScore = getSpeciesCompatibility(speciesA, speciesB)
   const ageScore = getAgeCompatibility(speciesA, currentUser.pet_age, speciesB, candidate.pet_age)
   const personalityScore = getPersonalityCompatibility(currentUser, candidate)
-  const distanceScore = getDistanceScore(candidate)
+  const distanceScore = getDistanceScore(distanceKm)
   const interestScore = getInterestCompatibility(currentUser, candidate)
   const finalScore =
     speciesScore * 0.35 +
@@ -2284,7 +2284,7 @@ app.get("/match/recommend", authMiddleware, async (req, res) => {
         return {
           ...toSafeUser(candidate),
           membership_active: activeMembershipUserIds.has(String(candidate.id)),
-          matchScore: buildMatchScore(currentUser, candidate),
+          matchScore: buildMatchScore(currentUser, candidate, distanceKm),
           matchReasons: buildMatchReasons(currentUser, candidate),
           distance_km: distanceKm,
           distance_label: useSameCityLabel ? "same_city" : null,
