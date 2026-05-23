@@ -959,6 +959,65 @@ export default function ChatPage() {
     }
   }
 
+  const handleHideConversation = async (convId: string) => {
+    try {
+      await apiRequest<{ success: boolean }>(`/chat/conversations/${convId}/hide`, {
+        method: "PATCH",
+        auth: true,
+      })
+
+      // Remove the conversation from the list immediately
+      setConversations((prev) => prev.filter((item) => item.id !== convId))
+    } catch (error) {
+      console.warn("Failed to hide conversation:", error)
+    }
+  }
+
+  const handleDeleteChat = async () => {
+    if (!conversationId || deletingConversation) return
+
+    const confirmed = window.confirm(t.chat.settings.deleteConfirm)
+    if (!confirmed) return
+
+    try {
+      setDeletingConversation(true)
+
+      await apiRequest<{ success: boolean }>(`/chat/conversations/${conversationId}/hide`, {
+        method: "PATCH",
+        auth: true,
+      })
+
+      // Remove from list
+      setConversations((prev) => prev.filter((item) => item.id !== conversationId))
+
+      // Close settings and reset state
+      setSettingsOpen(false)
+      setProfileOpen(false)
+      setConversationId(null)
+      setTargetUser(null)
+      setMessages([])
+      setInputText("")
+      setInlineNotice(false)
+      setIntroLocked(false)
+      setChatLiked(false)
+      setChatMatched(false)
+      setBackgroundKey("default")
+      setBackgroundUrl("")
+      setBackgroundUploadError("")
+      setIsMuted(false)
+      setIsPinned(false)
+      setMessageMenu(null)
+      setDeletingMessageId(null)
+
+      router.push("/chat")
+      router.refresh()
+    } catch (error) {
+      console.warn("Failed to delete chat:", error)
+    } finally {
+      setDeletingConversation(false)
+    }
+  }
+
   const handleLeaveGroupChat = async () => {
     if (!conversationId || !eventGroupSettings) return
 
@@ -2349,6 +2408,16 @@ export default function ChatPage() {
               <Button
                   type="button"
                   variant="outline"
+                  onClick={handleDeleteChat}
+                  disabled={!conversationId || deletingConversation}
+                  className="h-11 w-full justify-start rounded-2xl border-red-200 text-sm font-semibold text-red-600 hover:bg-red-50 hover:text-red-700"
+              >
+                {deletingConversation ? t.chat.deleting : t.chat.settings.deleteChat}
+              </Button>
+
+              <Button
+                  type="button"
+                  variant="outline"
                   onClick={handleDeleteConversation}
                   disabled={!conversationId || deletingConversation}
                   className="h-11 w-full justify-start rounded-2xl border-red-200 text-sm font-semibold text-red-600 hover:bg-red-50 hover:text-red-700"
@@ -2737,8 +2806,9 @@ export default function ChatPage() {
                         const unreadBadgeText = unreadCount > 99 ? "99+" : String(unreadCount)
 
                         return (
+                          <div key={item.id} className="w-full max-w-full">
+                            <div className="relative z-10 w-full overflow-hidden rounded-[1.65rem]">
                           <button
-                              key={item.id}
                               onClick={async () => {
                                 if (item.type !== "event_group" && !item.other_user_id) return
                                 try {
@@ -2752,7 +2822,7 @@ export default function ChatPage() {
                                   router.push(`/chat?userId=${item.other_user_id}`)
                                 }
                               }}
-                              className={`w-full max-w-full overflow-hidden rounded-[1.65rem] border border-orange-100/70 px-4 py-3.5 text-left shadow-lg shadow-orange-900/5 ring-1 ring-white/70 transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-900/10 active:translate-y-0 active:scale-[0.985] ${
+                              className={`w-full rounded-[1.65rem] border border-orange-100/70 px-4 py-3.5 text-left shadow-lg shadow-orange-900/5 ring-1 ring-white/70 transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-900/10 active:translate-y-0 active:scale-[0.985] ${
                                 normalizeBoolean(item.is_pinned)
                                   ? "bg-stone-200/95"
                                   : "bg-white/95"
@@ -2865,6 +2935,8 @@ export default function ChatPage() {
                               </div>
                             </div>
                           </button>
+                            </div>
+                          </div>
                         )
                       })
                   )

@@ -4796,12 +4796,20 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
 
     const { data: chatSettings, error: chatSettingsError } = await supabase
       .from("chat_settings")
-      .select("conversation_id, is_pinned, is_muted")
+      .select("conversation_id, is_pinned, is_muted, hidden_at")
       .eq("user_id", currentUserId)
 
     if (chatSettingsError) {
       throw chatSettingsError
     }
+
+    // Track hidden conversations for current user. A hidden conversation is shown again
+    // only when a newer message exists after hidden_at.
+    const hiddenAtByConversationId = new Map(
+      (chatSettings || [])
+        .filter((item) => item?.hidden_at)
+        .map((item) => [String(item.conversation_id), item.hidden_at])
+    )
 
     const conversationSettingsById = new Map(
       (chatSettings || []).map((item) => [
@@ -4950,7 +4958,21 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
       })
     )
 
-    const sortedConversations = enriched
+    // Filter out hidden conversations unless a new message arrived after hidden_at.
+    const visibleConversations = enriched.filter((item) => {
+      if (!item) return false
+
+      const hiddenAt = hiddenAtByConversationId.get(String(item.id))
+
+      if (!hiddenAt) return true
+
+      const lastMessageTime = Date.parse(item.last_message_time || "")
+      const hiddenTime = Date.parse(hiddenAt)
+
+      return !Number.isNaN(lastMessageTime) && !Number.isNaN(hiddenTime) && lastMessageTime > hiddenTime
+    })
+
+    const sortedConversations = visibleConversations
       .filter(Boolean)
       .sort((a, b) => {
         const aPinned = Boolean(a?.is_pinned)
@@ -5176,6 +5198,68 @@ app.delete("/chat/conversations/:conversationId", authMiddleware, async (req, re
   }
 })
 
+// PATCH /chat/conversations/:conversationId/hide - Soft delete (hide) conversation for current user only
+app.patch("/chat/conversations/:conversationId/hide", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = req.user?.userId
+    const conversationId = String(req.params?.conversationId || "").trim()
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    if (!conversationId) {
+      return res.status(400).json({
+        success: false,
+        error: "conversationId is required",
+      })
+    }
+
+    const conversation = await getConversationById(conversationId)
+
+    if (
+      !conversation ||
+      (conversation.user1_id !== currentUserId && conversation.user2_id !== currentUserId)
+    ) {
+      return res.status(404).json({
+        success: false,
+        error: "Conversation not found",
+      })
+    }
+
+    // Upsert chat_settings with hidden_at for current user
+    const { error: upsertError } = await supabase
+      .from("chat_settings")
+      .upsert(
+        {
+          user_id: currentUserId,
+          conversation_id: conversationId,
+          hidden_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "user_id, conversation_id",
+          ignoreDuplicates: false,
+        }
+      )
+
+    if (upsertError) {
+      throw upsertError
+    }
+
+    return res.json({ success: true })
+  } catch (error) {
+    console.error("Chat hide conversation error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to hide conversation",
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
+    })
+  }
+})
+
 app.get("/chat/messages", authMiddleware, async (req, res) => {
   try {
     const currentUserId = String(req.user?.userId || "").trim()
@@ -5210,7 +5294,33 @@ app.get("/chat/messages", authMiddleware, async (req, res) => {
       })
     }
 
-    const messages = await getConversationMessages(conversationId)
+    // Check if current user has hidden this conversation
+    const { data: userSettings } = await supabase
+      .from("chat_settings")
+      .select("hidden_at")
+      .eq("user_id", currentUserId)
+      .eq("conversation_id", conversationId)
+      .maybeSingle()
+
+    let messages
+
+    if (userSettings?.hidden_at) {
+      // Only return messages created after hidden_at
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .gt("created_at", userSettings.hidden_at)
+        .order("created_at", { ascending: true })
+
+      if (error) {
+        throw error
+      }
+
+      messages = data || []
+    } else {
+      messages = await getConversationMessages(conversationId)
+    }
 
     return toDataResponse(res, {
       messages,
@@ -5259,7 +5369,33 @@ app.get("/chat/messages/:conversationId", authMiddleware, async (req, res) => {
       })
     }
 
-    const messages = await getConversationMessages(conversationId)
+    // Check if current user has hidden this conversation
+    const { data: userSettings } = await supabase
+      .from("chat_settings")
+      .select("hidden_at")
+      .eq("user_id", currentUserId)
+      .eq("conversation_id", conversationId)
+      .maybeSingle()
+
+    let messages
+
+    if (userSettings?.hidden_at) {
+      // Only return messages created after hidden_at
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .gt("created_at", userSettings.hidden_at)
+        .order("created_at", { ascending: true })
+
+      if (error) {
+        throw error
+      }
+
+      messages = data || []
+    } else {
+      messages = await getConversationMessages(conversationId)
+    }
 
     return toDataResponse(res, {
       messages,
@@ -5494,6 +5630,7 @@ app.post("/chat/messages", authMiddleware, async (req, res) => {
         otherUserId: String(otherUserId),
         content: notificationBody,
       })
+
     }
 
     return toDataResponse(res, {
