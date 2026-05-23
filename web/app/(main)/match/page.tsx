@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card"
 import { useLanguage } from "@/lib/i18n/language-context"
 import { useAuth } from "@/lib/auth-context"
 import { apiRequest, ApiError, getAccessToken } from "@/lib/api-client"
+import { useRouter } from "next/navigation"
 
 type MatchUser = {
   id: string
@@ -68,29 +69,10 @@ type LikeResponse = {
   }
 }
 
-type MembershipCheckoutResponse = {
-  success: true
-  data: {
-    membership: {
-      id: string
-      user_id: string
-      plan_type: string | null
-      status: string | null
-      start_at: string | null
-      end_at: string | null
-    }
-    quota: {
-      isMember: boolean
-      dailyLimit: number
-      remainingLikes: number
-      unlocked: boolean
-    }
-  }
-}
-
 export default function MatchPage() {
   const { t, locale } = useLanguage()
   const { loading } = useAuth()
+  const router = useRouter()
 
   const [users, setUsers] = useState<MatchUser[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -102,7 +84,6 @@ export default function MatchPage() {
   const [inlineNotice, setInlineNotice] = useState("")
   const [isMember, setIsMember] = useState(false)
   const [showMembershipModal, setShowMembershipModal] = useState(false)
-  const [checkingOut, setCheckingOut] = useState(false)
   const [membershipError, setMembershipError] = useState("")
   const [likedUserIds, setLikedUserIds] = useState<Set<string>>(new Set())
   const [showPetDetail, setShowPetDetail] = useState(false)
@@ -210,32 +191,10 @@ export default function MatchPage() {
     handleSwipe(-1)
   }
 
-  const handleCheckoutMembership = async (plan: "monthly" | "annual" = "monthly") => {
-    try {
-      setCheckingOut(true)
-      setMembershipError("")
-
-      const data = await apiRequest<MembershipCheckoutResponse>("/membership/checkout", {
-        method: "POST",
-        auth: true,
-        body: JSON.stringify({
-          plan,
-        }),
-      })
-
-      setIsMember(true)
-      setRemainingLikes(
-          typeof data.data.quota?.remainingLikes === "number" ? data.data.quota.remainingLikes : 9999
-      )
-      setInlineNotice(t.match.notices.memberActivated)
-      setShowMembershipModal(false)
-    } catch (error: unknown) {
-      setMembershipError(
-          error instanceof Error ? error.message : t.match.membership.quotaExceeded
-      )
-    } finally {
-      setCheckingOut(false)
-    }
+  const handleCheckoutMembership = (plan: "monthly" | "annual" = "monthly") => {
+    setShowMembershipModal(false)
+    setMembershipError("")
+    router.push(`/membership/payment?plan=${plan}`)
   }
 
   const handleLike = async () => {
@@ -680,7 +639,7 @@ export default function MatchPage() {
                       </div>
                     </div>
                     <div className="mt-3 text-3xl font-bold text-stone-900">
-                      ¥19.9
+                      {t.match.membership.monthlyVipPriceAmount}
                       <span className="ml-1 text-sm font-normal text-stone-500">
                         {t.match.membership.monthlyVipDuration}
                       </span>
@@ -693,12 +652,9 @@ export default function MatchPage() {
                     </div>
                     <Button
                         onClick={() => handleCheckoutMembership("monthly")}
-                        disabled={checkingOut}
                         className="mt-4 w-full rounded-full bg-yellow-500 text-white hover:bg-yellow-600"
                     >
-                      {checkingOut
-                          ? t.match.membership.processing
-                          : t.match.membership.activateMonthly}
+                      {t.match.membership.activateMonthly}
                     </Button>
                   </div>
 
@@ -718,7 +674,7 @@ export default function MatchPage() {
                       </div>
                     </div>
                     <div className="mt-3 text-3xl font-bold text-stone-900">
-                      ¥99.9
+                      {t.match.membership.annualVipPriceAmount}
                       <span className="ml-1 text-sm font-normal text-stone-500">
                         {t.match.membership.annualVipDuration}
                       </span>
@@ -734,12 +690,9 @@ export default function MatchPage() {
                     </div>
                     <Button
                         onClick={() => handleCheckoutMembership("annual")}
-                        disabled={checkingOut}
                         className="mt-4 w-full rounded-full bg-amber-500 text-white hover:bg-amber-600"
                     >
-                      {checkingOut
-                          ? t.match.membership.processing
-                          : t.match.membership.activateAnnual}
+                      {t.match.membership.activateAnnual}
                     </Button>
                   </div>
                 </div>
