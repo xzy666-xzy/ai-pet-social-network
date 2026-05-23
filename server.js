@@ -2531,9 +2531,28 @@ app.get("/users/search", authMiddleware, async (req, res) => {
       )
     })
 
+    // Check contact_deletions for each result
+    const resultUserIds = filtered.slice(0, 20).map((u) => u.id)
+    let deletedUserIds = new Set()
+
+    if (resultUserIds.length > 0) {
+      const { data: deletions } = await supabase
+        .from("contact_deletions")
+        .select("deleted_user_id")
+        .eq("deleter_user_id", currentUserId)
+        .in("deleted_user_id", resultUserIds)
+
+      if (deletions) {
+        deletedUserIds = new Set(deletions.map((d) => String(d.deleted_user_id)))
+      }
+    }
+
     return toDataResponse(
       res,
-      filtered.slice(0, 20).map(toSafeSearchUser)
+      filtered.slice(0, 20).map((user) => ({
+        ...toSafeSearchUser(user),
+        isDeletedByMe: deletedUserIds.has(String(user.id)),
+      }))
     )
   } catch (error) {
     console.error("User search error:", error)
@@ -2602,7 +2621,26 @@ app.get("/friends/mutual-likes", authMiddleware, async (req, res) => {
     const friends = mutualUserIds
       .map((userId) => usersById.get(userId))
       .filter(Boolean)
-      .map((user) => ({
+
+    // Check contact_deletions for each friend
+    let deletedUserIds = new Set()
+
+    if (friends.length > 0) {
+      const friendIds = friends.map((u) => String(u.id))
+      const { data: deletions } = await supabase
+        .from("contact_deletions")
+        .select("deleted_user_id")
+        .eq("deleter_user_id", currentUserId)
+        .in("deleted_user_id", friendIds)
+
+      if (deletions) {
+        deletedUserIds = new Set(deletions.map((d) => String(d.deleted_user_id)))
+      }
+    }
+
+    return toDataResponse(
+      res,
+      friends.map((user) => ({
         id: user.id,
         username: user.username ?? null,
         email: user.email ?? null,
@@ -2611,9 +2649,9 @@ app.get("/friends/mutual-likes", authMiddleware, async (req, res) => {
         pet_type: user.pet_type ?? null,
         pet_age: user.pet_age ?? null,
         pet_gender: user.pet_gender ?? null,
+        isDeletedByMe: deletedUserIds.has(String(user.id)),
       }))
-
-    return toDataResponse(res, friends)
+    )
   } catch (error) {
     console.error("Mutual likes friends error:", error)
 
@@ -6000,6 +6038,45 @@ ${symptom || "None"}
     return res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "AI diagnosis failed",
+    })
+  }
+})
+
+// PATCH /chat/contacts/:targetUserId/restore - Restore a deleted contact
+app.patch("/chat/contacts/:targetUserId/restore", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = String(req.user?.userId || "").trim()
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    const targetUserId = String(req.params?.targetUserId || "").trim()
+
+    if (!targetUserId) {
+      return res.status(400).json({
+        success: false,
+        error: "targetUserId is required",
+      })
+    }
+
+    const { error: deleteError } = await supabase
+      .from("contact_deletions")
+      .delete()
+      .eq("deleter_user_id", currentUserId)
+      .eq("deleted_user_id", targetUserId)
+
+    if (deleteError) {
+      throw deleteError
+    }
+
+    return res.json({ success: true })
+  } catch (error) {
+    console.error("Restore contact error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to restore contact",
     })
   }
 })

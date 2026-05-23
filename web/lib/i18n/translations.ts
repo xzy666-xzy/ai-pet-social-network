@@ -225,6 +225,8 @@ export const translations = {
         cancel: "Cancel",
         inviteNotAvailable: "Invite feature is not available yet",
       },
+      contactRestored: "Contact restored",
+      addAgain: "Add Again",
     },
 
     // Explore Page
@@ -791,6 +793,8 @@ export const translations = {
         cancel: "취소",
         inviteNotAvailable: "초대 기능은 아직 지원되지 않습니다",
       },
+      contactRestored: "연락처가 복원되었습니다",
+      addAgain: "다시 추가",
     },
 
     // Explore Page
@@ -1356,6 +1360,8 @@ export const translations = {
         cancel: "取消",
         inviteNotAvailable: "邀请功能暂未开放",
       },
+      contactRestored: "已重新添加联系人",
+      addAgain: "重新添加",
     },
 
     // Explore Page

@@ -70,6 +70,7 @@ type MutualFriend = {
   pet_type: string | null
   pet_age: number | null
   pet_gender: string | null
+  isDeletedByMe?: boolean
 }
 
 function matchesSearchableUserFields(user: Pick<UserSearchResult, "username" | "pet_name">, keyword: string) {
@@ -698,6 +699,33 @@ export default function ChatPage() {
   const handleOpenFriendChat = (friendId: string) => {
     setFriendListOpen(false)
     router.push(`/chat?userId=${encodeURIComponent(friendId)}`)
+  }
+
+  const handleRestoreContact = async (targetUserId: string) => {
+    try {
+      await apiRequest(`/chat/contacts/${encodeURIComponent(targetUserId)}/restore`, {
+        method: "PATCH",
+        auth: true,
+      })
+
+      // Update search results
+      setSearchResults((prev) =>
+        prev.map((u) =>
+          u.id === targetUserId ? { ...u, isDeletedByMe: false } : u
+        )
+      )
+
+      // Update mutual friends
+      setMutualFriends((prev) =>
+        prev.map((f) =>
+          f.id === targetUserId ? { ...f, isDeletedByMe: false } : f
+        )
+      )
+
+      toast.success(t.chat.contactRestored)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to restore contact")
+    }
   }
 
   const markConversationAsRead = async (convId: string) => {
@@ -2226,34 +2254,48 @@ export default function ChatPage() {
                       .join(" / ")
 
                     return (
-                      <button
-                        type="button"
+                      <div
                         key={friend.id}
-                        onClick={() => handleOpenFriendChat(friend.id)}
-                        className="flex w-full items-center gap-3 rounded-[1.35rem] border border-orange-100 bg-white px-4 py-3 text-left shadow-sm shadow-orange-900/5 transition hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-md active:translate-y-0 active:scale-[0.985]"
+                        className="flex w-full items-center gap-3 rounded-[1.35rem] border border-orange-100 bg-white px-4 py-3 shadow-sm shadow-orange-900/5"
                       >
-                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl border border-white bg-gradient-to-br from-orange-100 to-amber-100 shadow-sm">
-                          {friend.avatar_url ? (
-                            <img
-                              src={friend.avatar_url || "/placeholder.svg"}
-                              alt={friendName}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-base font-black text-orange-600">
-                              {friendName.charAt(0).toUpperCase()}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenFriendChat(friend.id)}
+                          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                          disabled={friend.isDeletedByMe}
+                        >
+                          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl border border-white bg-gradient-to-br from-orange-100 to-amber-100 shadow-sm">
+                            {friend.avatar_url ? (
+                              <img
+                                src={friend.avatar_url || "/placeholder.svg"}
+                                alt={friendName}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-base font-black text-orange-600">
+                                {friendName.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-extrabold text-stone-900">
+                              {friendName}
                             </div>
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-extrabold text-stone-900">
-                            {friendName}
+                            <div className="mt-1 truncate text-xs font-semibold text-stone-500">
+                              {friendMeta || "-"}
+                            </div>
                           </div>
-                          <div className="mt-1 truncate text-xs font-semibold text-stone-500">
-                            {friendMeta || "-"}
-                          </div>
-                        </div>
-                      </button>
+                        </button>
+                        {friend.isDeletedByMe ? (
+                          <button
+                            type="button"
+                            onClick={() => handleRestoreContact(friend.id)}
+                            className="shrink-0 rounded-xl bg-orange-500 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-orange-600 active:scale-[0.97]"
+                          >
+                            {t.chat.addAgain}
+                          </button>
+                        ) : null}
+                      </div>
                     )
                   })}
                 </div>
@@ -2286,34 +2328,48 @@ export default function ChatPage() {
                       .join(" / ")
 
                     return (
-                      <button
-                        type="button"
+                      <div
                         key={friend.id}
-                        onClick={() => handleOpenFriendChat(friend.id)}
-                        className="flex w-full items-center gap-3 rounded-[1.35rem] border border-orange-100 bg-white px-4 py-3 text-left shadow-sm shadow-orange-900/5 transition hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-md active:translate-y-0 active:scale-[0.985]"
+                        className="flex w-full items-center gap-3 rounded-[1.35rem] border border-orange-100 bg-white px-4 py-3 shadow-sm shadow-orange-900/5"
                       >
-                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl border border-white bg-gradient-to-br from-orange-100 to-amber-100 shadow-sm">
-                          {friend.avatar_url ? (
-                            <img
-                              src={friend.avatar_url || "/placeholder.svg"}
-                              alt={friendName}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-base font-black text-orange-600">
-                              {friendName.charAt(0).toUpperCase()}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenFriendChat(friend.id)}
+                          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                          disabled={friend.isDeletedByMe}
+                        >
+                          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl border border-white bg-gradient-to-br from-orange-100 to-amber-100 shadow-sm">
+                            {friend.avatar_url ? (
+                              <img
+                                src={friend.avatar_url || "/placeholder.svg"}
+                                alt={friendName}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-base font-black text-orange-600">
+                                {friendName.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-extrabold text-stone-900">
+                              {friendName}
                             </div>
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-extrabold text-stone-900">
-                            {friendName}
+                            <div className="mt-1 truncate text-xs font-semibold text-stone-500">
+                              {friendMeta || friend.email || "-"}
+                            </div>
                           </div>
-                          <div className="mt-1 truncate text-xs font-semibold text-stone-500">
-                            {friendMeta || friend.email || "-"}
-                          </div>
-                        </div>
-                      </button>
+                        </button>
+                        {friend.isDeletedByMe ? (
+                          <button
+                            type="button"
+                            onClick={() => handleRestoreContact(friend.id)}
+                            className="shrink-0 rounded-xl bg-orange-500 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-orange-600 active:scale-[0.97]"
+                          >
+                            {t.chat.addAgain}
+                          </button>
+                        ) : null}
+                      </div>
                     )
                   })}
                 </div>

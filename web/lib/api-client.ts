@@ -115,6 +115,7 @@ export type UserSearchResult = {
   pet_age: number | string | null
   pet_gender: string | null
   location: string | null
+  isDeletedByMe?: boolean
 }
 
 type UserSearchResponse = {
