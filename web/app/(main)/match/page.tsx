@@ -194,7 +194,7 @@ export default function MatchPage() {
   const handleCheckoutMembership = (plan: "monthly" | "annual" = "monthly") => {
     setShowMembershipModal(false)
     setMembershipError("")
-    router.push(`/membership/payment?plan=${plan}`)
+    router.push(`/membership?plan=${plan}`)
   }
 
   const handleLike = async () => {

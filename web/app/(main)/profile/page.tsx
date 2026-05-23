@@ -630,7 +630,7 @@ export default function ProfilePage() {
                       </div>
                     </div>
                     <div className="mt-3 text-3xl font-bold text-stone-900">
-                      ¥19.9
+                      {t.match.membership.monthlyVipPriceAmount}
                       <span className="ml-1 text-sm font-normal text-stone-500">
                         {t.match.membership.monthlyVipDuration}
                       </span>
@@ -668,7 +668,7 @@ export default function ProfilePage() {
                       </div>
                     </div>
                     <div className="mt-3 text-3xl font-bold text-stone-900">
-                      ¥99.9
+                      {t.match.membership.annualVipPriceAmount}
                       <span className="ml-1 text-sm font-normal text-stone-500">
                         {t.match.membership.annualVipDuration}
                       </span>
