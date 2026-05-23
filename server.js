@@ -1273,26 +1273,352 @@ function buildMatchReasons(currentUser, candidate) {
   return reasons
 }
 
+function normalizePetSpecies(value) {
+  const normalized = String(value || "").toLowerCase().trim()
+
+  if (!normalized) {
+    return null
+  }
+
+  const speciesKeywords = {
+    dog: [
+      "dog",
+      "puppy",
+      "狗",
+      "犬",
+      "강아지",
+      "개",
+      "labulado",
+      "요크셔테리어",
+      "말티즈",
+      "포메라니안",
+      "비숑프리제",
+      "래브라도 리트리버",
+      "웰시 코기",
+      "사모예드",
+      "吉娃娃",
+      "골든",
+      "泰迪",
+      "french bulldog",
+      "골든리트리버",
+      "corgi",
+      "시바견",
+      "닥스훈트",
+      "巴吉度猎犬",
+      "푸들",
+      "chihuahua",
+      "golden retriever",
+      "labrador",
+      "husky",
+      "shiba",
+      "pomeranian",
+      "poodle",
+      "bulldog",
+      "maltese",
+      "bichon",
+      "dachshund",
+      "basset",
+    ],
+    cat: [
+      "cat",
+      "kitten",
+      "猫",
+      "고양이",
+      "삼고양이",
+      "아메리칸숏헤어",
+      "브숏",
+      "英国短毛猫",
+      "布偶猫",
+      "먼치킨",
+      "러시안블루",
+      "munchkin",
+      "ragdoll",
+      "british shorthair",
+      "british short hair",
+      "american shorthair",
+      "siamese",
+      "persian",
+      "russian blue",
+    ],
+    rabbit: ["rabbit", "bunny", "兔", "兔子", "토끼"],
+    turtle: ["turtle", "tortoise", "乌龟", "龟", "거북이"],
+    hamster: ["hamster", "仓鼠", "햄스터"],
+    bird: ["bird", "parrot", "鸟", "鹦鹉", "새", "앵무새"],
+    fish: ["fish", "clownfish", "물고기", "鱼", "小丑鱼"],
+    reptile: ["reptile", "lizard", "snake", "爬虫", "蜥蜴", "蛇", "도마뱀", "뱀"],
+  }
+
+  for (const [species, keywords] of Object.entries(speciesKeywords)) {
+    if (keywords.some((keyword) => normalized.includes(keyword.toLowerCase()))) {
+      return species
+    }
+  }
+
+  return "other"
+}
+
+function getSpeciesCompatibility(speciesA, speciesB) {
+  if (!speciesA || !speciesB) {
+    return 60
+  }
+
+  const sameSpeciesScores = {
+    dog: 100,
+    cat: 100,
+    rabbit: 100,
+    turtle: 90,
+    bird: 100,
+    hamster: 95,
+    fish: 90,
+    reptile: 85,
+    other: 70,
+  }
+
+  if (speciesA === speciesB) {
+    return sameSpeciesScores[speciesA] ?? 70
+  }
+
+  if (speciesA === "other" || speciesB === "other") {
+    return 50
+  }
+
+  const compatibilityMatrix = {
+    "dog-cat": 45,
+    "dog-rabbit": 35,
+    "dog-turtle": 25,
+    "dog-bird": 30,
+    "dog-hamster": 20,
+    "dog-fish": 15,
+    "dog-reptile": 25,
+    "cat-rabbit": 30,
+    "cat-turtle": 25,
+    "cat-bird": 20,
+    "cat-hamster": 10,
+    "cat-fish": 15,
+    "cat-reptile": 20,
+    "rabbit-turtle": 35,
+    "rabbit-bird": 30,
+    "rabbit-hamster": 45,
+    "rabbit-fish": 15,
+    "rabbit-reptile": 20,
+    "turtle-bird": 25,
+    "turtle-hamster": 25,
+    "turtle-fish": 20,
+    "turtle-reptile": 40,
+    "bird-hamster": 25,
+    "bird-fish": 15,
+    "bird-reptile": 20,
+    "hamster-fish": 15,
+    "hamster-reptile": 15,
+    "fish-reptile": 20,
+  }
+
+  return compatibilityMatrix[`${speciesA}-${speciesB}`] ?? compatibilityMatrix[`${speciesB}-${speciesA}`] ?? 50
+}
+
+function getAgeStage(species, age) {
+  const numericAge = Number(age)
+
+  if (!Number.isFinite(numericAge)) {
+    return "unknown"
+  }
+
+  switch (species) {
+    case "dog":
+      if (numericAge < 1) return "puppy"
+      if (numericAge < 3) return "young"
+      if (numericAge < 8) return "adult"
+      return "senior"
+    case "cat":
+      if (numericAge < 1) return "kitten"
+      if (numericAge < 3) return "young"
+      if (numericAge < 10) return "adult"
+      return "senior"
+    case "rabbit":
+      if (numericAge < 1) return "young"
+      if (numericAge < 5) return "adult"
+      return "senior"
+    case "turtle":
+      if (numericAge < 5) return "young"
+      if (numericAge < 30) return "adult"
+      return "senior"
+    case "fish":
+      if (numericAge < 1) return "young"
+      if (numericAge < 5) return "adult"
+      return "senior"
+    case "hamster":
+      if (numericAge < 0.5) return "young"
+      if (numericAge < 2) return "adult"
+      return "senior"
+    case "bird":
+      if (numericAge < 1) return "young"
+      if (numericAge < 8) return "adult"
+      return "senior"
+    case "reptile":
+      if (numericAge < 1) return "young"
+      if (numericAge < 10) return "adult"
+      return "senior"
+    default:
+      if (numericAge < 1) return "young"
+      if (numericAge < 7) return "adult"
+      return "senior"
+  }
+}
+
+function getAgeCompatibility(speciesA, ageA, speciesB, ageB) {
+  const stageA = getAgeStage(speciesA, ageA)
+  const stageB = getAgeStage(speciesB, ageB)
+
+  if (stageA === "unknown" || stageB === "unknown") {
+    return 70
+  }
+
+  const stageOrder = {
+    puppy: 0,
+    kitten: 0,
+    young: 0,
+    adult: 1,
+    senior: 2,
+  }
+  const diff = Math.abs(stageOrder[stageA] - stageOrder[stageB])
+
+  if (diff === 0) {
+    return 100
+  }
+
+  if (diff === 1) {
+    return 75
+  }
+
+  return 40
+}
+
+function extractTags(user) {
+  const tagFields = ["personality", "personality_tags", "tags", "interests", "bio", "description"]
+  const tags = []
+
+  for (const field of tagFields) {
+    const value = user?.[field]
+
+    if (Array.isArray(value)) {
+      tags.push(...value)
+    } else if (typeof value === "string") {
+      tags.push(...value.split(/[,\s/|，、]+/))
+    }
+  }
+
+  return [...new Set(tags.map((tag) => String(tag).toLowerCase().trim()).filter(Boolean))]
+}
+
+function getPersonalityCompatibility(currentUser, candidate) {
+  const currentTags = extractTags(currentUser)
+  const candidateTags = extractTags(candidate)
+
+  if (currentTags.length === 0 && candidateTags.length === 0) {
+    return 70
+  }
+
+  const currentTagSet = new Set(currentTags)
+  const candidateTagSet = new Set(candidateTags)
+  const commonCount = currentTags.filter((tag) => candidateTagSet.has(tag)).length
+  const conflictGroups = [
+    {
+      a: ["活泼", "active", "energetic", "활발", "외향적"],
+      b: ["安静", "quiet", "calm", "조용", "차분"],
+    },
+    {
+      a: ["社牛", "social", "friendly", "사교적", "친화적"],
+      b: ["胆小", "shy", "timid", "소심", "겁많음"],
+    },
+    {
+      a: ["공격적", "aggressive", "공격성"],
+      b: ["온순", "gentle", "calm", "순함"],
+    },
+  ]
+  const conflictCount = conflictGroups.filter(({ a, b }) => {
+    const currentHasA = a.some((tag) => currentTagSet.has(tag))
+    const currentHasB = b.some((tag) => currentTagSet.has(tag))
+    const candidateHasA = a.some((tag) => candidateTagSet.has(tag))
+    const candidateHasB = b.some((tag) => candidateTagSet.has(tag))
+
+    return (currentHasA && candidateHasB) || (currentHasB && candidateHasA)
+  }).length
+  const score = 60 + Math.min(30, commonCount * 12) - Math.min(20, conflictCount * 10)
+
+  return Math.max(30, Math.min(100, score))
+}
+
+function getDistanceScore(candidate) {
+  const distanceKm = Number(candidate?.distance_km)
+
+  if (!Number.isFinite(distanceKm)) {
+    return 60
+  }
+
+  if (distanceKm < 1) {
+    return 100
+  }
+
+  if (distanceKm < 5) {
+    return 85
+  }
+
+  if (distanceKm < 20) {
+    return 60
+  }
+
+  if (distanceKm < 100) {
+    return 30
+  }
+
+  return 10
+}
+
+function extractInterestTags(user) {
+  const interests = user?.interests
+
+  if (Array.isArray(interests)) {
+    return [...new Set(interests.map((tag) => String(tag).toLowerCase().trim()).filter(Boolean))]
+  }
+
+  if (typeof interests === "string" && interests.trim()) {
+    return [...new Set(interests.split(/[,\s/|，、]+/).map((tag) => tag.toLowerCase().trim()).filter(Boolean))]
+  }
+
+  return extractTags(user)
+}
+
+function getInterestCompatibility(currentUser, candidate) {
+  const currentInterests = extractInterestTags(currentUser)
+  const candidateInterests = extractInterestTags(candidate)
+
+  if (currentInterests.length === 0 && candidateInterests.length === 0) {
+    return 70
+  }
+
+  const candidateInterestSet = new Set(candidateInterests)
+  const commonCount = currentInterests.filter((interest) => candidateInterestSet.has(interest)).length
+
+  return Math.min(100, 50 + commonCount * 15)
+}
+
 function buildMatchScore(currentUser, candidate) {
-  let score = 70
+  const speciesA = normalizePetSpecies(currentUser.pet_type)
+  const speciesB = normalizePetSpecies(candidate.pet_type)
 
-  if (currentUser.pet_type && candidate.pet_type && currentUser.pet_type === candidate.pet_type) {
-    score += 15
-  }
+  const speciesScore = getSpeciesCompatibility(speciesA, speciesB)
+  const ageScore = getAgeCompatibility(speciesA, currentUser.pet_age, speciesB, candidate.pet_age)
+  const personalityScore = getPersonalityCompatibility(currentUser, candidate)
+  const distanceScore = getDistanceScore(candidate)
+  const interestScore = getInterestCompatibility(currentUser, candidate)
+  const finalScore =
+    speciesScore * 0.35 +
+    ageScore * 0.20 +
+    personalityScore * 0.25 +
+    distanceScore * 0.10 +
+    interestScore * 0.10
 
-  if (
-    typeof currentUser.pet_age === "number" &&
-    typeof candidate.pet_age === "number"
-  ) {
-    const ageDiff = Math.abs(currentUser.pet_age - candidate.pet_age)
-    score += Math.max(0, 10 - ageDiff * 2)
-  }
-
-  if (candidate.is_ai) {
-    score += 5
-  }
-
-  return Math.max(60, Math.min(98, Math.round(score)))
+  return Math.max(35, Math.min(98, Math.round(finalScore)))
 }
 
 function toSafeSearchUser(user) {
