@@ -179,6 +179,7 @@ export const translations = {
       deleting: "Deleting...",
       cancel: "Cancel",
       sendFailed: "Send failed, please try again later.",
+      contactDeleted: "This user has removed you. You can no longer continue this chat.",
       yesterday: "Yesterday",
       settings: {
         title: "Chat Settings",
@@ -747,6 +748,7 @@ export const translations = {
       deleting: "삭제 중...",
       cancel: "취소",
       sendFailed: "전송 실패, 나중에 다시 시도해주세요.",
+      contactDeleted: "상대방이 회원님을 삭제하여 더 이상 채팅할 수 없습니다.",
       yesterday: "어제",
       settings: {
         title: "채팅 설정",
@@ -1314,6 +1316,7 @@ export const translations = {
       deleting: "删除中...",
       cancel: "取消",
       sendFailed: "发送失败，请稍后重试。",
+      contactDeleted: "对方已删除你，无法继续聊天",
       yesterday: "昨天",
       settings: {
         title: "聊天设置",

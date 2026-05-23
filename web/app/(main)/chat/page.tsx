@@ -214,6 +214,24 @@ type ChatBackgroundKey = "default" | "orange" | "green" | "blue"
 
 const CHAT_BACKGROUND_OPTIONS: ChatBackgroundKey[] = ["default", "orange", "green", "blue"]
 
+const DIRECT_CHAT_INLINE_NOTICE_CODES = new Set([
+  "INTRO_MESSAGE_LIMIT_REACHED",
+  "LIKE_REQUIRED",
+  "MESSAGE_NOT_ALLOWED",
+])
+
+function isBackendErrorCode(value: unknown): value is string {
+  return typeof value === "string" && /^[A-Z0-9_]+$/.test(value.trim())
+}
+
+function isContactDeletedError(error: unknown) {
+  if (!(error instanceof ApiError)) {
+    return false
+  }
+
+  return error.code === "CONTACT_DELETED" || error.message === "CONTACT_DELETED"
+}
+
 const EVENT_BUTTON_LABELS = {
   zh: "查看活动",
   ko: "활동 보기",
@@ -1603,15 +1621,12 @@ export default function ChatPage() {
         return
       }
 
-      if (
-          error instanceof ApiError &&
-          (error.code === "INTRO_MESSAGE_LIMIT_REACHED" ||
-              error.code === "LIKE_REQUIRED" ||
-              error.code === "MESSAGE_NOT_ALLOWED")
-      ) {
-        setInlineNotice(error.code)
+      const inlineErrorCode = error instanceof ApiError ? error.code : undefined
 
-        if (error.code === "INTRO_MESSAGE_LIMIT_REACHED") {
+      if (inlineErrorCode && DIRECT_CHAT_INLINE_NOTICE_CODES.has(inlineErrorCode)) {
+        setInlineNotice(inlineErrorCode)
+
+        if (inlineErrorCode === "INTRO_MESSAGE_LIMIT_REACHED") {
           setIntroLocked(true)
         }
 
@@ -1619,8 +1634,13 @@ export default function ChatPage() {
         return
       }
 
+      if (isContactDeletedError(error)) {
+        setPageError(t.chat.contactDeleted)
+        return
+      }
+
       if (error instanceof Error) {
-        setPageError(error.message)
+        setPageError(isBackendErrorCode(error.message) ? t.chat.sendFailed : error.message)
       } else {
         setPageError(t.chat.sendFailed)
       }
@@ -1693,15 +1713,12 @@ export default function ChatPage() {
         return
       }
 
-      if (
-        error instanceof ApiError &&
-        (error.code === "INTRO_MESSAGE_LIMIT_REACHED" ||
-          error.code === "LIKE_REQUIRED" ||
-          error.code === "MESSAGE_NOT_ALLOWED")
-      ) {
-        setInlineNotice(error.code)
+      const inlineErrorCode = error instanceof ApiError ? error.code : undefined
 
-        if (error.code === "INTRO_MESSAGE_LIMIT_REACHED") {
+      if (inlineErrorCode && DIRECT_CHAT_INLINE_NOTICE_CODES.has(inlineErrorCode)) {
+        setInlineNotice(inlineErrorCode)
+
+        if (inlineErrorCode === "INTRO_MESSAGE_LIMIT_REACHED") {
           setIntroLocked(true)
         }
 
@@ -1709,8 +1726,13 @@ export default function ChatPage() {
         return
       }
 
+      if (isContactDeletedError(error)) {
+        setPageError(t.chat.contactDeleted)
+        return
+      }
+
       if (error instanceof Error) {
-        setPageError(error.message)
+        setPageError(isBackendErrorCode(error.message) ? t.chat.sendFailed : error.message)
       } else {
         setPageError(t.chat.sendFailed)
       }
