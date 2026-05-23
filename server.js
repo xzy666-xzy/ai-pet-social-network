@@ -394,21 +394,6 @@ async function buildEventGroupSettingsPayload(conversationId, currentUserId) {
     usersById = new Map((users || []).map((user) => [String(user.id), user]))
   }
 
-  // 单独查询 group_remark（该列可能不存在于旧表中，单独处理避免整个查询失败）
-  let groupRemark = ""
-  try {
-    const { data: remarkData } = await supabase
-      .from("chat_settings")
-      .select("group_remark")
-      .eq("user_id", currentUserId)
-      .eq("conversation_id", conversationId)
-      .maybeSingle()
-    groupRemark = remarkData?.group_remark ?? ""
-  } catch {
-    // group_remark 列不存在时静默降级
-    groupRemark = ""
-  }
-
   const ownerId = String(eventOrganizerId || conversation.user1_id || "")
   const groupName = normalizeOptionalText(conversation.group_name, 120) || eventTitle || "活动群聊"
   const announcement = normalizeOptionalText(conversation.announcement, 1000)
@@ -426,7 +411,6 @@ async function buildEventGroupSettingsPayload(conversationId, currentUserId) {
     owner_id: ownerId || null,
     is_owner: ownerId ? String(ownerId) === String(currentUserId) : false,
     member_count: members.length,
-    remark: groupRemark,
     my_nickname: "",
     is_pinned: settings?.is_pinned ?? false,
     is_muted: settings?.is_muted ?? false,
@@ -440,7 +424,6 @@ async function buildEventGroupSettingsPayload(conversationId, currentUserId) {
         username: memberUser.username ?? null,
         pet_name: memberUser.pet_name ?? null,
         avatar_url: memberUser.avatar_url ?? null,
-        nickname: "",
         display_name: fallbackName,
         is_owner: ownerId ? String(member.user_id) === String(ownerId) : false,
         joined_at: null,
@@ -3119,6 +3102,151 @@ app.put("/events/:id", authMiddleware, async (req, res) => {
   }
 })
 
+app.delete("/events/:id", authMiddleware, async (req, res) => {
+  try {
+    const currentUser = await getCurrentUserById(req.user?.userId)
+
+    if (!currentUser) {
+      return sendUnauthorized(res)
+    }
+
+    const eventId = String(req.params.id || "").trim()
+
+    if (!eventId) {
+      return res.status(400).json({
+        success: false,
+        error: "Event id is required",
+      })
+    }
+
+    const dbEventId = normalizeEventIdForDb(eventId)
+    const existingEvent = await getEventWithOrganizer(dbEventId)
+
+    if (!existingEvent) {
+      return res.status(404).json({
+        success: false,
+        error: "Event not found",
+      })
+    }
+
+    // 权限检查：只有活动创建者/organizer 才能删除
+    if (String(existingEvent.organizer_id) !== String(currentUser.id)) {
+      return res.status(403).json({
+        success: false,
+        error: "Only the event organizer can delete this event",
+      })
+    }
+
+    const isMissingOptionalCleanupTable = (error) => {
+      const message = String(error?.message || "")
+
+      return (
+        error?.code === "PGRST205" ||
+        error?.code === "42P01" ||
+        message.includes("Could not find the table") ||
+        message.includes("schema cache")
+      )
+    }
+
+    const deleteConversationScopedRows = async (tableName, label, { optional = false } = {}) => {
+      if (conversationIds.length === 0) {
+        return
+      }
+
+      const { error } = await supabase
+        .from(tableName)
+        .delete()
+        .in("conversation_id", conversationIds)
+
+      if (!error) {
+        return
+      }
+
+      if (optional && isMissingOptionalCleanupTable(error)) {
+        console.warn(`Skip ${label} cleanup:`, error?.message || error)
+        return
+      }
+
+      throw error
+    }
+
+    // 1) 查找该活动对应的 event_group 群聊。只按 event_group + event_id 命中，避免影响普通私聊。
+    const { data: groupConversations, error: convError } = await supabase
+      .from("conversations")
+      .select("id")
+      .eq("type", "event_group")
+      .eq("event_id", dbEventId)
+
+    if (convError) {
+      console.error("Find event group conversations error:", convError)
+      throw convError
+    }
+
+    const conversationIds = (groupConversations || []).map((c) => c.id)
+
+    // 2) 先清理群聊子表，再删除 conversations，确保聊天页群聊列表不会再查到该 event_group。
+    if (conversationIds.length > 0) {
+      await deleteConversationScopedRows("conversation_members", "conversation_members")
+      await deleteConversationScopedRows("chat_messages", "chat_messages", { optional: true })
+      await deleteConversationScopedRows("messages", "messages", { optional: true })
+      await deleteConversationScopedRows("chat_settings", "chat_settings", { optional: true })
+
+      // 3) 删除 event_group conversations 本体
+      const { error: delConvError } = await supabase
+        .from("conversations")
+        .delete()
+        .in("id", conversationIds)
+
+      if (delConvError) {
+        throw delConvError
+      }
+    }
+
+    // 4) 删除 event_participants（有 on delete cascade 到 events，但显式删除更安全）
+    const { error: partError } = await supabase
+      .from("event_participants")
+      .delete()
+      .eq("event_id", dbEventId)
+
+    if (partError) {
+      throw partError
+    }
+
+    // 5) 最后删除活动本身
+    const { error: deleteError } = await supabase
+      .from("events")
+      .delete()
+      .eq("id", dbEventId)
+
+    if (deleteError) {
+      console.error("Delete event Supabase error:", deleteError)
+
+      return res.status(500).json({
+        success: false,
+        error: deleteError.message || "Failed to delete event",
+        code: deleteError.code,
+        details: deleteError.details,
+        hint: deleteError.hint,
+      })
+    }
+
+    eventParticipationState.delete(eventId)
+    eventParticipationState.delete(dbEventId)
+
+    return res.json({
+      success: true,
+      message: "Event deleted successfully",
+    })
+  } catch (error) {
+    console.error("Delete event error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete event",
+    })
+  }
+})
+
 app.post("/events", authMiddleware, async (req, res) => {
   try {
     const currentUser = await getCurrentUserById(req.user?.userId)
@@ -3140,6 +3268,25 @@ app.post("/events", authMiddleware, async (req, res) => {
       return res.status(400).json({
         success: false,
         error: "Invalid event data",
+      })
+    }
+
+    // Check for duplicate event title (trim + case-insensitive strict equality)
+    const normalizedTitle = title.trim().toLowerCase()
+
+    const { data: allEvents, error: lookupError } = await supabase
+      .from("events")
+      .select("id, title")
+
+    if (lookupError) {
+      console.error("Duplicate event title check error:", lookupError)
+    }
+
+    if (allEvents && allEvents.some((event) => event.title?.trim().toLowerCase() === normalizedTitle)) {
+      return res.status(409).json({
+        success: false,
+        error: "已创建的活动名称，请更改",
+        code: "EVENT_TITLE_DUPLICATE",
       })
     }
 
@@ -3816,10 +3963,6 @@ app.put("/chat/settings", authMiddleware, async (req, res) => {
       updates.is_muted = req.body.is_muted
     }
 
-    if (Object.prototype.hasOwnProperty.call(req.body || {}, "group_remark")) {
-      updates.group_remark = normalizeOptionalText(req.body.group_remark, 120)
-    }
-
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({
         success: false,
@@ -3845,7 +3988,7 @@ app.put("/chat/settings", authMiddleware, async (req, res) => {
 
     const { data: latestSettings, error: latestError } = await supabase
       .from("chat_settings")
-      .select("conversation_id, background_key, background_url, is_pinned, is_muted, group_remark")
+      .select("conversation_id, background_key, background_url, is_pinned, is_muted")
       .eq("user_id", currentUserId)
       .eq("conversation_id", conversationId)
       .maybeSingle()
@@ -3860,7 +4003,6 @@ app.put("/chat/settings", authMiddleware, async (req, res) => {
       background_url: latestSettings?.background_url ?? "",
       is_pinned: latestSettings?.is_pinned ?? false,
       is_muted: latestSettings?.is_muted ?? false,
-      group_remark: latestSettings?.group_remark ?? "",
     })
   } catch (error) {
     console.error("Chat settings put error:", error)
@@ -3904,7 +4046,6 @@ app.get("/chat/group-settings", authMiddleware, async (req, res) => {
         owner_id: null,
         is_owner: false,
         member_count: 0,
-        remark: "",
         my_nickname: "",
         is_pinned: false,
         is_muted: false,
@@ -3953,17 +4094,6 @@ app.put("/chat/group-settings", authMiddleware, async (req, res) => {
 
     const chatSettingUpdates = {}
     const conversationUpdates = {}
-    let shouldUpdateMemberNickname = false
-    let nextNickname = ""
-
-    if (Object.prototype.hasOwnProperty.call(req.body || {}, "remark")) {
-      chatSettingUpdates.group_remark = normalizeOptionalText(req.body.remark, 120)
-    }
-
-    if (Object.prototype.hasOwnProperty.call(req.body || {}, "my_nickname")) {
-      shouldUpdateMemberNickname = true
-      nextNickname = normalizeOptionalText(req.body.my_nickname, 60)
-    }
 
     if (Object.prototype.hasOwnProperty.call(req.body || {}, "is_pinned")) {
       if (typeof req.body.is_pinned !== "boolean") {
@@ -4013,8 +4143,7 @@ app.put("/chat/group-settings", authMiddleware, async (req, res) => {
 
     if (
       Object.keys(chatSettingUpdates).length === 0 &&
-      Object.keys(conversationUpdates).length === 0 &&
-      !shouldUpdateMemberNickname
+      Object.keys(conversationUpdates).length === 0
     ) {
       return res.status(400).json({
         success: false,
@@ -4069,18 +4198,6 @@ app.put("/chat/group-settings", authMiddleware, async (req, res) => {
       }
     }
 
-    if (shouldUpdateMemberNickname) {
-      const { error: memberUpdateError } = await supabase
-        .from("conversation_members")
-        .update({ nickname: nextNickname })
-        .eq("conversation_id", conversationId)
-        .eq("user_id", currentUserId)
-
-      if (memberUpdateError) {
-        throw memberUpdateError
-      }
-    }
-
     if (Object.keys(chatSettingUpdates).length > 0) {
       const now = new Date().toISOString()
       const { error: settingUpdateError } = await supabase
@@ -4096,7 +4213,7 @@ app.put("/chat/group-settings", authMiddleware, async (req, res) => {
         )
 
       if (settingUpdateError) {
-        // 如果是因为列不存在导致的错误（如 group_remark），
+        // 如果是因为列不存在导致的错误，
         // 移除可能不存在的列后重试
         const isColumnError =
           settingUpdateError?.code === "42703" ||
@@ -4316,8 +4433,13 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
 
         if (isEventGroup) {
           // Event group conversation
-          const [eventTitle, memberCountResult, { data: lastMessage }] = await Promise.all([
+          const [eventTitle, eventImageResult, memberCountResult, { data: lastMessage }] = await Promise.all([
             resolveEventTitleByEventId(conversation.event_id),
+            supabase
+              .from("events")
+              .select("image_url")
+              .eq("id", normalizeEventIdForDb(conversation.event_id))
+              .maybeSingle(),
             supabase
               .from("conversation_members")
               .select("user_id", { count: "exact", head: true })
@@ -4335,8 +4457,13 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
             throw memberCountResult.error
           }
 
+          if (eventImageResult?.error && !isMissingEventsTableError(eventImageResult.error)) {
+            throw eventImageResult.error
+          }
+
           const rawMemberCount = Number(memberCountResult?.count ?? 0)
           const memberCount = Number.isFinite(rawMemberCount) ? Math.max(0, rawMemberCount) : 0
+          const eventImageUrl = String(eventImageResult?.data?.image_url || "").trim()
 
           const settings = conversationSettingsById.get(String(conversation.id))
           const rawUnreadCount = Number(conversation.unread_count ?? 0)
@@ -4349,6 +4476,8 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
             type: "event_group",
             event_id: conversation.event_id ?? null,
             event_title: eventTitle,
+            event_image_url: eventImageUrl || null,
+            group_avatar_url: eventImageUrl || null,
             member_count: memberCount,
             other_user_id: "",
             other_username: "",

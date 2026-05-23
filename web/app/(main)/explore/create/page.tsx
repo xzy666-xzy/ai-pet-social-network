@@ -31,6 +31,7 @@ export default function CreateExploreEventPage() {
   const [location, setLocation] = useState({ lat: "", lng: "" })
   const [showLocationPicker, setShowLocationPicker] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [errorMsg, setErrorMsg] = useState("")
   const organizerName = user?.pet_name || user?.username || user?.email || ""
 
   useEffect(() => {
@@ -134,6 +135,7 @@ export default function CreateExploreEventPage() {
     event.preventDefault()
     if (!user?.id || submitting) return
 
+    setErrorMsg("")
     setSubmitting(true)
 
     try {
@@ -178,7 +180,13 @@ export default function CreateExploreEventPage() {
         code: error instanceof ApiError ? error.code : undefined,
         data: error instanceof ApiError ? error.data : undefined,
       })
-      alert(message)
+
+      // Show duplicate name error in the page's error area instead of browser alert
+      if (error instanceof ApiError && error.status === 409) {
+        setErrorMsg(createEventText.duplicateNameError)
+      } else {
+        alert(message)
+      }
     } finally {
       setSubmitting(false)
     }
@@ -199,6 +207,11 @@ export default function CreateExploreEventPage() {
       </header>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {errorMsg && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            {errorMsg}
+          </div>
+        )}
         <input type="hidden" name="eventImageUrl" value={eventImageUrl} readOnly />
         <input type="hidden" name="lat" value={location.lat} readOnly />
         <input type="hidden" name="lng" value={location.lng} readOnly />

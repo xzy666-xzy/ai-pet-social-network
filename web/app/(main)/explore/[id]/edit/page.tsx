@@ -4,15 +4,18 @@ import { type ChangeEvent, type FormEvent, useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { apiRequest } from "@/lib/api-client"
 import { useLanguage } from "@/lib/i18n/language-context"
+import { useAuth } from "@/lib/auth-context"
 import { supabase } from "@/lib/supabase"
 
 type ApiEvent = {
+  id?: string
   title: string | null
   image_url: string | null
   time: string | null
   event_time?: string | null
   max_people: number | null
   description: string | null
+  organizer_id?: string | null
   organizer_name?: string | null
 }
 
@@ -34,11 +37,14 @@ export default function EditEventPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
   const { t } = useLanguage()
+  const { user } = useAuth()
   const copy = t.explore.editEvent
   const [event, setEvent] = useState<ApiEvent | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState("")
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [title, setTitle] = useState("")
   const [imageUrl, setImageUrl] = useState("")
   const [imagePreviewUrl, setImagePreviewUrl] = useState("")
@@ -149,6 +155,26 @@ export default function EditEventPage() {
     }
   }
 
+  async function handleDelete() {
+    try {
+      setDeleting(true)
+      setError("")
+
+      await apiRequest(`/events/${params.id}`, {
+        method: "DELETE",
+        auth: true,
+      })
+
+      router.push("/explore")
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      setError(message)
+      setShowDeleteConfirm(false)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   function handleImageChange(changeEvent: ChangeEvent<HTMLInputElement>) {
     const file = changeEvent.target.files?.[0]
 
@@ -251,6 +277,54 @@ export default function EditEventPage() {
           >
             {saving ? `${copy.save}...` : copy.save}
           </button>
+
+          {/* 只有活动创建者/organizer 才能看到删除按钮 */}
+          {event && user && String(event.organizer_id) === String(user.id) && (
+            <>
+              <div className="pt-4 border-t border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={deleting}
+                  className="h-11 w-full rounded-xl border border-red-300 bg-white px-4 text-sm font-medium text-red-500 hover:bg-red-50"
+                >
+                  {deleting ? copy.deleting : copy.delete}
+                </button>
+              </div>
+
+              {/* 确认删除弹窗 */}
+              {showDeleteConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                  <div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+                    <h3 className="text-lg font-semibold text-stone-900">
+                      {copy.deleteConfirmTitle}
+                    </h3>
+                    <p className="mt-2 text-sm text-stone-600">
+                      {copy.deleteConfirm}
+                    </p>
+                    <div className="mt-6 flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowDeleteConfirm(false)}
+                        disabled={deleting}
+                        className="flex-1 h-11 rounded-xl border border-stone-200 bg-white px-4 text-sm font-medium text-stone-700 hover:bg-stone-50"
+                      >
+                        {t.chat.cancel}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDelete}
+                        disabled={deleting}
+                        className="flex-1 h-11 rounded-xl bg-red-500 px-4 text-sm font-medium text-white hover:bg-red-600"
+                      >
+                        {deleting ? copy.deleting : t.chat.settings.confirm}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </form>
       )}
     </div>

@@ -233,6 +233,10 @@ export const translations = {
         description: "Event Description",
         organizer: "Event Organizer",
         save: "Save",
+        delete: "Delete Event",
+        deleteConfirm: "Are you sure you want to delete this event?",
+        deleteConfirmTitle: "Delete Event",
+        deleting: "Deleting...",
       },
       createEvent: {
         back: "Back",
@@ -255,6 +259,7 @@ export const translations = {
         submit: "Submit",
         submitting: "Submitting...",
         groupChatReady: "Activity group chat is ready. Please check it on the chat page",
+        duplicateNameError: "This activity name already exists. Please change it",
       },
       groupChatConfirmDialog: {
         title: "Join Group Chat",
@@ -773,6 +778,10 @@ export const translations = {
         description: "활동 소개",
         organizer: "활동 주최자",
         save: "저장",
+        delete: "활동 삭제",
+        deleteConfirm: "이 활동을 삭제하시겠습니까?",
+        deleteConfirmTitle: "활동 삭제",
+        deleting: "삭제 중...",
       },
       createEvent: {
         back: "뒤로",
@@ -795,6 +804,7 @@ export const translations = {
         submit: "제출",
         submitting: "제출 중...",
         groupChatReady: "활동 그룹 채팅이 생성되었습니다. 채팅 페이지에서 확인해 주세요",
+        duplicateNameError: "이미 생성된 활동 이름입니다. 변경해 주세요",
       },
       groupChatConfirmDialog: {
         title: "활동 단체 채팅 참가",
@@ -1312,6 +1322,10 @@ export const translations = {
         description: "活动介绍",
         organizer: "活动组织者",
         save: "保存",
+        delete: "删除活动",
+        deleteConfirm: "确定要删除这个活动吗？",
+        deleteConfirmTitle: "删除活动",
+        deleting: "删除中...",
       },
       createEvent: {
         back: "返回",
@@ -1334,6 +1348,7 @@ export const translations = {
         submit: "提交",
         submitting: "提交中...",
         groupChatReady: "活动群已建好，请前往聊天页查看",
+        duplicateNameError: "已创建的活动名称，请更改",
       },
       groupChatConfirmDialog: {
         title: "加入活动群聊",
