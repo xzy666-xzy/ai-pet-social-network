@@ -1606,18 +1606,46 @@ function buildMatchScore(currentUser, candidate, distanceKm) {
   const speciesA = normalizePetSpecies(currentUser.pet_type)
   const speciesB = normalizePetSpecies(candidate.pet_type)
 
+  // 1. 计算各基础维度分数
   const speciesScore = getSpeciesCompatibility(speciesA, speciesB)
   const ageScore = getAgeCompatibility(speciesA, currentUser.pet_age, speciesB, candidate.pet_age)
   const personalityScore = getPersonalityCompatibility(currentUser, candidate)
   const distanceScore = getDistanceScore(distanceKm)
   const interestScore = getInterestCompatibility(currentUser, candidate)
-  const finalScore =
-    speciesScore * 0.35 +
-    ageScore * 0.20 +
-    personalityScore * 0.25 +
-    distanceScore * 0.10 +
-    interestScore * 0.10
 
+  // 2. 判断是否同物种
+  const sameSpecies = speciesA && speciesB && speciesA === speciesB
+
+  let finalScore
+
+  if (sameSpecies) {
+    // 3. 同物种：距离权重提高，因为能不能一起玩主要看离得近不近
+    finalScore =
+      speciesScore * 0.35 +
+      distanceScore * 0.25 +
+      personalityScore * 0.20 +
+      ageScore * 0.15 +
+      interestScore * 0.05
+  } else {
+    // 4. 不同物种：物种兼容是强限制，不能因为距离近或年龄相近就高分
+    finalScore =
+      speciesScore * 0.65 +
+      distanceScore * 0.10 +
+      personalityScore * 0.10 +
+      ageScore * 0.10 +
+      interestScore * 0.05
+
+    // 5. 跨物种封顶：物种兼容度越低，总分上限越低
+    if (speciesScore < 30) {
+      finalScore = Math.min(finalScore, 45)
+    } else if (speciesScore < 45) {
+      finalScore = Math.min(finalScore, 55)
+    } else if (speciesScore < 60) {
+      finalScore = Math.min(finalScore, 65)
+    }
+  }
+
+  // 6. 最终限制
   return Math.max(35, Math.min(98, Math.round(finalScore)))
 }
 
