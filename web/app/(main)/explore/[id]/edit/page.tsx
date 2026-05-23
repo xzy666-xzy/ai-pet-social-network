@@ -113,6 +113,7 @@ export default function EditEventPage() {
     try {
       setSaving(true)
       setError("")
+      const trimmedTitle = title.trim()
       let nextImageUrl = imageUrl
 
       if (selectedImageFile) {
@@ -137,7 +138,7 @@ export default function EditEventPage() {
         method: "PUT",
         auth: true,
         body: JSON.stringify({
-          title,
+          title: trimmedTitle,
           image_url: nextImageUrl,
           time,
           max_people: maxPeople ? Number(maxPeople) : null,

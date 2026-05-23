@@ -3031,6 +3031,38 @@ app.put("/events/:id", authMiddleware, async (req, res) => {
         })
       }
 
+      const normalizedTitle = title.toLowerCase()
+      const { data: allEvents, error: lookupError } = await supabase
+        .from("events")
+        .select("id, title")
+
+      if (lookupError) {
+        console.error("Duplicate event title check error:", lookupError)
+
+        return res.status(500).json({
+          success: false,
+          error: lookupError.message || "Failed to check event title",
+          code: lookupError.code,
+          details: lookupError.details,
+          hint: lookupError.hint,
+        })
+      }
+
+      const hasDuplicateTitle = (allEvents || []).some((event) => {
+        return (
+          String(event.id) !== String(eventId) &&
+          String(event.title || "").trim().toLowerCase() === normalizedTitle
+        )
+      })
+
+      if (hasDuplicateTitle) {
+        return res.status(409).json({
+          success: false,
+          code: "EVENT_TITLE_DUPLICATE",
+          error: "Event title already exists",
+        })
+      }
+
       updates.title = title
     }
 
