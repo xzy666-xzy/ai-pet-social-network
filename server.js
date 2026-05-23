@@ -5236,6 +5236,107 @@ app.delete("/chat/conversations/:conversationId", authMiddleware, async (req, re
   }
 })
 
+// PATCH /chat/conversations/:conversationId/delete-contact - Delete contact, write contact_deletions, hide conversation
+app.patch("/chat/conversations/:conversationId/delete-contact", authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = req.user?.userId
+    const conversationId = String(req.params?.conversationId || "").trim()
+
+    if (!currentUserId) {
+      return sendUnauthorized(res)
+    }
+
+    if (!conversationId) {
+      return res.status(400).json({
+        success: false,
+        error: "conversationId is required",
+      })
+    }
+
+    const conversation = await getConversationById(conversationId)
+
+    if (!conversation) {
+      return res.status(404).json({
+        success: false,
+        error: "Conversation not found",
+      })
+    }
+
+    if (conversation.type === "event_group") {
+      return res.status(400).json({
+        success: false,
+        error: "Cannot delete contact in group conversation",
+      })
+    }
+
+    if (
+      conversation.user1_id !== currentUserId &&
+      conversation.user2_id !== currentUserId
+    ) {
+      return res.status(404).json({
+        success: false,
+        error: "Conversation not found",
+      })
+    }
+
+    const otherUserId =
+      conversation.user1_id === currentUserId
+        ? conversation.user2_id
+        : conversation.user1_id
+
+    // Upsert contact_deletions
+    const { error: contactDeleteError } = await supabase
+      .from("contact_deletions")
+      .upsert(
+        {
+          deleter_user_id: currentUserId,
+          deleted_user_id: otherUserId,
+          conversation_id: conversationId,
+          created_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "deleter_user_id, deleted_user_id",
+          ignoreDuplicates: false,
+        }
+      )
+
+    if (contactDeleteError) {
+      throw contactDeleteError
+    }
+
+    // Upsert chat_settings with hidden_at for current user
+    const { error: upsertError } = await supabase
+      .from("chat_settings")
+      .upsert(
+        {
+          user_id: currentUserId,
+          conversation_id: conversationId,
+          hidden_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "user_id, conversation_id",
+          ignoreDuplicates: false,
+        }
+      )
+
+    if (upsertError) {
+      throw upsertError
+    }
+
+    return res.json({ success: true })
+  } catch (error) {
+    console.error("Chat delete contact error:", error)
+
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete contact",
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
+    })
+  }
+})
+
 // PATCH /chat/conversations/:conversationId/hide - Soft delete (hide) conversation for current user only
 app.patch("/chat/conversations/:conversationId/hide", authMiddleware, async (req, res) => {
   try {

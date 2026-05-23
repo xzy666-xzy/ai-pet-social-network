@@ -954,8 +954,8 @@ export default function ChatPage() {
     try {
       setDeletingConversation(true)
 
-      await apiRequest<DeleteConversationResponse>(`/chat/conversations/${conversationId}`, {
-        method: "DELETE",
+      await apiRequest<DeleteConversationResponse>(`/chat/conversations/${conversationId}/delete-contact`, {
+        method: "PATCH",
         auth: true,
       })
 
