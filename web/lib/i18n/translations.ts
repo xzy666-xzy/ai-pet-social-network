@@ -33,6 +33,49 @@ export const translations = {
         },
       },
       footer: "© 2025 WePet. Designed for pet lovers.",
+      // Deep feature copy for the scrollable features section
+      featuresDeep: [
+        {
+          key: "match",
+          imageSrc: "/images/wepet-match.png",
+          label: "Matching",
+          title: "A whole new way to meet.\nFind the perfect pal for your pet.",
+          description:
+            "No more guessing. Based on species, distance, age, and personality traits, WePet's smart recommendation algorithm introduces compatible pet friends nearby. Every swipe right opens the door to a genuine connection.",
+        },
+        {
+          key: "chat",
+          imageSrc: "/images/wepet-chat.png",
+          label: "Chat",
+          title: "Mutual likes unlock the spark.\nChat freely, live in the moment.",
+          description:
+            "Conversations only begin when the interest is mutual, ensuring a secure and spam-free space. Share real-time messages and pet life fragments seamlessly, turning online chats into real-world walks.",
+        },
+        {
+          key: "doctor",
+          imageSrc: "/images/wepet-ai.png",
+          label: "AI Doctor",
+          title: "Your 24/7 AI Pet Doctor.\nIntelligent care in your pocket.",
+          description:
+            "WePet is more than just social network. With integrated AI pet care guidance, you can get text consultations and photo-based symptom analysis instantly. Gain professional health advice before planning a vet visit.",
+        },
+        {
+          key: "explore",
+          imageSrc: "/images/wepet-explore.png",
+          label: "Explore",
+          title: "Explore local pet events.\nStep out and touch the real world.",
+          description:
+            "Discover nearby pet-friendly places. Easily create walking meetups or join exciting offline activities hosted by local pet owners. Turn your standard weekend walk into an engaging community gathering.",
+        },
+        {
+          key: "profile",
+          imageSrc: "/images/wepet-profile.png",
+          label: "Profile",
+          title: "Craft a unique pet profile.\nExpress their true personality.",
+          description:
+            "Every pet deserves to be noticed. Showcase your pet's breed, age, unique personality traits, and hobbies through a beautifully organized digital card, helping others find the most compatible playdate.",
+        },
+      ],
     },
 
     // Match Page
@@ -602,6 +645,48 @@ export const translations = {
         },
       },
       footer: "© 2025 WePet. 반려동물 애호가를 위한 디자인.",
+      featuresDeep: [
+        {
+          key: "match",
+          imageSrc: "/images/wepet-match.png",
+          label: "매칭",
+          title: "새로운 만남의 시작,\n우리 아이에게 딱 맞는 친구 찾기",
+          description:
+            "무작정 기다릴 필요 없습니다. 종, 거리, 나이, 그리고 성향까지 고려한 WePet의 스마트 추천 알고리즘으로 동네에서 가장 잘 맞는 반려동물 친구를 만나보세요. 스와이프 한 번으로 소중한 인연이 시작됩니다.",
+        },
+        {
+          key: "chat",
+          imageSrc: "/images/wepet-chat.png",
+          label: "채팅",
+          title: "서로 하트를 누르면 대화 시작,\n반려인들만의 편안한 소통 공간",
+          description:
+            "'서로 좋아요'를 주고받은 매칭된 상대와만 안전하게 대화를 시작할 수 있습니다. 실시간 메시지로 아이들의 일상과 대화 나누며, 온라인에서의 공감대를 오프라인 만남으로 자연스럽게 이어가세요.",
+        },
+        {
+          key: "doctor",
+          imageSrc: "/images/wepet-ai.png",
+          label: "AI 의사",
+          title: "든든한 AI 반려동물 의사,\n24시간 언제나 건강 케어",
+          description:
+            "WePet은 단순한 소셜 앱 그 이상입니다. 텍스트 상담부터 이미지 증상 진단까지 가능한 스마트 AI 건강 상담 서비스가 내장되어 있어, 병원에 가기 전 필요한 전문적이고 빠른 가이드를 언제든 받아볼 수 있습니다.",
+        },
+        {
+          key: "explore",
+          imageSrc: "/images/wepet-explore.png",
+          label: "탐색",
+          title: "우리 동네 반려인 모임,\n오프라인에서 만나는 따뜻한 커뮤니티",
+          description:
+            "주변의 반려동물 친화 공간과 활동을 탐색해 보세요. 산책 모임을 직접 개설하거나 이웃들이 만든 다채로운 오프라인 활동에 참여하여, 주말 산책을 더욱 풍성한 소통의 장으로 만들 수 있습니다.",
+        },
+        {
+          key: "profile",
+          imageSrc: "/images/wepet-profile.png",
+          label: "프로필",
+          title: "하나뿐인 반려동물 프로필,\n아이의 개성과 매력을 담은 명함",
+          description:
+            "모든 반려동물의 일상은 특별합니다. 품종, 나이, 고유한 성격과 취향을 세심하게 기록할 수 있는 프로필 카드를 통해 우리 아이의 매력을 알리고, 가장 마음이 잘 맞는 단짝 친구를 찾아주세요.",
+        },
+      ],
     },
 
     // Match Page
@@ -1171,6 +1256,48 @@ export const translations = {
         },
       },
       footer: "© 2025 WePet. 为宠物爱好者设计。",
+      featuresDeep: [
+        {
+          key: "match",
+          imageSrc: "/images/wepet-match.png",
+          label: "匹配",
+          title: "开启全新的相遇，\n遇见频率相同的宠物伙伴",
+          description:
+            "摆脱盲目等待。WePet 基于物种、距离、年龄及性格的多维度智能推荐算法，帮助您的宠物在附近精准找到玩得来的新朋友。每一次右滑，都是一段真实友谊的开始。",
+        },
+        {
+          key: "chat",
+          imageSrc: "/images/wepet-chat.png",
+          label: "聊天",
+          title: "双向喜欢解锁聊天，\n畅聊属于你们的宠物趣事",
+          description:
+            "只有当你们「互相喜欢」时才会解锁对话框，安全无打扰。支持实时消息传输，轻松分享爱宠的日常表情包与生活碎片，让线上共同话题自然延伸到线下。",
+        },
+        {
+          key: "doctor",
+          imageSrc: "/images/wepet-ai.png",
+          label: "AI医生",
+          title: "专属的 AI 宠物医生，\n给它全天候的健康守护",
+          description:
+            "这不仅仅是个社交软件。内置智能 AI 问诊服务，支持文本咨询与图片症状诊断。多语言日常护理建议，让您在犹豫是否去医院前，先得到最专业、快速的科学喂养指导。",
+        },
+        {
+          key: "explore",
+          imageSrc: "/images/wepet-explore.png",
+          label: "探索",
+          title: "发现附近遛宠动态，\n融入温暖的本地宠物社区",
+          description:
+            "探索周边的宠物友好目的地。您可以一键创建散步约会、加入本地宠友发起的线下活动，从线上走到线下，让周末的公园散步变成一场热闹的宠物聚会。",
+        },
+        {
+          key: "profile",
+          imageSrc: "/images/wepet-profile.png",
+          label: "档案",
+          title: "打造独特的宠物名片，\n展现它的性格与独特魅力",
+          description:
+            "每一个生命都值得被精致记录。通过多维度的宠物档案，详细展示它的品种、年龄、独特个性和喜好。让附近的宠友一眼就能读懂它，找到最投缘的玩耍伙伴。",
+        },
+      ],
     },
 
     // Match Page

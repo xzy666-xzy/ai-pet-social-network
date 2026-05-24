@@ -5,8 +5,8 @@ import { AuthProvider } from "@/lib/auth-context"
 import "./globals.css"
 
 export const metadata = {
-    title: "WePet (위펫) - AI Pet Social Network",
-    description: "Connect your pet with perfect friends through AI-powered matching. Find walking buddies and playdates.",
+    title: "WePet (위펫) - Pet Social Network",
+    description: "Connect your pet with perfect friends. Find walking buddies, playdates, and pet-friendly places near you.",
     generator: "v0.app",
 }
 
@@ -15,7 +15,7 @@ export const viewport = {
     initialScale: 1,
     maximumScale: 1,
     userScalable: false,
-    themeColor: "#FF6A00",
+    themeColor: "#FBF9F6",
 }
 
 export default function RootLayout({

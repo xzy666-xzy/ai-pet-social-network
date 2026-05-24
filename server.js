@@ -5003,9 +5003,7 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
 
         const [
           { data: lastMessage },
-          likedByMe,
-          likedMe,
-          { count: sentCount },
+          access,
           otherMembership,
         ] = await Promise.all([
           supabase
@@ -5015,15 +5013,15 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
             .order("created_at", { ascending: false })
             .limit(1)
             .maybeSingle(),
-          hasLiked(String(currentUserId), String(otherUserId)),
-          hasLiked(String(otherUserId), String(currentUserId)),
-          supabase
-            .from("messages")
-            .select("*", { count: "exact", head: true })
-            .eq("conversation_id", conversation.id)
-            .eq("sender_id", currentUserId),
+          getConversationAccess(String(conversation.id), String(currentUserId)),
           getActiveMembership(String(otherUserId)),
         ])
+
+        const likedByMe = Boolean(access?.liked_by_me)
+        const likedMe = Boolean(access?.liked_me)
+        const isMatch = Boolean(access?.is_match)
+        const singleMessageUsedByMe = Boolean(access?.single_message_used_by_me)
+        const canSendMessage = Boolean(access?.can_send_message)
 
         const settings = conversationSettingsById.get(String(conversation.id))
         const rawUnreadCount = Number(conversation.unread_count ?? 0)
@@ -5049,8 +5047,9 @@ app.get("/chat/conversations", authMiddleware, async (req, res) => {
           is_muted: settings?.is_muted ?? false,
           liked_by_me: likedByMe ? 1 : 0,
           liked_me: likedMe ? 1 : 0,
-          is_match: likedByMe && likedMe ? 1 : 0,
-          single_message_used_by_me: (sentCount || 0) >= 1 ? 1 : 0,
+          is_match: isMatch ? 1 : 0,
+          single_message_used_by_me: singleMessageUsedByMe ? 1 : 0,
+          can_send_message: canSendMessage,
           unread_count: unreadCount,
         }
       })
