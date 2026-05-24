@@ -13,6 +13,9 @@ export const translations = {
         heroTitle: "Start with your pet\nMeet meaningful connections nearby",
         heroSubtitle:
           "A warm social space for pets and people\nMatching chat and local discovery made natural",
+        mutualLikes: "Mutual likes",
+        realProfiles: "Real profiles",
+        safeCommunity: "Safe community",
       },
       featuresLabel: "Features",
       featuresTitle: "Explore what WePet\ncan do for you",
@@ -646,6 +649,9 @@ export const translations = {
         heroTitle: "반려동물과의 연결\n가까운 인연에서 시작됩니다",
         heroSubtitle:
           "반려동물과 사람을 위한 따뜻한 소셜 공간\n매칭 채팅 지역 탐색까지 자연스럽게",
+        mutualLikes: "상호 호감",
+        realProfiles: "실제 프로필",
+        safeCommunity: "안전한 커뮤니티",
       },
       featuresLabel: "기능",
       featuresTitle: "WePet의 주요 기능을\n한눈에 만나보세요",
@@ -1278,6 +1284,9 @@ export const translations = {
         heroTitle: "从宠物开始\n遇见附近的美好连接",
         heroSubtitle:
           "为宠物与主人打造温暖的社交空间\n匹配聊天与附近探索自然发生",
+        mutualLikes: "双向喜欢",
+        realProfiles: "真实资料",
+        safeCommunity: "安全社区",
       },
       featuresLabel: "功能",
       featuresTitle: "一眼了解\nWePet 的核心功能",

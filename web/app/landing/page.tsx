@@ -798,16 +798,16 @@ export default function LandingPage() {
           {/* ── Trust indicators — centered horizontally ─────────── */}
           <div className="mt-12 flex items-center justify-center gap-6 text-xs font-medium text-[#9C9C9C]">
             <span className="flex items-center gap-1.5">
-              <CheckCircle className="h-3.5 w-3.5 text-[#9C9C9C]" />
-              Mutual likes
+              <CheckCircle className="h-3.5 w-3.5 text-[#22C55E]" />
+              {tr.landing.hero.mutualLikes}
             </span>
             <span className="flex items-center gap-1.5">
-              <CheckCircle className="h-3.5 w-3.5 text-[#9C9C9C]" />
-              Real profiles
+              <CheckCircle className="h-3.5 w-3.5 text-[#22C55E]" />
+              {tr.landing.hero.realProfiles}
             </span>
             <span className="flex items-center gap-1.5">
-              <CheckCircle className="h-3.5 w-3.5 text-[#9C9C9C]" />
-              Safe community
+              <CheckCircle className="h-3.5 w-3.5 text-[#22C55E]" />
+              {tr.landing.hero.safeCommunity}
             </span>
           </div>
 
