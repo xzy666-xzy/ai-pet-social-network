@@ -66,8 +66,8 @@ function isAndroidCapacitorWebView() {
 }
 
 export default function ClientLayout({
-                                       children,
-                                     }: {
+                                        children,
+                                      }: {
   children: React.ReactNode
 }) {
   const { t } = useLanguage()
@@ -197,9 +197,6 @@ export default function ClientLayout({
     )
   }, [user])
 
-  const avatarLetter = useMemo(() => {
-    return displayName.charAt(0).toUpperCase()
-  }, [displayName])
   const showLanguageSwitcher = true
 
   if (loading) {
@@ -245,11 +242,20 @@ export default function ClientLayout({
           <div className="flex items-center gap-3">
             {showLanguageSwitcher ? <LanguageSwitcher /> : null}
 
-            <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-white shadow-md">
-              <span className="text-lg font-bold text-orange-500">
-                {avatarLetter}
-              </span>
-            </div>
+            <Link
+              href="/settings"
+              className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-white shadow-md"
+            >
+              {user?.avatar_url ? (
+                <img
+                  src={user.avatar_url}
+                  alt={displayName}
+                  className="h-full w-full rounded-full object-cover"
+                />
+              ) : (
+                <PawPrint className="h-5 w-5 text-orange-500" />
+              )}
+            </Link>
           </div>
         </header>
 
