@@ -562,26 +562,31 @@ function FeaturesSection({ lang }: { lang: Lang }) {
         >
           <div className="mx-auto grid h-full max-w-6xl grid-cols-1 items-center gap-12 px-6 md:grid-cols-[minmax(0,1fr)_420px] md:gap-24 md:px-10 lg:px-16">
             {/* ── Left: text content (vertically centered) ──────────── */}
-            <div className="relative flex flex-col justify-center">
+            <div className="relative flex h-full flex-col justify-center">
               <div className="w-full max-w-[460px]">
                 {items.map((item, index) => {
                   const isActive = index === activeIndex
                   const isPrev = index < activeIndex
                   const isNext = index > activeIndex
 
-                  let textClasses = "opacity-0 translate-y-10"
+                  let textClasses = "opacity-0"
+                  let transformStyle = "translateY(-50%)"
                   if (isActive) {
-                    textClasses = "opacity-100 translate-y-0"
+                    textClasses = "opacity-100"
+                    transformStyle = "translateY(-50%)"
                   } else if (isPrev) {
-                    textClasses = "opacity-0 -translate-y-[30px]"
+                    textClasses = "opacity-0"
+                    transformStyle = "translateY(calc(-50% - 30px))"
                   } else if (isNext) {
-                    textClasses = "opacity-0 translate-y-10"
+                    textClasses = "opacity-0"
+                    transformStyle = "translateY(calc(-50% + 40px))"
                   }
 
                   return (
                     <div
                       key={item.key}
-                      className={`absolute left-0 top-0 w-full transition-all duration-700 ease-out ${textClasses}`}
+                      className={`absolute left-0 top-1/2 w-full transition-all duration-700 ease-out ${textClasses}`}
+                      style={{ transform: transformStyle }}
                       aria-hidden={!isActive}
                     >
                       {/* Orange label */}

@@ -398,8 +398,8 @@ export default function RegisterPage() {
           </div>
         </header>
 
-        <main className="mx-auto flex min-h-[calc(100vh-64px)] max-w-6xl items-center justify-center px-4 py-8 sm:px-6">
-          <div className="grid w-full max-w-xl overflow-hidden rounded-[32px] bg-white shadow-[0_20px_80px_rgba(0,0,0,0.08)]">
+        <main className="mx-auto flex min-h-[calc(100dvh-64px)] max-w-6xl items-start justify-center px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+24px)] sm:items-center sm:px-6 sm:py-8">
+          <div className="grid w-full max-w-xl overflow-visible rounded-[32px] bg-white shadow-[0_20px_80px_rgba(0,0,0,0.08)]">
             <div className="flex items-center justify-center p-5 sm:p-8 lg:p-10">
               <div className="w-full max-w-md">
                 <div className="mb-8 text-center lg:text-left">
@@ -460,32 +460,36 @@ export default function RegisterPage() {
                         <label className="mb-2 block text-sm font-semibold text-stone-700">
                           {verificationI18n.label}
                         </label>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            placeholder={verificationI18n.placeholder}
-                            className="h-13 flex-1 rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
-                            value={verificationCode}
-                            onChange={(e) => {
-                              setVerificationCode(e.target.value)
-                              setEmailCodeVerified(false)
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={handleSendVerificationCode}
-                            disabled={sendingCode}
-                            className="shrink-0 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-600 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-70"
-                          >
-                            {verificationI18n.sendButton}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleVerifyCode}
-                            className="shrink-0 rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-200 transition hover:from-orange-600 hover:to-orange-700"
-                          >
-                            {verificationI18n.verifyButton}
-                          </button>
+                        <div className="flex w-full flex-col gap-2 md:flex-row">
+                          <div className="min-w-0 flex-1">
+                            <input
+                              type="text"
+                              placeholder={verificationI18n.placeholder}
+                              className="h-13 w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
+                              value={verificationCode}
+                              onChange={(e) => {
+                                setVerificationCode(e.target.value)
+                                setEmailCodeVerified(false)
+                              }}
+                            />
+                          </div>
+                          <div className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:shrink-0">
+                            <button
+                              type="button"
+                              onClick={handleSendVerificationCode}
+                              disabled={sendingCode}
+                              className="w-full whitespace-nowrap rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-600 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-70 md:w-auto"
+                            >
+                              {verificationI18n.sendButton}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleVerifyCode}
+                              className="w-full whitespace-nowrap rounded-2xl bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-200 transition hover:from-orange-600 hover:to-orange-700 md:w-auto"
+                            >
+                              {verificationI18n.verifyButton}
+                            </button>
+                          </div>
                         </div>
                         {codeMessage && (
                           <p className="mt-2 text-sm text-emerald-600">{codeMessage}</p>
