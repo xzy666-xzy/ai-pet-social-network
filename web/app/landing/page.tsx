@@ -15,6 +15,7 @@ import {
   ArrowDown,
 } from "lucide-react"
 import type { Locale } from "@/lib/i18n/translations"
+import { getTranslation } from "@/lib/i18n/translations"
 
 type Lang = Locale
 
@@ -22,7 +23,7 @@ type FeatureDeepItem = {
   key: string
   imageSrc: string
   label: string
-  title: string
+  titleLines: string[]
   description: string
 }
 
@@ -33,41 +34,56 @@ const featureCopy: Record<Lang, FeatureDeepItem[]> = {
       key: "match",
       imageSrc: "/landing/match.png",
       label: "WEPET MATCH",
-      title: "Find nearby pet friends\nthat truly fit",
+      titleLines: [
+        "Find nearby pet friends",
+        "that truly fit",
+      ],
       description:
-        "WePet recommends companions based on distance, age, breed, and personality.\nA simple swipe can start a new connection for both pets and owners.",
+        "WePet recommends companions based on distance age breed and personality\nA simple choice can start a new connection for pets and owners",
     },
     {
       key: "chat",
       imageSrc: "/landing/chat.png",
       label: "WEPET CHAT",
-      title: "Start talking after\nmutual likes",
+      titleLines: [
+        "Start talking",
+        "after mutual likes",
+      ],
       description:
-        "When both sides show interest, private chat opens naturally.\nPlan walks, share updates, and build safe pet friendships.",
+        "When both sides show interest private chat opens naturally\nPlan walks share updates and build safe pet friendships",
     },
     {
       key: "doctor",
       imageSrc: "/landing/doctor.png",
       label: "WEPET AI DOCTOR",
-      title: "Ask about symptoms\nbefore you worry",
+      titleLines: [
+        "Ask about symptoms",
+        "before you worry",
+      ],
       description:
-        "Describe symptoms or upload a photo for quick AI-assisted guidance.\nWePet helps you understand what to check before visiting a clinic.",
+        "Describe symptoms or upload a photo for quick AI assisted guidance\nWePet helps you understand what to check before visiting a clinic",
     },
     {
       key: "explore",
       imageSrc: "/landing/explore.png",
       label: "WEPET EXPLORE",
-      title: "Discover pet-friendly\nactivities nearby",
+      titleLines: [
+        "Discover pet friendly",
+        "activities nearby",
+      ],
       description:
-        "Find local walks, meetups, parks, and pet-friendly places around you.\nTurn online matches into real-world moments.",
+        "Find local walks meetups parks and pet friendly places around you\nTurn online matches into real world moments",
     },
     {
       key: "profile",
       imageSrc: "/landing/profile.png",
       label: "WEPET PROFILE",
-      title: "Show your pet's\npersonality clearly",
+      titleLines: [
+        "Show your pet personality",
+        "more clearly",
+      ],
       description:
-        "Share breed, age, traits, photos, and a short introduction.\nA richer profile helps better matches happen naturally.",
+        "Share breed age traits photos and a short introduction\nA richer profile helps better matches happen naturally",
     },
   ],
   zh: [
@@ -75,41 +91,56 @@ const featureCopy: Record<Lang, FeatureDeepItem[]> = {
       key: "match",
       imageSrc: "/landing/match.png",
       label: "WEPET 匹配",
-      title: "发现真正适合的\n附近宠物朋友",
+      titleLines: [
+        "为你的宠物找到",
+        "附近合适的朋友",
+      ],
       description:
-        "WePet 会根据距离、年龄、品种和性格推荐更合适的伙伴。\n一次简单的滑动，就能为宠物和主人开启新的连接。",
+        "根据距离 年龄 品种和性格推荐更合适的宠物伙伴\n一次简单选择 就能开启新的连接",
     },
     {
       key: "chat",
       imageSrc: "/landing/chat.png",
       label: "WEPET 聊天",
-      title: "互相喜欢后，\n自然开始聊天",
+      titleLines: [
+        "互相喜欢后",
+        "自然开始聊天",
+      ],
       description:
-        "双方都表达兴趣后，私聊会安全开启。\n可以约散步、分享日常，也能慢慢建立真实的宠物友谊。",
+        "双方表达兴趣后 安全开启一对一聊天\n可以约散步 分享日常 慢慢建立真实的宠物友谊",
     },
     {
       key: "doctor",
       imageSrc: "/landing/doctor.png",
       label: "WEPET AI 医生",
-      title: "担心症状时，\n先问问 AI 医生",
+      titleLines: [
+        "担心症状时",
+        "先问问 AI 医生",
+      ],
       description:
-        "输入症状或上传照片，快速获得 AI 辅助的初步建议。\nWePet 帮你在去医院前先了解需要关注的情况。",
+        "输入症状或上传照片 快速获得 AI 辅助的初步建议\n帮助你在去医院前先了解需要关注的情况",
     },
     {
       key: "explore",
       imageSrc: "/landing/explore.png",
       label: "WEPET 探索",
-      title: "发现附近的\n宠物友好活动",
+      titleLines: [
+        "发现附近的",
+        "宠物友好活动",
+      ],
       description:
-        "找到周边散步、聚会、公园和宠物友好地点。\n让线上匹配延伸到真实的线下相遇。",
+        "找到周边散步 聚会 公园和宠物友好地点\n让线上匹配延伸到真实的线下相遇",
     },
     {
       key: "profile",
       imageSrc: "/landing/profile.png",
       label: "WEPET 资料",
-      title: "更清楚地展示\n你的宠物性格",
+      titleLines: [
+        "更清楚地展示",
+        "你的宠物性格",
+      ],
       description:
-        "展示品种、年龄、性格、照片和简短介绍。\n更完整的资料，会让匹配和聊天更自然。",
+        "展示品种 年龄 性格 照片和简短介绍\n更完整的资料会让匹配和聊天更自然",
     },
   ],
   ko: [
@@ -117,41 +148,56 @@ const featureCopy: Record<Lang, FeatureDeepItem[]> = {
       key: "match",
       imageSrc: "/landing/match.png",
       label: "WEPET 매칭",
-      title: "우리 아이에게 잘 맞는\n가까운 친구를 찾아요",
+      titleLines: [
+        "우리 아이에게 잘 맞는",
+        "가까운 친구를 찾아요",
+      ],
       description:
-        "거리, 나이, 품종, 성격을 바탕으로 어울리는 반려동물 친구를 추천해요.\n간단한 스와이프로 반려동물과 보호자 모두에게 새로운 연결이 시작돼요.",
+        "거리 나이 품종 성격을 바탕으로 어울리는 반려동물 친구를 추천해요\n간단한 선택으로 새로운 연결을 시작할 수 있어요",
     },
     {
       key: "chat",
       imageSrc: "/landing/chat.png",
       label: "WEPET 채팅",
-      title: "서로 좋아요를 누르면\n대화가 시작돼요",
+      titleLines: [
+        "서로 좋아요를 누르면",
+        "대화가 시작돼요",
+      ],
       description:
-        "서로 관심을 표현한 뒤 안전하게 1:1 채팅이 열려요.\n산책을 약속하고 일상을 나누며 자연스럽게 반려동물 친구를 만들 수 있어요.",
+        "서로 관심을 표현한 뒤 안전하게 1대1 채팅이 열려요\n산책 약속과 일상 공유를 자연스럽게 이어갈 수 있어요",
     },
     {
       key: "doctor",
       imageSrc: "/landing/doctor.png",
       label: "WEPET AI 의사",
-      title: "걱정되는 증상은\n먼저 AI에게 물어보세요",
+      titleLines: [
+        "걱정되는 증상은",
+        "AI에게 먼저 물어보세요",
+      ],
       description:
-        "증상을 입력하거나 사진을 올리면 AI가 빠르게 초기 상담을 도와줘요.\n병원에 가기 전 어떤 점을 확인해야 할지 먼저 살펴볼 수 있어요.",
+        "증상을 입력하거나 사진을 올리면 AI가 빠르게 초기 상담을 도와줘요\n병원에 가기 전 확인할 점을 먼저 살펴볼 수 있어요",
     },
     {
       key: "explore",
       imageSrc: "/landing/explore.png",
       label: "WEPET 탐색",
-      title: "근처 반려동물\n활동을 발견해요",
+      titleLines: [
+        "근처 반려동물 활동을",
+        "발견해요",
+      ],
       description:
-        "주변 산책 모임, 이벤트, 공원, 반려동물 친화 장소를 찾아보세요.\n온라인에서 시작된 연결을 실제 만남으로 이어갈 수 있어요.",
+        "주변 산책 모임 이벤트 공원 반려동물 친화 장소를 찾아보세요\n온라인에서 시작된 연결을 실제 만남으로 이어갈 수 있어요",
     },
     {
       key: "profile",
       imageSrc: "/landing/profile.png",
       label: "WEPET 프로필",
-      title: "우리 아이의 성격을\n더 잘 보여주세요",
+      titleLines: [
+        "우리 아이의 성격을",
+        "더 잘 보여주세요",
+      ],
       description:
-        "품종, 나이, 성격, 사진, 소개를 한곳에 담을 수 있어요.\n풍부한 프로필은 더 자연스러운 매칭과 대화를 만들어줘요.",
+        "품종 나이 성격 사진 소개를 한곳에 담을 수 있어요\n풍부한 프로필은 더 자연스러운 매칭과 대화를 만들어줘요",
     },
   ],
 }
@@ -204,10 +250,10 @@ const copy = {
     howLabel: "How WePet Works",
     howTitle: "Start with your pet, then meet the right people nearby.",
     steps: [
-      { title: "Create your pet profile", text: "Add your pet's name, personality, routine, photos, and neighborhood." },
-      { title: "Match with nearby pets", text: "See compatible pet friends around you and send likes when it feels right." },
-      { title: "Chat after mutual likes", text: "Open a conversation after both owners choose to connect." },
-      { title: "Join events and explore", text: "Plan walks, meetups, and everyday outings from local discovery." },
+      { title: "Create your pet profile", text: "Add your pet's name, personality, photos, and neighborhood." },
+      { title: "Match with nearby pets", text: "Discover compatible pets nearby." },
+      { title: "Chat after mutual likes", text: "Start conversations safely after matching." },
+      { title: "Explore local activities", text: "Join walks and pet-friendly events nearby." },
     ],
     safetyLabel: "Safety & Trust",
     safetyTitle: "Built for safe pet friendships",
@@ -219,13 +265,12 @@ const copy = {
     ],
     downloadTitle: "Download WePet",
     downloadSubtitle: "Start matching, chatting, and exploring pet-friendly places with WePet.",
-    appStore: "App Store",
-    googlePlay: "Google Play",
-    openApp: "Open Web App",
+    downloadApk: "Download Android APK",
+    openWebApp: "Open Web App",
     footerText: "Pet social platform in Korea",
     footerDescription: "안산 · Ansan",
     footerProduct: "Product",
-    footerCompany: "Company",
+    footerCompany: "Personal",
     footerLinks: {
       features: "Features",
       explore: "Explore",
@@ -308,10 +353,10 @@ const copy = {
     howLabel: "使用流程",
     howTitle: "从宠物资料开始，认识附近合适的人和宠物。",
     steps: [
-      { title: "创建宠物资料", text: "添加宠物名字、性格、日常习惯、照片和所在社区。" },
-      { title: "匹配附近宠物", text: "浏览附近合适的宠物朋友，并在有兴趣时发送喜欢。" },
-      { title: "双向喜欢后聊天", text: "双方都选择连接后，再开启安全自然的对话。" },
-      { title: "参加活动并探索", text: "通过本地探索计划散步、聚会和日常出行。" },
+      { title: "创建宠物资料", text: "添加宠物名字、性格、照片和所在社区。" },
+      { title: "匹配附近宠物", text: "发现附近合适的宠物伙伴。" },
+      { title: "双向喜欢后聊天", text: "匹配成功后开始交流。" },
+      { title: "参加活动并探索", text: "参与附近散步和宠物活动。" },
     ],
     safetyLabel: "安全与信任",
     safetyTitle: "为安全的宠物社交而设计",
@@ -323,13 +368,12 @@ const copy = {
     ],
     downloadTitle: "下载 WePet",
     downloadSubtitle: "使用 WePet 开始匹配、聊天，并探索宠物友好地点。",
-    appStore: "App Store",
-    googlePlay: "Google Play",
-    openApp: "打开 Web App",
+    downloadApk: "下载 Android APK",
+    openWebApp: "打开网页版",
     footerText: "韩国宠物社交平台",
     footerDescription: "안산 · Ansan",
     footerProduct: "产品",
-    footerCompany: "公司",
+    footerCompany: "个人",
     footerLinks: {
       features: "功能",
       explore: "探索",
@@ -387,9 +431,9 @@ const copy = {
     },
     langLabels: { en: "EN", zh: "中文", ko: "한국어" },
     badge: "반려동물 소셜 네트워크",
-    heroTitle: "단순한 산책이 아닙니다.\nWePet이 반려동물 세상을 연결합니다.",
+    heroTitle: "반려동물과의 연결\n가까운 인연에서 시작됩니다",
     heroSubtitle:
-      "반려동물과 사람을 위한 따뜻하고 진정한 소셜 공간. 매칭, 채팅, 반려동물 친화 장소 탐색까지 — 자연스럽게.",
+      "반려동물과 사람을 위한 따뜻한 소셜 공간\n매칭 채팅 지역 탐색까지 자연스럽게",
     ctaPrimary: "시작하기",
     ctaSecondary: "웹에서 보기",
     featuresLabel: "기능",
@@ -412,10 +456,10 @@ const copy = {
     howLabel: "이용 방법",
     howTitle: "반려동물 프로필에서 시작해 가까운 좋은 인연을 만나세요.",
     steps: [
-      { title: "반려동물 프로필 만들기", text: "이름, 성격, 생활 패턴, 사진, 동네 정보를 추가하세요." },
-      { title: "근처 반려동물과 매칭", text: "주변의 잘 맞는 반려동물 친구를 보고 마음에 들면 좋아요를 보내세요." },
-      { title: "상호 좋아요 후 채팅", text: "두 보호자가 모두 연결을 선택한 뒤 자연스럽게 대화를 시작하세요." },
-      { title: "이벤트 참여와 탐색", text: "지역 탐색으로 산책, 모임, 일상 외출을 계획하세요." },
+      { title: "반려동물 프로필 만들기", text: "이름, 성격, 사진, 동네 정보를 추가하세요." },
+      { title: "가까운 반려동물 매칭", text: "근처에서 잘 맞는 친구를 찾아보세요." },
+      { title: "서로 좋아요 후 채팅", text: "매칭 후 안전하게 대화를 시작하세요." },
+      { title: "지역 활동 탐색", text: "근처 산책과 반려동물 활동에 참여하세요." },
     ],
     safetyLabel: "안전과 신뢰",
     safetyTitle: "안전한 반려동물 친구 관계를 위해",
@@ -427,13 +471,12 @@ const copy = {
     ],
     downloadTitle: "WePet 다운로드",
     downloadSubtitle: "WePet에서 매칭, 채팅, 반려동물 동반 장소 탐색을 시작하세요.",
-    appStore: "App Store",
-    googlePlay: "Google Play",
-    openApp: "Web App 열기",
+    downloadApk: "Android APK 다운로드",
+    openWebApp: "웹 앱 열기",
     footerText: "한국의 반려동물 소셜 플랫폼",
     footerDescription: "안산 · Ansan",
     footerProduct: "제품",
-    footerCompany: "회사",
+    footerCompany: "개인",
     footerLinks: {
       features: "기능",
       explore: "탐색",
@@ -489,6 +532,7 @@ function clamp(value: number, min: number, max: number): number {
 
 /* ── FeaturesSection: KakaoTalk-style scrollable feature panels ── */
 function FeaturesSection({ lang }: { lang: Lang }) {
+  const tr = getTranslation(lang)
   const items: FeatureDeepItem[] = featureCopy[lang]
   const [activeIndex, setActiveIndex] = useState(0)
   const outerRef = useRef<HTMLDivElement>(null)
@@ -531,22 +575,14 @@ function FeaturesSection({ lang }: { lang: Lang }) {
     <section id="features" className="bg-white">
       {/* ── Section header ─────────────────────────────────────── */}
       <div className="mx-auto w-full max-w-7xl px-6 pb-8 pt-24 md:px-10 lg:px-16">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#FF7A00]">
-          {lang === "zh" ? "功能" : lang === "ko" ? "기능" : "Features"}
+        <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#FF7A00] md:text-base px-5 py-2">
+          {tr.landing.featuresLabel}
         </p>
-        <h2 className="mt-4 whitespace-pre-line text-4xl font-semibold leading-[1.12] text-[#111111] md:text-5xl lg:text-6xl">
-          {lang === "zh"
-            ? "一次安静滚动，\n展示 WePet 五大核心体验"
-            : lang === "ko"
-              ? "한 번의 조용한 스크롤로,\nWePet 핵심 5가지를 보여줍니다"
-              : "One calm scroll,\nfive core WePet experiences"}
+        <h2 className="mt-4 max-w-[860px] whitespace-pre-line text-[30px] font-bold leading-[1.14] tracking-[-0.03em] text-[#111111] md:text-[38px] lg:text-[44px] break-keep">
+          {tr.landing.featuresTitle}
         </h2>
-        <p className="mt-6 max-w-2xl text-base leading-8 text-[#5E5E5E] md:text-lg">
-          {lang === "zh"
-            ? "大留白、单栏呼吸节奏、Sticky 手机图与流畅淡入淡出。"
-            : lang === "ko"
-              ? "넓은 여백, 단일 컬럼 호흡감, Sticky 폰 목업, 부드러운 페이드 전환."
-              : "Large white space, single-column rhythm, sticky phone mockup, and smooth fade transitions."}
+        <p className="mt-6 max-w-2xl break-keep text-base font-medium leading-8 text-neutral-500 md:text-lg">
+          {tr.landing.featuresSubtitle}
         </p>
       </div>
 
@@ -560,10 +596,10 @@ function FeaturesSection({ lang }: { lang: Lang }) {
           className="sticky top-[72px]"
           style={{ height: "calc(100vh - 72px)" }}
         >
-          <div className="mx-auto grid h-full max-w-6xl grid-cols-1 items-center gap-12 px-6 md:grid-cols-[minmax(0,1fr)_420px] md:gap-24 md:px-10 lg:px-16">
+          <div className="mx-auto grid h-full max-w-6xl grid-cols-1 items-center gap-12 px-6 md:grid-cols-[1.15fr_0.85fr] md:gap-24 md:px-10 lg:px-16">
             {/* ── Left: text content (vertically centered) ──────────── */}
             <div className="relative flex h-full flex-col justify-center">
-              <div className="w-full max-w-[460px]">
+              <div className="w-full max-w-[760px] xl:max-w-[820px]">
                 {items.map((item, index) => {
                   const isActive = index === activeIndex
                   const isPrev = index < activeIndex
@@ -590,18 +626,20 @@ function FeaturesSection({ lang }: { lang: Lang }) {
                       aria-hidden={!isActive}
                     >
                       {/* Orange label */}
-                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-500">
+                      <p className="text-sm font-bold uppercase tracking-[0.18em] text-orange-500 md:text-base px-5 py-2">
                         {item.label}
                       </p>
-                      {/* Title: 2~3 lines */}
-                      <h3 className="mt-6 whitespace-pre-line text-5xl font-bold leading-tight text-[#111111] md:text-6xl">
-                        {item.title}
+                      {/* Title: fixed 2 lines */}
+                      <h3 className="mt-6 space-y-2 text-[28px] font-bold leading-[1.14] tracking-[-0.035em] text-[#111111] md:text-[34px] lg:text-[40px]">
+                        {item.titleLines.map((line) => (
+                          <span className="block whitespace-nowrap" key={line}>{line}</span>
+                        ))}
                       </h3>
                       {/* Description: 2 paragraphs */}
                       {item.description.split("\n").map((para, i) => (
                         <p
                           key={i}
-                          className={`text-lg leading-8 text-neutral-500 font-medium ${
+                          className={`max-w-[640px] break-keep text-base font-medium leading-8 text-neutral-500 md:text-lg ${
                             i === 0 ? "mt-6" : "mt-4"
                           }`}
                         >
@@ -667,6 +705,7 @@ function FeaturesSection({ lang }: { lang: Lang }) {
 export default function LandingPage() {
   const [lang, setLang] = useState<Lang>("en")
   const t = copy[lang]
+  const tr = getTranslation(lang)
 
   return (
     <main className="min-h-screen bg-[#FBF9F6] text-[#1A1A1A]">
@@ -724,25 +763,25 @@ export default function LandingPage() {
         {/* ultra-clean background — no gradients, no noise */}
         <div className="pointer-events-none absolute inset-0 bg-[#FBF9F6]" />
 
-        <div className="relative mx-auto flex w-full max-w-4xl flex-col items-center text-center">
+        <div className="relative mx-auto flex w-full max-w-6xl flex-col items-center text-center">
           {/* ── App Logo / Badge ──────────────────────────────── */}
           <div className="mb-8 inline-flex items-center gap-2.5 rounded-2xl border border-[#E8E4DE] bg-white px-5 py-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F97316] text-white">
               <PawPrint className="h-4 w-4" />
             </span>
-            <span className="text-sm font-semibold tracking-wide text-[#6B6B6B]">
+            <span className="text-sm font-bold tracking-[0.18em] text-[#6B6B6B] md:text-base px-5 py-2">
               {t.badge}
             </span>
           </div>
 
           {/* ── Main Title — giant,沉稳, centered ─────────────── */}
-          <h1 className="whitespace-pre-line text-5xl font-bold leading-[1.12] tracking-tight text-[#1A1A1A] sm:text-6xl lg:text-7xl xl:text-[4.75rem]">
-            {t.heroTitle}
+          <h1 className="whitespace-pre-line text-4xl font-bold leading-[1.12] tracking-[-0.035em] text-[#1A1A1A] sm:text-5xl lg:text-6xl max-w-6xl break-keep">
+            {tr.landing.hero.heroTitle}
           </h1>
 
           {/* ── Subtitle ──────────────────────────────────────── */}
-          <p className="mx-auto mt-8 max-w-2xl text-lg leading-8 text-[#6B6B6B] sm:text-xl">
-            {t.heroSubtitle}
+          <p className="mx-auto mt-8 max-w-2xl text-base font-medium leading-8 text-neutral-500 md:text-lg">
+            {tr.landing.hero.heroSubtitle}
           </p>
 
           {/* ── CTA Buttons ──────────────────────────────────────── */}
@@ -794,46 +833,57 @@ export default function LandingPage() {
 
         <div className="relative mx-auto w-full max-w-7xl">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#F97316]">{t.howLabel}</p>
-            <h2 className="mt-4 text-4xl font-bold tracking-tight text-[#1A1A1A] sm:text-5xl">{t.howTitle}</h2>
+            <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#F97316] md:text-base px-5 py-2">{tr.landing.howLabel}</p>
+            <h2 className="mt-4 whitespace-pre-line text-[30px] font-bold leading-[1.12] tracking-[-0.035em] text-[#1A1A1A] md:text-[36px] lg:text-[40px] break-keep">{tr.landing.howTitle}</h2>
           </div>
 
-          <div className="mt-14 grid gap-5 lg:grid-cols-4">
-            {t.steps.map((step, index) => {
-              const StepIcon = [UserRound, Heart, MessageCircle, MapPin][index]
-              return (
-                <article
-                  key={step.title}
-                  className="group relative min-h-[18rem] overflow-hidden rounded-3xl border border-[#E8E4DE] bg-white p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(0,0,0,0.06)]"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="rounded-full border border-[#E8E4DE] bg-white px-3 py-1 text-[10px] font-semibold text-[#9C9C9C]">
-                      Step {index + 1}
-                    </span>
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#FFF5ED] text-[#F97316] shadow-sm transition duration-300 group-hover:scale-110">
-                      <StepIcon className="h-5 w-5" />
-                    </div>
-                  </div>
-
-                  <div className="relative mt-8 rounded-2xl border border-[#E8E4DE]/60 bg-[#FBF9F6] p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-[#F97316]" />
-                        <span className="h-2 w-2 rounded-full bg-[#FB923C]" />
-                        <span className="h-2 w-2 rounded-full bg-[#E8E4DE]" />
+          {/* step images & metadata */}
+          {(() => {
+            const stepImages = [
+              { src: "/landing/step-profile.png", objectPosition: "object-top" },
+              { src: "/landing/step-match.png", objectPosition: "object-center" },
+              { src: "/landing/step-chat.png", objectPosition: "object-top" },
+              { src: "/landing/step-explore.png", objectPosition: "object-center" },
+            ]
+            const StepIcons = [UserRound, Heart, MessageCircle, MapPin]
+            return (
+              <div className="mt-14 grid gap-6 lg:grid-cols-4">
+                {tr.landing.howSteps.map((step, index) => {
+                  const Icon = StepIcons[index]
+                  const img = stepImages[index]
+                  return (
+                    <article
+                      key={step.title}
+                      className="group flex flex-col rounded-3xl border border-[#E8E4DE] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(0,0,0,0.06)]"
+                    >
+                      {/* image container */}
+                      <div className="aspect-[4/5] overflow-hidden rounded-2xl bg-neutral-50 m-3">
+                        <img
+                          src={img.src}
+                          alt={step.title}
+                          className={`w-full h-full object-cover ${img.objectPosition} transition-all duration-300 group-hover:scale-[1.03]`}
+                        />
                       </div>
-                    </div>
-                    <div className="mt-4 h-2.5 w-24 rounded-full bg-[#E8E4DE]" />
-                    <div className="mt-2.5 h-2 w-32 rounded-full bg-[#F97316]/20" />
-                    <div className="mt-2 h-2 w-20 rounded-full bg-[#E8E4DE]" />
-                  </div>
 
-                  <h3 className="relative mt-6 text-xl font-bold tracking-tight text-[#1A1A1A]">{step.title}</h3>
-                  <p className="relative mt-3 text-sm leading-7 text-[#6B6B6B]">{step.text}</p>
-                </article>
-              )
-            })}
-          </div>
+                      {/* text content */}
+                      <div className="flex flex-1 flex-col px-5 pb-6">
+                        <div className="flex items-center justify-between">
+                          <span className="rounded-full border border-[#E8E4DE] bg-white px-3 py-1 text-[10px] font-semibold text-[#9C9C9C]">
+                            {index + 1}
+                          </span>
+                          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#FFF5ED] text-[#F97316] shadow-sm transition duration-300 group-hover:scale-110">
+                            <Icon className="h-5 w-5" />
+                          </div>
+                        </div>
+                        <h3 className="mt-4 text-xl font-bold tracking-tight text-[#1A1A1A] md:text-2xl">{step.title}</h3>
+                        <p className="mt-2 flex-1 text-base leading-7 text-[#6B6B6B] md:text-lg">{step.text}</p>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            )
+          })()}
         </div>
       </section>
 
@@ -845,12 +895,12 @@ export default function LandingPage() {
         <div className="pointer-events-none absolute right-[-9rem] top-16 h-96 w-96 rounded-full bg-[#F97316]/[0.03] blur-3xl" />
         <div className="relative mx-auto w-full max-w-7xl">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#F97316]">{t.safetyLabel}</p>
-            <h2 className="mt-4 text-4xl font-bold tracking-tight text-[#1A1A1A] sm:text-5xl">{t.safetyTitle}</h2>
+            <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#F97316] md:text-base px-5 py-2">{tr.landing.safetyLabel}</p>
+            <h2 className="mt-4 whitespace-pre-line text-[30px] font-bold leading-[1.14] tracking-[-0.035em] text-[#1A1A1A] md:text-[36px] lg:text-[40px] max-w-[980px] break-keep">{tr.landing.safetyTitle}</h2>
           </div>
 
           <div className="mx-auto mt-14 grid max-w-5xl gap-5 md:grid-cols-2">
-            {t.safety.map((item, index) => {
+            {tr.landing.safetyCards.map((item, index) => {
               const Icon = [Heart, PawPrint, UsersRound, ShieldCheck][index]
               return (
                 <article
@@ -862,8 +912,8 @@ export default function LandingPage() {
                       <Icon className="h-5 w-5" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold tracking-tight text-[#1A1A1A]">{item.title}</h3>
-                      <p className="mt-3 text-sm leading-7 text-[#6B6B6B]">{item.text}</p>
+                      <h3 className="text-xl font-bold tracking-tight text-[#1A1A1A] md:text-2xl">{item.title}</h3>
+                      <p className="mt-3 text-base leading-7 text-[#6B6B6B] md:text-lg">{item.text}</p>
                     </div>
                   </div>
                 </article>
@@ -880,23 +930,20 @@ export default function LandingPage() {
         <div className="pointer-events-none absolute left-1/2 top-10 h-72 w-72 -translate-x-1/2 rounded-full bg-[#F97316]/[0.04] blur-3xl" />
         <div className="pointer-events-none absolute bottom-[-8rem] right-[-8rem] h-96 w-96 rounded-full bg-[#F97316]/[0.03] blur-3xl" />
         <div className="relative mx-auto w-full max-w-5xl text-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#F97316]">{t.nav.download}</p>
-          <h2 className="mt-4 text-5xl font-bold tracking-tight text-[#1A1A1A] sm:text-6xl lg:text-7xl">
-            {t.downloadTitle}
+          <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#F97316] md:text-base px-5 py-2">{tr.landing.downloadLabel}</p>
+          <h2 className="mt-4 text-[32px] font-bold leading-[1.12] tracking-[-0.035em] text-[#1A1A1A] md:text-[38px] lg:text-[42px] break-keep">
+            {tr.landing.downloadTitle}
           </h2>
-          <p className="mx-auto mt-5 max-w-2xl text-lg font-semibold leading-8 text-[#6B6B6B]">
-            {t.downloadSubtitle}
+          <p className="mx-auto mt-5 max-w-2xl text-base font-medium leading-8 text-neutral-500 md:text-lg">
+            {tr.landing.downloadSubtitle}
           </p>
 
           <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link href="#" className={btnSecondary}>
-              {t.appStore}
+            <Link href="/download/wepet.apk" download className={btnPrimary}>
+              {tr.landing.downloadApk}
             </Link>
-            <Link href="#" className={btnSecondary}>
-              {t.googlePlay}
-            </Link>
-            <Link href="/app" className={btnPrimary}>
-              {t.openApp}
+            <Link href="/login" className={btnSecondary}>
+              {tr.landing.openWebApp}
             </Link>
           </div>
         </div>
@@ -943,8 +990,14 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="mt-16 border-t border-white/10 pt-8 text-sm font-medium text-[#6B6B6B]">
+          <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4 text-sm font-medium text-[#6B6B6B]">
             <p>{t.copyright}</p>
+            <a
+              href="mailto:xzy888@hanyang.ac.kr"
+              className="text-sm text-[#9C9C9C] transition hover:text-white"
+            >
+              xzy888@hanyang.ac.kr
+            </a>
           </div>
         </div>
       </footer>

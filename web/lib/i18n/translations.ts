@@ -8,72 +8,93 @@ export const translations = {
       subtitle: "위펫",
       login: "Log in",
       getStarted: "Get Started",
-      badge: "AI-Powered Pet Matching",
+      badge: "Pet social network",
       hero: {
-        title: "Find the Perfect",
-        titleHighlight: "Best Friend",
-        titleEnd: "For Your Pet",
-        description:
-          "More than just a profile. Our AI analyzes your pet's personality, energy levels, and play style to connect you with compatible walking buddies and playdates.",
-        findMatch: "Find a Match",
-        howItWorks: "How it works",
+        heroTitle: "Start with your pet\nMeet meaningful connections nearby",
+        heroSubtitle:
+          "A warm social space for pets and people\nMatching chat and local discovery made natural",
       },
-      features: {
-        match: {
-          title: "AI Compatibility Match",
-          desc: "We analyze breed, size, and 15+ personality traits to predict successful playdates.",
-        },
-        chat: {
-          title: "Smart Conversation",
-          desc: "Awkward silence? Our AI suggests ice-breakers based on common interests.",
-        },
-        explore: {
-          title: "Offline Adventures",
-          desc: "Discover pet-friendly cafes, parks, and group walks happening near you.",
-        },
-      },
-      footer: "© 2025 WePet. Designed for pet lovers.",
+      featuresLabel: "Features",
+      featuresTitle: "Explore what WePet\ncan do for you",
+      featuresSubtitle:
+        "From matching chat AI care and local discovery\nWePet helps every pet connection feel natural",
+      howLabel: "How It Works",
+      howTitle: "Start with your pet profile\nand meet the right people nearby",
+      howSteps: [
+        { title: "Create your pet profile", text: "Add name personality photos and neighborhood" },
+        { title: "Match with nearby pets", text: "Discover compatible pets around you" },
+        { title: "Chat after mutual likes", text: "Start safe conversations after matching" },
+        { title: "Explore local activities", text: "Join walks meetups and pet friendly events" },
+      ],
+      safetyLabel: "Safety and Trust",
+      safetyTitle: "Designed for safer pet friendships",
+      safetyCards: [
+        { title: "Chat after mutual likes", text: "Conversations start only when both owners choose to connect" },
+        { title: "Pet centered profiles", text: "Profiles focus on routines lifestyle and practical pet information" },
+        { title: "Warm community", text: "WePet is built around respect locality and pet first experiences" },
+        { title: "AI guidance as support", text: "AI care helps organize concerns but never replaces professional veterinary care" },
+      ],
+      downloadLabel: "Download",
+      downloadTitle: "Download WePet",
+      downloadSubtitle: "Start matching chatting and exploring pet friendly places with WePet",
+      downloadApk: "Download Android APK",
+      openWebApp: "Open Web App",
       // Deep feature copy for the scrollable features section
       featuresDeep: [
         {
           key: "match",
-          imageSrc: "/images/wepet-match.png",
-          label: "Matching",
-          title: "A whole new way to meet.\nFind the perfect pal for your pet.",
+          imageSrc: "/landing/match.png",
+          label: "WEPET MATCH",
+          titleLines: [
+            "Find nearby pet friends",
+            "that truly fit",
+          ],
           description:
-            "No more guessing. Based on species, distance, age, and personality traits, WePet's smart recommendation algorithm introduces compatible pet friends nearby. Every swipe right opens the door to a genuine connection.",
+            "WePet recommends companions based on distance age breed and personality\nA simple choice can start a new connection for pets and owners",
         },
         {
           key: "chat",
-          imageSrc: "/images/wepet-chat.png",
-          label: "Chat",
-          title: "Mutual likes unlock the spark.\nChat freely, live in the moment.",
+          imageSrc: "/landing/chat.png",
+          label: "WEPET CHAT",
+          titleLines: [
+            "Start talking",
+            "after mutual likes",
+          ],
           description:
-            "Conversations only begin when the interest is mutual, ensuring a secure and spam-free space. Share real-time messages and pet life fragments seamlessly, turning online chats into real-world walks.",
+            "When both sides show interest private chat opens naturally\nPlan walks share updates and build safe pet friendships",
         },
         {
           key: "doctor",
-          imageSrc: "/images/wepet-ai.png",
-          label: "AI Doctor",
-          title: "Your 24/7 AI Pet Doctor.\nIntelligent care in your pocket.",
+          imageSrc: "/landing/doctor.png",
+          label: "WEPET AI DOCTOR",
+          titleLines: [
+            "Ask about symptoms",
+            "before you worry",
+          ],
           description:
-            "WePet is more than just social network. With integrated AI pet care guidance, you can get text consultations and photo-based symptom analysis instantly. Gain professional health advice before planning a vet visit.",
+            "Describe symptoms or upload a photo for quick AI assisted guidance\nWePet helps you understand what to check before visiting a clinic",
         },
         {
           key: "explore",
-          imageSrc: "/images/wepet-explore.png",
-          label: "Explore",
-          title: "Explore local pet events.\nStep out and touch the real world.",
+          imageSrc: "/landing/explore.png",
+          label: "WEPET EXPLORE",
+          titleLines: [
+            "Discover pet friendly",
+            "activities nearby",
+          ],
           description:
-            "Discover nearby pet-friendly places. Easily create walking meetups or join exciting offline activities hosted by local pet owners. Turn your standard weekend walk into an engaging community gathering.",
+            "Find local walks meetups parks and pet friendly places around you\nTurn online matches into real world moments",
         },
         {
           key: "profile",
-          imageSrc: "/images/wepet-profile.png",
-          label: "Profile",
-          title: "Craft a unique pet profile.\nExpress their true personality.",
+          imageSrc: "/landing/profile.png",
+          label: "WEPET PROFILE",
+          titleLines: [
+            "Show your pet personality",
+            "more clearly",
+          ],
           description:
-            "Every pet deserves to be noticed. Showcase your pet's breed, age, unique personality traits, and hobbies through a beautifully organized digital card, helping others find the most compatible playdate.",
+            "Share breed age traits photos and a short introduction\nA richer profile helps better matches happen naturally",
         },
       ],
     },
@@ -620,71 +641,92 @@ export const translations = {
       subtitle: "WePet",
       login: "로그인",
       getStarted: "시작하기",
-      badge: "AI 기반 반려동물 매칭",
+      badge: "반려동물 소셜 네트워크",
       hero: {
-        title: "반려동물을 위한",
-        titleHighlight: "완벽한 친구",
-        titleEnd: "찾기",
-        description:
-          "단순한 프로필 그 이상. 우리의 AI는 반려동물의 성격, 에너지 수준, 놀이 스타일을 분석하여 호환 가능한 산책 친구와 플레이데이트를 연결합니다.",
-        findMatch: "매칭 찾기",
-        howItWorks: "작동 방식",
+        heroTitle: "반려동물과의 연결\n가까운 인연에서 시작됩니다",
+        heroSubtitle:
+          "반려동물과 사람을 위한 따뜻한 소셜 공간\n매칭 채팅 지역 탐색까지 자연스럽게",
       },
-      features: {
-        match: {
-          title: "AI 호환성 매칭",
-          desc: "품종, 크기, 15가지 이상의 성격 특성을 분석하여 성공적인 플레이데이트를 예측합니다.",
-        },
-        chat: {
-          title: "스마트 대화",
-          desc: "어색한 침묵? 우리의 AI가 공통 관심사를 기반으로 대화 주제를 제안합니다.",
-        },
-        explore: {
-          title: "오프라인 활동",
-          desc: "근처의 반려동물 친화적 카페, 공원, 그룹 산책을 발견하세요.",
-        },
-      },
-      footer: "© 2025 WePet. 반려동물 애호가를 위한 디자인.",
+      featuresLabel: "기능",
+      featuresTitle: "WePet의 주요 기능을\n한눈에 만나보세요",
+      featuresSubtitle:
+        "매칭부터 채팅 AI 상담과 지역 탐색까지\n반려동물과의 일상을 더 자연스럽게 연결합니다",
+      howLabel: "이용 방법",
+      howTitle: "반려동물 프로필에서 시작해\n가까운 좋은 인연을 만나세요",
+      howSteps: [
+        { title: "반려동물 프로필 만들기", text: "이름 성격 사진 동네 정보를 추가하세요" },
+        { title: "가까운 반려동물 매칭", text: "근처에서 잘 맞는 친구를 찾아보세요" },
+        { title: "서로 좋아요 후 채팅", text: "매칭 후 안전하게 대화를 시작하세요" },
+        { title: "지역 활동 탐색", text: "근처 산책과 반려동물 활동에 참여하세요" },
+      ],
+      safetyLabel: "안전과 신뢰",
+      safetyTitle: "안전한 반려동물 친구 관계를 위해",
+      safetyCards: [
+        { title: "서로 좋아요 후 채팅", text: "두 보호자가 모두 연결을 선택했을 때만 대화가 시작됩니다" },
+        { title: "반려동물 중심 프로필", text: "생활 패턴과 실제 정보에 집중합니다" },
+        { title: "따뜻한 커뮤니티", text: "존중 지역성 반려동물 우선 경험을 중심으로 설계했습니다" },
+        { title: "AI 조언은 참고용", text: "AI 상담은 판단을 돕지만 전문 진료를 대체하지 않습니다" },
+      ],
+      downloadLabel: "다운로드",
+      downloadTitle: "WePet 다운로드",
+      downloadSubtitle: "WePet에서 매칭 채팅 반려동물 동반 장소 탐색을 시작하세요",
+      downloadApk: "Android APK 다운로드",
+      openWebApp: "웹 앱 열기",
       featuresDeep: [
         {
           key: "match",
-          imageSrc: "/images/wepet-match.png",
-          label: "매칭",
-          title: "새로운 만남의 시작,\n우리 아이에게 딱 맞는 친구 찾기",
+          imageSrc: "/landing/match.png",
+          label: "WEPET 매칭",
+          titleLines: [
+            "우리 아이에게 잘 맞는",
+            "가까운 친구를 찾아요",
+          ],
           description:
-            "무작정 기다릴 필요 없습니다. 종, 거리, 나이, 그리고 성향까지 고려한 WePet의 스마트 추천 알고리즘으로 동네에서 가장 잘 맞는 반려동물 친구를 만나보세요. 스와이프 한 번으로 소중한 인연이 시작됩니다.",
+            "거리 나이 품종 성격을 바탕으로 어울리는 반려동물 친구를 추천해요\n간단한 선택으로 새로운 연결을 시작할 수 있어요",
         },
         {
           key: "chat",
-          imageSrc: "/images/wepet-chat.png",
-          label: "채팅",
-          title: "서로 하트를 누르면 대화 시작,\n반려인들만의 편안한 소통 공간",
+          imageSrc: "/landing/chat.png",
+          label: "WEPET 채팅",
+          titleLines: [
+            "서로 좋아요를 누르면",
+            "대화가 시작돼요",
+          ],
           description:
-            "'서로 좋아요'를 주고받은 매칭된 상대와만 안전하게 대화를 시작할 수 있습니다. 실시간 메시지로 아이들의 일상과 대화 나누며, 온라인에서의 공감대를 오프라인 만남으로 자연스럽게 이어가세요.",
+            "서로 관심을 표현한 뒤 안전하게 1대1 채팅이 열려요\n산책 약속과 일상 공유를 자연스럽게 이어갈 수 있어요",
         },
         {
           key: "doctor",
-          imageSrc: "/images/wepet-ai.png",
-          label: "AI 의사",
-          title: "든든한 AI 반려동물 의사,\n24시간 언제나 건강 케어",
+          imageSrc: "/landing/doctor.png",
+          label: "WEPET AI 의사",
+          titleLines: [
+            "걱정되는 증상은",
+            "AI에게 먼저 물어보세요",
+          ],
           description:
-            "WePet은 단순한 소셜 앱 그 이상입니다. 텍스트 상담부터 이미지 증상 진단까지 가능한 스마트 AI 건강 상담 서비스가 내장되어 있어, 병원에 가기 전 필요한 전문적이고 빠른 가이드를 언제든 받아볼 수 있습니다.",
+            "증상을 입력하거나 사진을 올리면 AI가 빠르게 초기 상담을 도와줘요\n병원에 가기 전 확인할 점을 먼저 살펴볼 수 있어요",
         },
         {
           key: "explore",
-          imageSrc: "/images/wepet-explore.png",
-          label: "탐색",
-          title: "우리 동네 반려인 모임,\n오프라인에서 만나는 따뜻한 커뮤니티",
+          imageSrc: "/landing/explore.png",
+          label: "WEPET 탐색",
+          titleLines: [
+            "근처 반려동물 활동을",
+            "발견해요",
+          ],
           description:
-            "주변의 반려동물 친화 공간과 활동을 탐색해 보세요. 산책 모임을 직접 개설하거나 이웃들이 만든 다채로운 오프라인 활동에 참여하여, 주말 산책을 더욱 풍성한 소통의 장으로 만들 수 있습니다.",
+            "주변 산책 모임 이벤트 공원 반려동물 친화 장소를 찾아보세요\n온라인에서 시작된 연결을 실제 만남으로 이어갈 수 있어요",
         },
         {
           key: "profile",
-          imageSrc: "/images/wepet-profile.png",
-          label: "프로필",
-          title: "하나뿐인 반려동물 프로필,\n아이의 개성과 매력을 담은 명함",
+          imageSrc: "/landing/profile.png",
+          label: "WEPET 프로필",
+          titleLines: [
+            "우리 아이의 성격을",
+            "더 잘 보여주세요",
+          ],
           description:
-            "모든 반려동물의 일상은 특별합니다. 품종, 나이, 고유한 성격과 취향을 세심하게 기록할 수 있는 프로필 카드를 통해 우리 아이의 매력을 알리고, 가장 마음이 잘 맞는 단짝 친구를 찾아주세요.",
+            "품종 나이 성격 사진 소개를 한곳에 담을 수 있어요\n풍부한 프로필은 더 자연스러운 매칭과 대화를 만들어줘요",
         },
       ],
     },
@@ -1231,71 +1273,92 @@ export const translations = {
       subtitle: "위펫",
       login: "登录",
       getStarted: "开始使用",
-      badge: "AI智能宠物匹配",
+      badge: "宠物社交平台",
       hero: {
-        title: "为您的宠物寻找",
-        titleHighlight: "完美伙伴",
-        titleEnd: "",
-        description:
-          "不仅仅是简单的资料。我们的AI分析您宠物的性格、精力水平和玩耍风格，为您匹配合适的散步伙伴和玩伴约会。",
-        findMatch: "寻找匹配",
-        howItWorks: "工作原理",
+        heroTitle: "从宠物开始\n遇见附近的美好连接",
+        heroSubtitle:
+          "为宠物与主人打造温暖的社交空间\n匹配聊天与附近探索自然发生",
       },
-      features: {
-        match: {
-          title: "AI兼容性匹配",
-          desc: "我们分析品种、体型和15+种性格特征，预测成功的玩伴约会。",
-        },
-        chat: {
-          title: "智能对话",
-          desc: "尴尬的沉默？我们的AI根据共同兴趣建议破冰话题。",
-        },
-        explore: {
-          title: "线下活动",
-          desc: "发现您附近的宠物友好咖啡馆、公园和团体散步活动。",
-        },
-      },
-      footer: "© 2025 WePet. 为宠物爱好者设计。",
+      featuresLabel: "功能",
+      featuresTitle: "一眼了解\nWePet 的核心功能",
+      featuresSubtitle:
+        "从匹配聊天 AI 咨询到附近探索\n让你和宠物的日常连接更自然",
+      howLabel: "使用流程",
+      howTitle: "从宠物资料开始\n遇见附近合适的人和宠物",
+      howSteps: [
+        { title: "创建宠物资料", text: "添加名字 性格 照片和所在社区" },
+        { title: "匹配附近宠物", text: "发现附近合适的宠物伙伴" },
+        { title: "双向喜欢后聊天", text: "匹配成功后开始安全交流" },
+        { title: "探索附近活动", text: "参加散步聚会和宠物活动" },
+      ],
+      safetyLabel: "安全与信任",
+      safetyTitle: "为了更安全的宠物朋友关系",
+      safetyCards: [
+        { title: "双向喜欢后聊天", text: "只有双方都选择连接后才会开始对话" },
+        { title: "宠物中心资料", text: "关注宠物生活习惯和真实信息" },
+        { title: "温暖社区", text: "围绕尊重 地域和宠物优先体验设计" },
+        { title: "AI 建议仅供参考", text: "AI 咨询帮助整理判断 但不能替代专业诊疗" },
+      ],
+      downloadLabel: "下载",
+      downloadTitle: "下载 WePet",
+      downloadSubtitle: "在 WePet 开始匹配聊天和宠物友好地点探索",
+      downloadApk: "下载 Android APK",
+      openWebApp: "打开网页版",
       featuresDeep: [
         {
           key: "match",
-          imageSrc: "/images/wepet-match.png",
-          label: "匹配",
-          title: "开启全新的相遇，\n遇见频率相同的宠物伙伴",
+          imageSrc: "/landing/match.png",
+          label: "WEPET 匹配",
+          titleLines: [
+            "为你的宠物找到",
+            "附近合适的朋友",
+          ],
           description:
-            "摆脱盲目等待。WePet 基于物种、距离、年龄及性格的多维度智能推荐算法，帮助您的宠物在附近精准找到玩得来的新朋友。每一次右滑，都是一段真实友谊的开始。",
+            "根据距离 年龄 品种和性格推荐更合适的宠物伙伴\n一次简单选择 就能开启新的连接",
         },
         {
           key: "chat",
-          imageSrc: "/images/wepet-chat.png",
-          label: "聊天",
-          title: "双向喜欢解锁聊天，\n畅聊属于你们的宠物趣事",
+          imageSrc: "/landing/chat.png",
+          label: "WEPET 聊天",
+          titleLines: [
+            "互相喜欢后",
+            "自然开始聊天",
+          ],
           description:
-            "只有当你们「互相喜欢」时才会解锁对话框，安全无打扰。支持实时消息传输，轻松分享爱宠的日常表情包与生活碎片，让线上共同话题自然延伸到线下。",
+            "双方表达兴趣后 安全开启一对一聊天\n可以约散步 分享日常 慢慢建立真实的宠物友谊",
         },
         {
           key: "doctor",
-          imageSrc: "/images/wepet-ai.png",
-          label: "AI医生",
-          title: "专属的 AI 宠物医生，\n给它全天候的健康守护",
+          imageSrc: "/landing/doctor.png",
+          label: "WEPET AI 医生",
+          titleLines: [
+            "担心症状时",
+            "先问问 AI 医生",
+          ],
           description:
-            "这不仅仅是个社交软件。内置智能 AI 问诊服务，支持文本咨询与图片症状诊断。多语言日常护理建议，让您在犹豫是否去医院前，先得到最专业、快速的科学喂养指导。",
+            "输入症状或上传照片 快速获得 AI 辅助的初步建议\n帮助你在去医院前先了解需要关注的情况",
         },
         {
           key: "explore",
-          imageSrc: "/images/wepet-explore.png",
-          label: "探索",
-          title: "发现附近遛宠动态，\n融入温暖的本地宠物社区",
+          imageSrc: "/landing/explore.png",
+          label: "WEPET 探索",
+          titleLines: [
+            "发现附近的",
+            "宠物友好活动",
+          ],
           description:
-            "探索周边的宠物友好目的地。您可以一键创建散步约会、加入本地宠友发起的线下活动，从线上走到线下，让周末的公园散步变成一场热闹的宠物聚会。",
+            "找到周边散步 聚会 公园和宠物友好地点\n让线上匹配延伸到真实的线下相遇",
         },
         {
           key: "profile",
-          imageSrc: "/images/wepet-profile.png",
-          label: "档案",
-          title: "打造独特的宠物名片，\n展现它的性格与独特魅力",
+          imageSrc: "/landing/profile.png",
+          label: "WEPET 资料",
+          titleLines: [
+            "更清楚地展示",
+            "你的宠物性格",
+          ],
           description:
-            "每一个生命都值得被精致记录。通过多维度的宠物档案，详细展示它的品种、年龄、独特个性和喜好。让附近的宠友一眼就能读懂它，找到最投缘的玩耍伙伴。",
+            "展示品种 年龄 性格 照片和简短介绍\n更完整的资料会让匹配和聊天更自然",
         },
       ],
     },
