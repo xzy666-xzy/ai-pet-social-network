@@ -654,8 +654,8 @@ function FeaturesSection({ lang }: { lang: Lang }) {
 
             {/* ── Right: phone mockup ──────────────────────────────── */}
             <div className="relative flex flex-col items-center justify-center">
-              <div className="w-full max-w-[400px] rounded-[36px] border border-[#EDEDED] bg-white p-3 shadow-[0_24px_70px_rgba(0,0,0,0.09)]">
-                <div className="relative h-[580px] overflow-hidden rounded-[28px] bg-[#F7F7F7] md:h-[640px]">
+              <div className="w-full max-w-[300px] md:max-w-[320px] rounded-[32px] bg-[#050505] p-[5px] shadow-[0_24px_60px_rgba(0,0,0,0.14)]">
+                <div className="relative h-[580px] overflow-hidden rounded-[27px] bg-white md:h-[600px]">
                   {items.map((item, index) => {
                     const isActive = index === activeIndex
                     const isPrev = index < activeIndex
