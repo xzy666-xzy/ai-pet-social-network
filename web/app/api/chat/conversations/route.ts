@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import {
+  getConversationAccess,
   getOrCreateConversation,
   getSessionUser,
   getUserById,
@@ -35,6 +36,11 @@ export async function GET(req: NextRequest) {
             return null
           }
 
+          const access = await getConversationAccess(
+              conversation.id,
+              currentUser.id
+          )
+
           return {
             id: conversation.id,
             other_user_id: otherUser.id,
@@ -44,10 +50,11 @@ export async function GET(req: NextRequest) {
             other_user_is_ai: 0,
             last_message: null,
             last_message_time: null,
-            liked_by_me: 0,
-            liked_me: 0,
-            is_match: 0,
-            single_message_used_by_me: 0,
+            liked_by_me: access?.liked_by_me ? 1 : 0,
+            liked_me: access?.liked_me ? 1 : 0,
+            is_match: access?.is_match ? 1 : 0,
+            single_message_used_by_me: access?.single_message_used_by_me ? 1 : 0,
+            can_send_message: access?.can_send_message ?? false,
           }
         })
     )
