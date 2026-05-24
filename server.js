@@ -2279,6 +2279,31 @@ app.get("/match/recommend", authMiddleware, async (req, res) => {
     }
 
     const likedUserIds = new Set((likedRows || []).map((item) => String(item.to_user_id)))
+    const currentUserId = String(currentUser.id)
+
+    // 双向联系人删除过滤：我删了对方，或对方删了我，都不应进入匹配推荐
+    const { data: deletionRows, error: deletionError } = await supabase
+      .from("contact_deletions")
+      .select("deleter_user_id, deleted_user_id")
+      .or(`deleter_user_id.eq.${currentUserId},deleted_user_id.eq.${currentUserId}`)
+
+    if (deletionError) {
+      throw deletionError
+    }
+
+    const deletedRelationUserIds = new Set()
+    ;(deletionRows || []).forEach((row) => {
+      const deleterId = String(row.deleter_user_id)
+      const deletedId = String(row.deleted_user_id)
+
+      if (deleterId === currentUserId) {
+        deletedRelationUserIds.add(deletedId)
+      }
+
+      if (deletedId === currentUserId) {
+        deletedRelationUserIds.add(deleterId)
+      }
+    })
 
     const { data: users, error } = await supabase
       .from("users")
@@ -2311,7 +2336,11 @@ app.get("/match/recommend", authMiddleware, async (req, res) => {
     }
 
     const recommendations = (users || [])
-      .filter((candidate) => !likedUserIds.has(String(candidate.id)))
+      .filter(
+        (candidate) =>
+          !likedUserIds.has(String(candidate.id)) &&
+          !deletedRelationUserIds.has(String(candidate.id))
+      )
       .map((candidate) => {
         const currentLocation = getPreferredUserLocation(currentUser)
         const candidateLocation = getPreferredUserLocation(candidate)
