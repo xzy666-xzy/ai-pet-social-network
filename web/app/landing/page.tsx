@@ -654,8 +654,8 @@ function FeaturesSection({ lang }: { lang: Lang }) {
 
             {/* ── Right: phone mockup ──────────────────────────────── */}
             <div className="relative flex flex-col items-center justify-center">
-              <div className="w-full max-w-[300px] md:max-w-[320px] rounded-[32px] bg-[#050505] p-[5px] shadow-[0_24px_60px_rgba(0,0,0,0.14)]">
-                <div className="relative h-[580px] overflow-hidden rounded-[27px] bg-white md:h-[600px]">
+              <div className="w-full max-w-[300px] md:max-w-[320px] rounded-[36px] bg-[#050505] p-[4px] shadow-[0_24px_60px_rgba(0,0,0,0.14)]">
+                <div className="relative h-[580px] overflow-hidden rounded-[32px] bg-white md:h-[600px]">
                   {items.map((item, index) => {
                     const isActive = index === activeIndex
                     const isPrev = index < activeIndex
@@ -676,7 +676,7 @@ function FeaturesSection({ lang }: { lang: Lang }) {
                         src={item.imageSrc}
                         alt={item.label}
                         onError={handleFeatureImageError}
-                        className={`absolute inset-0 h-full w-full object-contain transition-all duration-700 ease-out ${imgClasses}`}
+                        className={`absolute inset-0 h-full w-full object-cover transition-all duration-700 ease-out ${imgClasses}`}
                       />
                     )
                   })}
