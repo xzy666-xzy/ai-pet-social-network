@@ -28,7 +28,6 @@ type FeatureDeepItem = {
   description: string
 }
 
-/* ── Feature copy: en / zh / ko ─────────────────────────────── */
 const featureCopy: Record<Lang, FeatureDeepItem[]> = {
   en: [
     {
@@ -203,7 +202,6 @@ const featureCopy: Record<Lang, FeatureDeepItem[]> = {
   ],
 }
 
-/* ── refined, mature palette ─────────────────────────────────── */
 const btnPrimary =
   "inline-flex items-center gap-2 rounded-full bg-[#F97316] px-8 py-4 text-base font-bold text-white " +
   "shadow-[0_8px_24px_rgba(249,115,22,0.20)] transition-all duration-300 " +
@@ -534,7 +532,6 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
 
-/* ── FeaturesSection: KakaoTalk-style scrollable feature panels ── */
 function FeaturesSection({ lang }: { lang: Lang }) {
   const tr = getTranslation(lang)
   const items: FeatureDeepItem[] = featureCopy[lang]
@@ -577,7 +574,6 @@ function FeaturesSection({ lang }: { lang: Lang }) {
 
   return (
     <section id="features" className="bg-white">
-      {/* ── Section header ─────────────────────────────────────── */}
       <div className="mx-auto w-full max-w-7xl px-6 pb-8 pt-24 md:px-10 lg:px-16">
         <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#FF7A00] md:text-base px-5 py-2">
           {tr.landing.featuresLabel}
@@ -590,7 +586,6 @@ function FeaturesSection({ lang }: { lang: Lang }) {
         </p>
       </div>
 
-      {/* ── Tall scroll spacer + sticky inner ──────────────────── */}
       <div
         ref={outerRef}
         className="relative"
@@ -601,7 +596,6 @@ function FeaturesSection({ lang }: { lang: Lang }) {
           style={{ height: "calc(100vh - 72px)" }}
         >
           <div className="mx-auto grid h-full max-w-6xl grid-cols-1 items-center gap-12 px-6 md:grid-cols-[1.15fr_0.85fr] md:gap-24 md:px-10 lg:px-16">
-            {/* ── Left: text content (vertically centered) ──────────── */}
             <div className="relative flex h-full flex-col justify-center">
               <div className="w-full max-w-[760px] xl:max-w-[820px]">
                 {items.map((item, index) => {
@@ -629,17 +623,14 @@ function FeaturesSection({ lang }: { lang: Lang }) {
                       style={{ transform: transformStyle }}
                       aria-hidden={!isActive}
                     >
-                      {/* Orange label */}
                       <p className="text-sm font-bold uppercase tracking-[0.18em] text-orange-500 md:text-base px-5 py-2">
                         {item.label}
                       </p>
-                      {/* Title: fixed 2 lines */}
                       <h3 className="mt-6 space-y-2 text-[28px] font-bold leading-[1.14] tracking-[-0.035em] text-[#111111] md:text-[34px] lg:text-[40px]">
                         {item.titleLines.map((line) => (
                           <span className="block whitespace-nowrap" key={line}>{line}</span>
                         ))}
                       </h3>
-                      {/* Description: 2 paragraphs */}
                       {item.description.split("\n").map((para, i) => (
                         <p
                           key={i}
@@ -656,7 +647,6 @@ function FeaturesSection({ lang }: { lang: Lang }) {
               </div>
             </div>
 
-            {/* ── Right: phone mockup ──────────────────────────────── */}
             <div className="relative flex flex-col items-center justify-center">
               <div className="w-full max-w-[300px] md:max-w-[320px] rounded-[36px] bg-[#050505] p-[4px] shadow-[0_24px_60px_rgba(0,0,0,0.14)]">
                 <div className="relative h-[580px] overflow-hidden rounded-[32px] bg-white md:h-[600px]">
@@ -687,7 +677,6 @@ function FeaturesSection({ lang }: { lang: Lang }) {
                 </div>
               </div>
 
-              {/* ── Dots ──────────────────────────────────────────── */}
               <div className="absolute -bottom-10 left-1/2 flex -translate-x-1/2 items-center gap-2">
                 {items.map((item, index) => (
                   <span
@@ -713,7 +702,6 @@ export default function LandingPage() {
 
   return (
     <main className="min-h-screen bg-[#FBF9F6] text-[#1A1A1A]">
-      {/* ── NAVBAR ─────────────────────────────────────────────── */}
       <header className="fixed left-0 right-0 top-0 z-50 border-b border-[#E8E4DE] bg-[#FBF9F6]/88 backdrop-blur-lg">
         <nav className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-3 px-5 sm:px-8">
           <Link href="/landing" className="flex items-center gap-2.5 text-xl font-bold tracking-tight text-[#1A1A1A]">
@@ -760,15 +748,10 @@ export default function LandingPage() {
         </nav>
       </header>
 
-      {/* ══════════════════════════════════════════════════════════
-          STEP 1: HERO — KakaoTalk-inspired centered layout
-          ══════════════════════════════════════════════════════════ */}
       <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-5 pt-16">
-        {/* ultra-clean background — no gradients, no noise */}
         <div className="pointer-events-none absolute inset-0 bg-[#FBF9F6]" />
 
         <div className="relative mx-auto flex w-full max-w-6xl flex-col items-center text-center">
-          {/* ── App Logo / Badge ──────────────────────────────── */}
           <div className="mb-8 inline-flex items-center gap-2.5 rounded-2xl border border-[#E8E4DE] bg-white px-5 py-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F97316] text-white">
               <PawPrint className="h-4 w-4" />
@@ -778,17 +761,14 @@ export default function LandingPage() {
             </span>
           </div>
 
-          {/* ── Main Title — giant,沉稳, centered ─────────────── */}
           <h1 className="whitespace-pre-line text-4xl font-bold leading-[1.12] tracking-[-0.035em] text-[#1A1A1A] sm:text-5xl lg:text-6xl max-w-6xl break-keep">
             {tr.landing.hero.heroTitle}
           </h1>
 
-          {/* ── Subtitle ──────────────────────────────────────── */}
           <p className="mx-auto mt-8 max-w-2xl text-base font-medium leading-8 text-neutral-500 md:text-lg">
             {tr.landing.hero.heroSubtitle}
           </p>
 
-          {/* ── CTA Buttons ──────────────────────────────────────── */}
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link href="/register" className={btnPrimary}>
               {t.ctaPrimary}
@@ -799,7 +779,6 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          {/* ── Trust indicators — centered horizontally ─────────── */}
           <div className="mt-12 flex items-center justify-center gap-6 text-xs font-medium text-[#9C9C9C]">
             <span className="flex items-center gap-1.5">
               <CheckCircle className="h-3.5 w-3.5 text-[#22C55E]" />
@@ -815,7 +794,6 @@ export default function LandingPage() {
             </span>
           </div>
 
-          {/* ── Scroll hint ──────────────────────────────────────── */}
           <div className="mt-16 flex animate-bounce flex-col items-center gap-2 text-xs font-semibold text-[#9C9C9C]">
             <span>{t.scrollHint}</span>
             <ArrowDown className="h-4 w-4" />
@@ -823,14 +801,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════════════════════
-          STEP 2: Full-screen feature panels (Snap Scrolling)
-          ══════════════════════════════════════════════════════════ */}
       <FeaturesSection lang={lang} />
 
-      {/* ══════════════════════════════════════════════════════════
-          HOW IT WORKS
-          ══════════════════════════════════════════════════════════ */}
       <section className="relative overflow-hidden bg-[#FBF9F6] px-5 py-20 sm:px-8 lg:py-28">
         <div className="pointer-events-none absolute left-[-8rem] top-12 h-72 w-72 rounded-full bg-[#F97316]/[0.03] blur-3xl" />
         <div className="pointer-events-none absolute bottom-[-10rem] right-[-8rem] h-80 w-80 rounded-full bg-[#F97316]/[0.03] blur-3xl" />
@@ -841,7 +813,6 @@ export default function LandingPage() {
             <h2 className="mt-4 whitespace-pre-line text-[30px] font-bold leading-[1.12] tracking-[-0.035em] text-[#1A1A1A] md:text-[36px] lg:text-[40px] break-keep">{tr.landing.howTitle}</h2>
           </div>
 
-          {/* step images & metadata */}
           {(() => {
             const stepImages = [
               { src: "/landing/step-profile.png", objectPosition: "object-top" },
@@ -860,7 +831,6 @@ export default function LandingPage() {
                       key={step.title}
                       className="group flex flex-col rounded-3xl border border-[#E8E4DE] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(0,0,0,0.06)]"
                     >
-                      {/* image container */}
                       <div className="aspect-[4/5] overflow-hidden rounded-2xl bg-neutral-50 m-3">
                         <img
                           src={img.src}
@@ -869,7 +839,6 @@ export default function LandingPage() {
                         />
                       </div>
 
-                      {/* text content */}
                       <div className="flex flex-1 flex-col px-5 pb-6">
                         <div className="flex items-center justify-between">
                           <span className="rounded-full border border-[#E8E4DE] bg-white px-3 py-1 text-[10px] font-semibold text-[#9C9C9C]">
@@ -891,9 +860,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════════════════════
-          SAFETY
-          ══════════════════════════════════════════════════════════ */}
       <section id="safety" className="relative overflow-hidden bg-[#F8F5F0] px-5 py-20 sm:px-8 lg:py-28">
         <div className="pointer-events-none absolute left-[-9rem] bottom-[-8rem] h-80 w-80 rounded-full bg-[#F97316]/[0.03] blur-3xl" />
         <div className="pointer-events-none absolute right-[-9rem] top-16 h-96 w-96 rounded-full bg-[#F97316]/[0.03] blur-3xl" />
@@ -927,9 +893,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════════════════════
-          DOWNLOAD
-          ══════════════════════════════════════════════════════════ */}
       <section id="download" className="relative overflow-hidden bg-[#FBF9F6] px-5 py-20 sm:px-8 lg:py-28">
         <div className="pointer-events-none absolute left-1/2 top-10 h-72 w-72 -translate-x-1/2 rounded-full bg-[#F97316]/[0.04] blur-3xl" />
         <div className="pointer-events-none absolute bottom-[-8rem] right-[-8rem] h-96 w-96 rounded-full bg-[#F97316]/[0.03] blur-3xl" />
@@ -942,7 +905,6 @@ export default function LandingPage() {
             {tr.landing.downloadSubtitle}
           </p>
 
-          {/* ── QR Code ─────────────────────────────────────────────── */}
           <div className="mt-10 flex flex-col items-center gap-3">
             <div className="flex items-center justify-center rounded-2xl bg-white p-4 shadow-[0_4px_20px_rgba(0,0,0,0.06)]">
               <Image
@@ -970,9 +932,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════════════════════
-          FOOTER — updated: 안산 · Ansan
-          ══════════════════════════════════════════════════════════ */}
       <footer className="relative overflow-hidden bg-[#1A1A1A] px-5 py-20 text-white sm:px-8 lg:py-24">
         <div className="pointer-events-none absolute left-[-8rem] top-[-10rem] h-80 w-80 rounded-full bg-[#F97316]/[0.06] blur-3xl" />
         <div className="pointer-events-none absolute right-[-10rem] bottom-[-10rem] h-96 w-96 rounded-full bg-[#F97316]/[0.04] blur-3xl" />
