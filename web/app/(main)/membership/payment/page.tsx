@@ -314,7 +314,6 @@ export default function MembershipPaymentPage() {
           </div>
         ) : null}
 
-        {/* Complete Payment Button */}
         {selectedMethod ? (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
