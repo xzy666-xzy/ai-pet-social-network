@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { useState, useEffect, useRef, type SyntheticEvent } from "react"
 import {
@@ -267,6 +268,7 @@ const copy = {
     downloadSubtitle: "Start matching, chatting, and exploring pet-friendly places with WePet.",
     downloadApk: "Download Android APK",
     openWebApp: "Open Web App",
+    qrScanText: "Scan the QR code to try WePet Web App",
     footerText: "Pet social platform in Korea",
     footerDescription: "안산 · Ansan",
     footerProduct: "Product",
@@ -370,6 +372,7 @@ const copy = {
     downloadSubtitle: "使用 WePet 开始匹配、聊天，并探索宠物友好地点。",
     downloadApk: "下载 Android APK",
     openWebApp: "打开网页版",
+    qrScanText: "扫描二维码体验 WePet 网页版",
     footerText: "韩国宠物社交平台",
     footerDescription: "안산 · Ansan",
     footerProduct: "产品",
@@ -473,6 +476,7 @@ const copy = {
     downloadSubtitle: "WePet에서 매칭, 채팅, 반려동물 동반 장소 탐색을 시작하세요.",
     downloadApk: "Android APK 다운로드",
     openWebApp: "웹 앱 열기",
+    qrScanText: "QR 코드를 스캔하여 WePet Web App을 체험해보세요",
     footerText: "한국의 반려동물 소셜 플랫폼",
     footerDescription: "안산 · Ansan",
     footerProduct: "제품",
@@ -937,6 +941,23 @@ export default function LandingPage() {
           <p className="mx-auto mt-5 max-w-2xl text-base font-medium leading-8 text-neutral-500 md:text-lg">
             {tr.landing.downloadSubtitle}
           </p>
+
+          {/* ── QR Code ─────────────────────────────────────────────── */}
+          <div className="mt-10 flex flex-col items-center gap-3">
+            <div className="flex items-center justify-center rounded-2xl bg-white p-4 shadow-[0_4px_20px_rgba(0,0,0,0.06)]">
+              <Image
+                src="/wepet-live-demo-qr.png"
+                alt="WePet QR Code"
+                width={120}
+                height={120}
+                className="h-[120px] w-[120px]"
+                priority
+              />
+            </div>
+            <p className="text-center whitespace-nowrap text-sm font-medium text-neutral-500 sm:text-sm max-[360px]:text-[11px]">
+              {t.qrScanText}
+            </p>
+          </div>
 
           <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
             <Link href="/download/wepet.apk" download className={btnPrimary}>

@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "generate:wepet-qr": "node scripts/generate-wepet-qr.js"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",
@@ -19,6 +20,7 @@
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1.14.0",
     "openai": "^6.32.0",
+    "qrcode": "^1.5.4",
     "resend": "^6.12.3"
   },
   "devDependencies": {
