@@ -9,10 +9,6 @@ export type UserProfileUpdateInput = {
     avatar_url?: string | null
 }
 
-/* =============================
-   Session
-============================= */
-
 export async function createSession(sessionId: string, userId: string) {
     const now = new Date()
     const expiresAt = new Date(now)
@@ -88,10 +84,6 @@ export async function deleteSession(sessionId?: string) {
     }
 }
 
-/* =============================
-   Users
-============================= */
-
 export async function getUserById(userId: string) {
     if (!userId) return null
 
@@ -135,10 +127,6 @@ export async function getAllOtherUsers(currentUserId: string) {
     return data || []
 }
 
-/* =============================
-   User Profile
-============================= */
-
 export async function updateUserProfile(
     userId: string,
     updates: UserProfileUpdateInput
@@ -171,10 +159,6 @@ export async function updateUserProfile(
 
     return data
 }
-
-/* =============================
-   Chat / Conversations
-============================= */
 
 export async function getUserConversations(userId: string) {
     const { data, error } = await supabase
@@ -242,10 +226,6 @@ export async function getOrCreateConversation(
 
     return newConversation
 }
-
-/* =============================
-   Likes
-============================= */
 
 export async function hasLiked(fromUserId: string, toUserId: string) {
     if (!fromUserId || !toUserId) {
@@ -331,10 +311,6 @@ export async function getLikesReceivedByUser(userId: string) {
 
     return data || []
 }
-
-/* =============================
-   Membership
-============================= */
 
 export async function getActiveMembership(userId: string) {
     const now = new Date().toISOString()
@@ -469,10 +445,6 @@ export async function getLikeQuota(userId: string) {
         unlocked: false,
     }
 }
-
-/* =============================
-   Messages / Conversation Access
-============================= */
 
 export async function getConversationById(conversationId: string) {
     if (!conversationId) return null

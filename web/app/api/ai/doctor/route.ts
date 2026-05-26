@@ -62,7 +62,7 @@ ${symptom || "None"}
 `
 
         const response = await openai.responses.create({
-            model: "gpt-5.4",
+            model: process.env.OPENAI_MODEL || "gpt-4o-mini",
             input: [
                 {
                     type: "message",

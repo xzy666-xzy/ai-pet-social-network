@@ -93,11 +93,7 @@ export default function ClientLayout({
           return
         }
 
-        console.log("[Push] setup start")
-
         await PushNotifications.addListener("registration", async (token) => {
-          console.log("[Push] FCM token:", token.value)
-
           if (!token?.value) {
             return
           }
@@ -115,7 +111,6 @@ export default function ClientLayout({
                 platform: "android",
               }),
             })
-            console.log("[Push] token registered")
           } catch {
             console.warn("[Push] token register failed")
           }
@@ -129,14 +124,10 @@ export default function ClientLayout({
           await PushNotifications.addListener(
             "pushNotificationActionPerformed",
             (notification) => {
-              console.log("[Push] notification tapped", notification)
-  
               const data = notification?.notification?.data || {}
               const senderUserId = String(data.senderUserId || "").trim()
               const type = String(data.type || "").trim()
   
-              console.log("[Push] navigating", "senderUserId:", senderUserId, "type:", type)
-
               if (type === "profile_like") {
                 router.push("/profile")
               } else if (!senderUserId) {
@@ -150,8 +141,6 @@ export default function ClientLayout({
           console.warn("[Push] action listener failed:", error)
         }
 
-        console.log("[Push] listener attached")
-
         const permissionState = await PushNotifications.checkPermissions()
         let receivePermission = permissionState.receive
 
@@ -164,9 +153,6 @@ export default function ClientLayout({
           console.warn("[Push] notification permission not granted")
           return
         }
-
-        console.log("[Push] permissions granted")
-        console.log("[Push] calling register")
 
         await PushNotifications.register()
       } catch (error) {
