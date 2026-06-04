@@ -27,7 +27,7 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || "*"
 const DEFAULT_DAILY_LIKE_LIMIT = 3
 const MEMBER_DAILY_LIKE_LIMIT = 999
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
-const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-5.2"
+const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini"
 const RESEND_API_KEY = process.env.RESEND_API_KEY
 const RESEND_FROM_EMAIL = "WePet <verify@mail.wepet.asia>"
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID
@@ -1644,39 +1644,29 @@ function buildMatchScore(currentUser, candidate, distanceKm) {
   const distanceScore = getDistanceScore(distanceKm)
   const interestScore = getInterestCompatibility(currentUser, candidate)
 
-  // 2. 判断是否同物种
-  const sameSpecies = speciesA && speciesB && speciesA === speciesB
+  // 2. 统一权重公式（海报匹配权重）
+  //    Species Similarity: 60%
+  //    Distance:          15%
+  //    Personality:       10%
+  //    Activity/Interests: 8%
+  //    Other (Age):        7%
+  let finalScore =
+    speciesScore * 0.60 +
+    distanceScore * 0.15 +
+    personalityScore * 0.10 +
+    interestScore * 0.08 +
+    ageScore * 0.07
 
-  let finalScore
-
-  if (sameSpecies) {
-    // 3. 同物种：距离权重提高，因为能不能一起玩主要看离得近不近
-    finalScore =
-      speciesScore * 0.35 +
-      distanceScore * 0.25 +
-      personalityScore * 0.20 +
-      ageScore * 0.15 +
-      interestScore * 0.05
-  } else {
-    // 4. 不同物种：物种兼容是强限制，不能因为距离近或年龄相近就高分
-    finalScore =
-      speciesScore * 0.65 +
-      distanceScore * 0.10 +
-      personalityScore * 0.10 +
-      ageScore * 0.10 +
-      interestScore * 0.05
-
-    // 5. 跨物种封顶：物种兼容度越低，总分上限越低
-    if (speciesScore < 30) {
-      finalScore = Math.min(finalScore, 45)
-    } else if (speciesScore < 45) {
-      finalScore = Math.min(finalScore, 55)
-    } else if (speciesScore < 60) {
-      finalScore = Math.min(finalScore, 65)
-    }
+  // 3. 跨物种封顶：物种兼容度越低，总分上限越低
+  if (speciesScore < 30) {
+    finalScore = Math.min(finalScore, 45)
+  } else if (speciesScore < 45) {
+    finalScore = Math.min(finalScore, 55)
+  } else if (speciesScore < 60) {
+    finalScore = Math.min(finalScore, 65)
   }
 
-  // 6. 最终限制
+  // 4. 最终限制
   return Math.max(35, Math.min(98, Math.round(finalScore)))
 }
 

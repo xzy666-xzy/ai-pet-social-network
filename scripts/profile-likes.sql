@@ -1,4 +1,3 @@
--- WePet 个人主页点赞表（可重复执行）
 create extension if not exists pgcrypto;
 
 create table if not exists public.profile_likes (
