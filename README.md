@@ -22,7 +22,7 @@ WePet은 반려동물을 키우는 사람들이 서로 연결될 수 있도록 �
 
 ### 주요 기능
 
-- **펫 매칭** — 품종 호환성, 나이대, 성격 태그, 관심사, 거리를 기반으로 한 규칙 기반 매칭 시스템. 하루 3회 무료 좋아요, 멤버십 가입 시 무제한
+- **펫 매칭** — 품종 호환성, 나이대, 성격 태그, 관심사, 거리를 기반으로 한 규칙 기반 매칭 시스템. 하루 20회 무료 좋아요, 멤버십 가입 시 무제한
 - **프로필 좋아요** — 매칭 시스템과 별개로 사용자 프로필에 좋아요를 남길 수 있는 기능
 - **채팅** — 양방향 매칭 후 채팅 가능. 이벤트 단체 채팅 및 Firebase Cloud Messaging 푸시 알림 지원
 - **AI 닥터** — 반려동물 사진과 증상을 업로드하면 OpenAI 비전 모델이 초기 건강 관찰 및 조언 제공 (진단 아님)
@@ -41,12 +41,31 @@ WePet은 반려동물을 키우는 사람들이 서로 연결될 수 있도록 �
 | 프론트엔드 | Next.js (App Router), React, TypeScript, TailwindCSS |
 | 백엔드 API | Express (Render에 배포) |
 | 데이터베이스 | Supabase (PostgreSQL) |
-| AI | OpenAI API (GPT-4o-mini / GPT-5.2) |
+| AI | OpenAI API (GPT-4o-mini) |
 | 푸시 알림 | Firebase Cloud Messaging |
 | 지도 | Google Maps API |
 | 모바일 | Capacitor Android |
 | 이메일 | Resend |
 | AI 추천 서비스 | Python FastAPI (별도 서비스, Docker) |
+
+#### 시스템 아키텍처
+
+```
+User
+  │
+  ▼
+Next.js Frontend (Vercel)
+  │
+  ▼
+Express Backend (Render)
+  │
+  ▼
+Supabase Database (PostgreSQL)
+  │
+  ├── OpenAI API (GPT-4o-mini)
+  │
+  └── Firebase Cloud Messaging
+```
 
 ---
 
@@ -86,6 +105,19 @@ wepet/
 ├── middleware/                    # Express 인증 미들웨어
 └── capacitor.config.ts
 ```
+
+---
+
+### 주요 기능 화면
+
+| 기능 | 화면 |
+|------|------|
+| **Account Creation** — 회원가입 및 반려동물 프로필 생성 | ![Account Creation](web/public/landing/step-profile.png) |
+| **Match Recommendation** — 펫 매칭 및 스와이프 UI | ![Match Recommendation](web/public/landing/step-match.png) |
+| **Social Chat** — 매칭 후 1:1 채팅 및 그룹 채팅 | ![Social Chat](web/public/landing/step-chat.png) |
+| **AI Doctor** — AI 기반 반려동물 건강 상담 | ![AI Doctor](web/public/landing/doctor.png) |
+| **Activity Discovery** — 반려동물 친화 장소 및 이벤트 탐색 | ![Activity Discovery](web/public/landing/step-explore.png) |
+| **Profile Management** — 사용자 및 반려동물 프로필 관리 | ![Profile Management](web/public/landing/profile.png) |
 
 ---
 
@@ -235,7 +267,7 @@ The project is deployed in two layers: the Next.js frontend on Vercel, and the E
 
 ### Main Features
 
-- **Pet Matching** — Rule-based matching using breed compatibility, age group, personality tags, interests, and distance. 3 free likes per day, unlimited with membership
+- **Pet Matching** — Rule-based matching using breed compatibility, age group, personality tags, interests, and distance. 20 free likes per day, unlimited with membership
 - **Profile Likes** — Like user profiles independently from the matching system
 - **Chat** — Messaging after mutual match. Supports event group chats and Firebase Cloud Messaging push notifications
 - **AI Doctor** — Upload pet photos with symptoms; OpenAI vision model provides preliminary health observations (not a diagnosis)
@@ -254,7 +286,7 @@ The project is deployed in two layers: the Next.js frontend on Vercel, and the E
 | Frontend | Next.js (App Router), React, TypeScript, TailwindCSS |
 | Backend API | Express (deployed on Render) |
 | Database | Supabase (PostgreSQL) |
-| AI | OpenAI API (GPT-4o-mini / GPT-5.2) |
+| AI | OpenAI API (GPT-4o-mini) |
 | Push Notifications | Firebase Cloud Messaging |
 | Maps | Google Maps API |
 | Mobile | Capacitor Android |
@@ -316,7 +348,7 @@ WePet 帮助养宠人士根据宠物信息（品种、年龄、性格、兴趣�
 
 ### 核心功能
 
-- **宠物匹配** — 基于品种兼容性、年龄阶段、性格标签、兴趣和距离的规则匹配系统。每天免费 3 次喜欢，会员不限次数
+- **宠物匹配** — 基于品种兼容性、年龄阶段、性格标签、兴趣和距离的规则匹配系统。每天免费 20 次喜欢，会员不限次数
 - **主页点赞** — 用户主页点赞，独立于匹配系统，单独计数
 - **聊天** — 双向匹配后可聊天。支持活动群聊和 Firebase 推送通知
 - **AI 医生** — 上传宠物照片和症状描述，OpenAI 视觉模型给出初步健康观察和建议（非诊断）
@@ -335,7 +367,7 @@ WePet 帮助养宠人士根据宠物信息（品种、年龄、性格、兴趣�
 | 前端 | Next.js (App Router), React, TypeScript, TailwindCSS |
 | 后端 API | Express (部署在 Render) |
 | 数据库 | Supabase (PostgreSQL) |
-| AI | OpenAI API (GPT-4o-mini / GPT-5.2) |
+| AI | OpenAI API (GPT-4o-mini) |
 | 推送通知 | Firebase Cloud Messaging |
 | 地图 | Google Maps API |
 | 移动端 | Capacitor Android |
