@@ -537,7 +537,7 @@ export default function ProfilePage() {
               <div className="grid grid-cols-4 gap-2 text-center text-sm">
                 <button
                   type="button"
-                  onClick={() => openLikesModal("match-sent", "发出的喜欢")}
+                  onClick={() => openLikesModal("match-sent", t.profile.likesSent)}
                   className="w-full rounded-[1.4rem] border border-orange-100 bg-gradient-to-br from-orange-50 to-white px-2 py-4 shadow-sm text-center transition hover:shadow-md active:scale-[0.97]"
                 >
                   <p className="min-h-[2rem] text-[11px] font-bold leading-4 text-stone-500">{t.profile.likesSent}</p>
@@ -783,7 +783,7 @@ export default function ProfilePage() {
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
               <div className="flex max-h-[80vh] w-full max-w-sm flex-col rounded-3xl bg-white shadow-2xl">
                 <div className="flex items-center justify-between border-b border-stone-100 px-5 py-4">
-                  <h2 className="text-lg font-bold text-stone-900">历史对话</h2>
+                  <h2 className="text-lg font-bold text-stone-900">{t.profile.conversationHistory}</h2>
                   <button
                       type="button"
                       onClick={() => setConversationsModal(false)}
