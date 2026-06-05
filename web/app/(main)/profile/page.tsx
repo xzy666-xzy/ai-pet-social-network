@@ -64,7 +64,7 @@ const COLLAPSED_COVER_HEIGHT = 220
 const EXPANDED_COVER_HEIGHT = 420
 
 export default function ProfilePage() {
-  const { t } = useLanguage()
+  const { locale, t } = useLanguage()
   const { user, loading } = useAuth()
   const [mounted, setMounted] = useState(false)
   const [stats, setStats] = useState({
@@ -259,6 +259,10 @@ export default function ProfilePage() {
     window.location.href = `/chat?userId=${userId}`
   }
 
+  function formatPetAge(age: number) {
+    return locale === "en" ? `${age} ${t.profile.yearsSuffix}` : `${age}${t.profile.yearsSuffix}`
+  }
+
   async function handleCheckoutMembership(plan: "monthly" | "annual") {
     try {
       setCheckingOut(true)
@@ -377,7 +381,7 @@ export default function ProfilePage() {
   const petType = user.pet_type || t.profile.noPetTypeYet
   const petAge =
       user.pet_age !== null && user.pet_age !== undefined
-          ? `${user.pet_age} ${t.profile.yearsSuffix}`
+          ? formatPetAge(user.pet_age)
           : t.profile.ageNotSet
   const petAgeText = petAge
   const petGenderSymbol = user.pet_gender === "male" ? "♂" : user.pet_gender === "female" ? "♀" : ""
@@ -540,7 +544,7 @@ export default function ProfilePage() {
                   onClick={() => openLikesModal("match-sent", t.profile.likesSent)}
                   className="w-full rounded-[1.4rem] border border-orange-100 bg-gradient-to-br from-orange-50 to-white px-2 py-4 shadow-sm text-center transition hover:shadow-md active:scale-[0.97]"
                 >
-                  <p className="min-h-[2rem] text-[11px] font-bold leading-4 text-stone-500">{t.profile.likesSent}</p>
+                  <p className="mx-auto min-h-[2rem] w-full max-w-full break-words text-center text-[10px] font-bold leading-tight text-stone-500 [overflow-wrap:anywhere]">{t.profile.likesSent}</p>
                   <p className="mt-2 text-2xl font-black text-orange-600">{stats.likesSent}</p>
                 </button>
 
@@ -549,7 +553,7 @@ export default function ProfilePage() {
                   onClick={() => openLikesModal("match-received", t.profile.likesReceived)}
                   className="w-full rounded-[1.4rem] border border-rose-100 bg-gradient-to-br from-rose-50 to-white px-2 py-4 shadow-sm text-center transition hover:shadow-md active:scale-[0.97]"
                 >
-                  <p className="min-h-[2rem] text-[11px] font-bold leading-4 text-stone-500">{t.profile.likesReceived}</p>
+                  <p className="mx-auto min-h-[2rem] w-full max-w-full break-words text-center text-[10px] font-bold leading-tight text-stone-500 [overflow-wrap:anywhere]">{t.profile.likesReceived}</p>
                   <p className="mt-2 text-2xl font-black text-rose-500">{stats.likesReceived}</p>
                 </button>
 
@@ -558,7 +562,7 @@ export default function ProfilePage() {
                   onClick={openConversationsModal}
                   className="w-full rounded-[1.4rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white px-2 py-4 shadow-sm text-center transition hover:shadow-md active:scale-[0.97]"
                 >
-                  <p className="min-h-[2rem] text-[11px] font-bold leading-4 text-stone-500">{t.profile.conversations}</p>
+                  <p className="mx-auto min-h-[2rem] w-full max-w-full break-words text-center text-[10px] font-bold leading-tight text-stone-500 [overflow-wrap:anywhere]">{t.profile.conversations}</p>
                   <p className="mt-2 text-2xl font-black text-amber-600">{stats.conversations}</p>
                 </button>
 
@@ -567,7 +571,7 @@ export default function ProfilePage() {
                   onClick={() => openLikesModal("profile-received", t.profile.profileLikesReceived)}
                   className="w-full rounded-[1.4rem] border border-purple-100 bg-gradient-to-br from-purple-50 to-white px-2 py-4 shadow-sm text-center transition hover:shadow-md active:scale-[0.97]"
                 >
-                  <p className="min-h-[2rem] text-[11px] font-bold leading-4 text-stone-500">{t.profile.profileLikesReceived}</p>
+                  <p className="mx-auto min-h-[2rem] w-full max-w-full break-words text-center text-[10px] font-bold leading-tight text-stone-500 [overflow-wrap:anywhere]">{t.profile.profileLikesReceived}</p>
                   <p className="mt-2 text-2xl font-black text-purple-500">{stats.profileLikesReceived}</p>
                 </button>
               </div>
@@ -738,7 +742,7 @@ export default function ProfilePage() {
                     </div>
                   ) : likesUsers.length === 0 ? (
                     <div className="py-10 text-center text-sm text-stone-400">
-                      暂时还没有记录
+                      {t.profile.noRecordsYet}
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -764,7 +768,7 @@ export default function ProfilePage() {
                               {likeUser.pet_name || likeUser.username || "Unknown"}
                             </p>
                             <p className="truncate text-xs text-stone-500">
-                              {[likeUser.pet_type, likeUser.pet_age !== null ? `${likeUser.pet_age}岁` : null]
+                              {[likeUser.pet_type, likeUser.pet_age !== null ? formatPetAge(likeUser.pet_age) : null]
                                 .filter(Boolean)
                                 .join(" · ") || "未知"}
                             </p>
@@ -801,7 +805,7 @@ export default function ProfilePage() {
                     </div>
                   ) : conversationsUsers.length === 0 ? (
                     <div className="py-10 text-center text-sm text-stone-400">
-                      暂时还没有历史对话
+                      {t.profile.noRecordsYet}
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -827,7 +831,7 @@ export default function ProfilePage() {
                               {convUser.pet_name || convUser.username || "Unknown"}
                             </p>
                             <p className="truncate text-xs text-stone-500">
-                              {[convUser.pet_type, convUser.pet_age !== null ? `${convUser.pet_age}岁` : null]
+                              {[convUser.pet_type, convUser.pet_age !== null ? formatPetAge(convUser.pet_age) : null]
                                 .filter(Boolean)
                                 .join(" · ") || "未知"}
                             </p>
