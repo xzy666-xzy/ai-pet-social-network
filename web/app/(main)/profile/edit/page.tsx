@@ -171,13 +171,15 @@ export default function ProfileEditPage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-semibold text-stone-700">宠物性别</label>
+              <label className="mb-2 block text-sm font-semibold text-stone-700">
+                {t.profile.editPage.petGenderLabel}
+              </label>
               <select
                 value={form.petGender}
                 onChange={(event) => updateField("petGender", event.target.value)}
                 className="h-10 w-full rounded-2xl border border-input bg-background px-3 py-2 text-sm ring-offset-background"
               >
-                <option value="">请选择宠物性别</option>
+                <option value="">{t.profile.editPage.petGenderPlaceholder}</option>
                 <option value="male">男 ♂</option>
                 <option value="female">女 ♀</option>
               </select>
