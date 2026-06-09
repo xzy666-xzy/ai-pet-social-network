@@ -45,21 +45,6 @@ type LikesListResponse = {
   data: LikeUser[]
 }
 
-type MembershipCheckoutResponse = {
-  success: true
-  data: {
-    membership: {
-      id: string
-      user_id: string
-      plan_type: string | null
-      status: string | null
-      start_at: string | null
-      end_at: string | null
-    }
-    quota?: unknown
-  }
-}
-
 const COLLAPSED_COVER_HEIGHT = 220
 const EXPANDED_COVER_HEIGHT = 420
 
@@ -81,7 +66,7 @@ export default function ProfilePage() {
   })
   const [statsError, setStatsError] = useState("")
   const [showMembershipModal, setShowMembershipModal] = useState(false)
-  const [checkingOut, setCheckingOut] = useState(false)
+  const [checkingOut] = useState(false)
   const [membershipError, setMembershipError] = useState("")
   const [isCoverExpanded, setIsCoverExpanded] = useState(false)
   const [coverImageUrl, setCoverImageUrl] = useState("")
@@ -263,30 +248,9 @@ export default function ProfilePage() {
     return locale === "en" ? `${age} ${t.profile.yearsSuffix}` : `${age}${t.profile.yearsSuffix}`
   }
 
-  async function handleCheckoutMembership(plan: "monthly" | "annual") {
-    try {
-      setCheckingOut(true)
-      setMembershipError("")
-
-      await apiRequest<MembershipCheckoutResponse>("/membership/checkout", {
-        method: "POST",
-        auth: true,
-        body: JSON.stringify({
-          plan,
-        }),
-      })
-
-      const profileData = await fetchProfileStats()
-      setStats(profileData.stats)
-      setMembership(profileData.membership)
-      setShowMembershipModal(false)
-    } catch (error: unknown) {
-      setMembershipError(
-          error instanceof Error ? error.message : t.match.membership.quotaExceeded
-      )
-    } finally {
-      setCheckingOut(false)
-    }
+  function handleCheckoutMembership(plan: "monthly" | "annual") {
+    setMembershipError("")
+    window.location.href = `/membership/payment?plan=${plan}`
   }
 
   useEffect(() => {

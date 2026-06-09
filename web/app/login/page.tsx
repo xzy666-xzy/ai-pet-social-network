@@ -22,6 +22,16 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
+  const getLoginErrorMessage = (message?: string) => {
+    const normalizedMessage = (message || "").trim().toLowerCase()
+
+    if (normalizedMessage.includes("account") && normalizedMessage.includes("deleted")) {
+      return t.auth?.accountDeleted || t.auth?.loginFailed || "Login failed"
+    }
+
+    return message || t.auth?.loginFailed || "Login failed"
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
@@ -31,7 +41,7 @@ export default function LoginPage() {
     if (result.success) {
       router.replace("/match")
     } else {
-      setError(result.error || t.auth?.loginFailed || "Login failed")
+      setError(getLoginErrorMessage(result.error))
     }
     setIsLoading(false)
   }
